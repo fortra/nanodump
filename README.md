@@ -65,7 +65,7 @@ python3 -m pypykatz lsa minidump <dumpfie>
 ## Parameters
 
 #### --pid -p < PID > (optional)
-PID of lsass. If not entered, nanodump will find it dinamically.
+PID of lsass. If not entered, nanodump will find it dynamically.
 
 #### --write -w < path > (optional)
 Where to write the dumpfile. If this parameter is not provided, the dump will be downloaded in a fileless manner.

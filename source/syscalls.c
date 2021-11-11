@@ -3,6 +3,8 @@
 // Code below is adapted from @modexpblog. Read linked article for more details.
 // https://www.mdsec.co.uk/2020/12/bypassing-user-mode-hooks-and-direct-invocation-of-system-calls-for-red-teams
 
+SW2_SYSCALL_LIST SW2_SyscallList __attribute__ ((section(".data")));
+
 DWORD SW2_HashSyscall(PCSTR FunctionName)
 {
     DWORD i = 0;
@@ -17,8 +19,11 @@ DWORD SW2_HashSyscall(PCSTR FunctionName)
     return Hash;
 }
 
-BOOL SW2_PopulateSyscallList(SW2_SYSCALL_LIST* SW2_SyscallList)
+BOOL SW2_PopulateSyscallList()
 {
+    // Return early if the list is already populated.
+    if (SW2_SyscallList.Count) return TRUE;
+
     PSW2_PEB Peb = (PSW2_PEB)READ_MEMLOC(PEB_OFFSET);
     PSW2_PEB_LDR_DATA Ldr = Peb->Ldr;
     PIMAGE_EXPORT_DIRECTORY ExportDirectory = NULL;
@@ -53,7 +58,7 @@ BOOL SW2_PopulateSyscallList(SW2_SYSCALL_LIST* SW2_SyscallList)
 
     // Populate SW2_SyscallList with unsorted Zw* entries.
     DWORD i = 0;
-    PSW2_SYSCALL_ENTRY Entries = SW2_SyscallList->Entries;
+    PSW2_SYSCALL_ENTRY Entries = SW2_SyscallList.Entries;
     do
     {
         PCHAR FunctionName = SW2_RVA2VA(PCHAR, DllBase, Names[NumberOfNames - 1]);
@@ -70,12 +75,12 @@ BOOL SW2_PopulateSyscallList(SW2_SYSCALL_LIST* SW2_SyscallList)
     } while (--NumberOfNames);
 
     // Save total number of system calls found.
-    SW2_SyscallList->Count = i;
+    SW2_SyscallList.Count = i;
 
     // Sort the list by address in ascending order.
-    for (DWORD i = 0; i < SW2_SyscallList->Count - 1; i++)
+    for (DWORD i = 0; i < SW2_SyscallList.Count - 1; i++)
     {
-        for (DWORD j = 0; j < SW2_SyscallList->Count - i - 1; j++)
+        for (DWORD j = 0; j < SW2_SyscallList.Count - i - 1; j++)
         {
             if (Entries[j].Address > Entries[j + 1].Address)
             {
@@ -99,51 +104,31 @@ BOOL SW2_PopulateSyscallList(SW2_SYSCALL_LIST* SW2_SyscallList)
 
 EXTERN_C DWORD SW2_GetSyscallNumber(DWORD FunctionHash)
 {
-    // create and populate the syscall list table on each call
-    // this is not ideal but global variables are not allowed in BOFs
-    SW2_SYSCALL_LIST* SW2_SyscallList = (SW2_SYSCALL_LIST*)intAlloc(sizeof(SW2_SYSCALL_LIST));
-    if (!SW2_SyscallList)
+    if (!SW2_PopulateSyscallList())
     {
 #ifdef BOF
         BeaconPrintf(CALLBACK_ERROR,
 #else
         printf(
 #endif
-            "Failed to call HeapAlloc for 0x%x bytes, error: %ld",
-            (ULONG32)sizeof(SW2_SYSCALL_LIST),
-            KERNEL32$GetLastError()
+            "SW2_PopulateSyscallList failed\n"
         );
-        return FALSE;
-    }
-    BOOL ok = SW2_PopulateSyscallList(SW2_SyscallList);
-    if (!ok)
-    {
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "SW2_PopulateSyscallList failed"
-        );
-        intFree(SW2_SyscallList); SW2_SyscallList = NULL;
         return -1;
     }
 
-    for (DWORD i = 0; i < SW2_SyscallList->Count; i++)
+    for (DWORD i = 0; i < SW2_SyscallList.Count; i++)
     {
-        if (FunctionHash == SW2_SyscallList->Entries[i].Hash)
+        if (FunctionHash == SW2_SyscallList.Entries[i].Hash)
         {
-            intFree(SW2_SyscallList); SW2_SyscallList = NULL;
             return i;
         }
     }
-    intFree(SW2_SyscallList); SW2_SyscallList = NULL;
 #ifdef BOF
     BeaconPrintf(CALLBACK_ERROR,
 #else
     printf(
 #endif
-        "syscall with hash 0x%lx not found",
+        "syscall with hash 0x%lx not found\n",
         FunctionHash
     );
 

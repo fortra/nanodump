@@ -52,7 +52,7 @@ typedef struct _SW2_PEB {
 } SW2_PEB, *PSW2_PEB;
 
 DWORD SW2_HashSyscall(PCSTR FunctionName);
-BOOL SW2_PopulateSyscallList(SW2_SYSCALL_LIST* SW2_SyscallList);
+BOOL SW2_PopulateSyscallList(void);
 EXTERN_C DWORD SW2_GetSyscallNumber(DWORD FunctionHash) asm ("SW2_GetSyscallNumber");
 EXTERN_C BOOL IsWoW64() asm ("IsWoW64");
 

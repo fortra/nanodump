@@ -4,6 +4,100 @@
 // https://www.mdsec.co.uk/2020/12/bypassing-user-mode-hooks-and-direct-invocation-of-system-calls-for-red-teams
 
 SW2_SYSCALL_LIST SW2_SyscallList __attribute__ ((section(".data")));
+PVOID SyscallAddress __attribute__ ((section(".data"))) = NULL;
+
+__attribute__((naked)) void DoSysenter(void)
+{
+#ifdef _WIN64
+    __asm__("DoSysenter: \n\
+        syscall \n\
+        ret \n\
+    ");
+#else
+    __asm__("DoSysenter: \n\
+      sysenter \n\
+      ret \n\
+    ");
+#endif
+}
+
+/*
+ * the idea here is to find a 'syscall' instruction in 'ntdll.dll'
+ * so that we can call it from our code and try to hide the fact
+ * that we call our own syscalls
+ */
+PVOID GetSyscallAddress(void)
+{
+    // Return early if the SyscallAddress is already defined
+    if (SyscallAddress) return SyscallAddress;
+
+    // set the fallback as the default
+    SyscallAddress = (PVOID)DoSysenter;
+
+    // find the address of NTDLL
+    PVOID peb_address, ldr_pointer, ldr_address, module_list_pointer, first_LdrEntry_address;
+    peb_address = GetLocalPEB();
+
+#if _WIN64
+    ldr_pointer = peb_address + 0x18;
+#else
+    ldr_pointer = peb_address + 0xc;
+#endif
+
+    ldr_address = *(PVOID*)ldr_pointer;
+
+#if _WIN64
+    module_list_pointer = ldr_address + 0x20;
+#else
+    module_list_pointer = ldr_address + 0x14;
+#endif
+
+    first_LdrEntry_address = *(PVOID*)module_list_pointer;
+    struct LDR_DATA_TABLE_ENTRY* LdrEntry = (struct LDR_DATA_TABLE_ENTRY*)first_LdrEntry_address;
+
+    BOOL found_it = FALSE;
+    while (TRUE)
+    {
+        if (!MSVCRT$_wcsicmp(L"ntdll.dll", LdrEntry->BaseDllName.Buffer))
+        {
+            found_it = TRUE;
+            break;
+        }
+        LdrEntry = (struct LDR_DATA_TABLE_ENTRY*)LdrEntry->InMemoryOrderLinks.Flink;
+        if (LdrEntry == first_LdrEntry_address)
+            break;
+    }
+    if (!found_it)
+        return SyscallAddress;
+
+    // try to find a 'syscall' instruction inside of NTDLL's code section
+
+    PVOID DllBase = LdrEntry->DllBase;
+    PIMAGE_DOS_HEADER DosHeader = (PIMAGE_DOS_HEADER)DllBase;
+    PIMAGE_NT_HEADERS NtHeaders = SW2_RVA2VA(PIMAGE_NT_HEADERS, DllBase, DosHeader->e_lfanew);
+    PVOID BaseOfCode = SW2_RVA2VA(PVOID, DllBase, NtHeaders->OptionalHeader.BaseOfCode);
+    ULONG32 SizeOfCode = NtHeaders->OptionalHeader.SizeOfCode;
+
+#ifdef _WIN64
+    BYTE syscall_code[] = { 0xf, 0x5, 0xc3 };
+#else
+    BYTE syscall_code[] = { 0xf, 0x34, 0xc3 };
+#endif
+
+    PVOID CurrentAddress = BaseOfCode;
+    while ((ULONGSIZE)CurrentAddress < (ULONGSIZE)BaseOfCode + SizeOfCode - sizeof(syscall_code) + 1)
+    {
+        if (!MSVCRT$strncmp((PVOID)syscall_code, CurrentAddress, sizeof(syscall_code)))
+        {
+            // found 'syscall' instruction in ntdll
+            SyscallAddress = CurrentAddress;
+            return SyscallAddress;
+        }
+        CurrentAddress = (PVOID)((ULONGSIZE)CurrentAddress + 1);
+    }
+    // syscall entry not found, using fallback
+    return SyscallAddress;
+}
 
 DWORD SW2_HashSyscall(PCSTR FunctionName)
 {
@@ -19,7 +113,7 @@ DWORD SW2_HashSyscall(PCSTR FunctionName)
     return Hash;
 }
 
-BOOL SW2_PopulateSyscallList()
+BOOL SW2_PopulateSyscallList(void)
 {
     // Return early if the list is already populated.
     if (SW2_SyscallList.Count) return TRUE;

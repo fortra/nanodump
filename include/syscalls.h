@@ -56,7 +56,6 @@ BOOL SW2_PopulateSyscallList(void);
 EXTERN_C DWORD SW2_GetSyscallNumber(DWORD FunctionHash) asm ("SW2_GetSyscallNumber");
 EXTERN_C BOOL IsWoW64(void) asm ("IsWoW64");
 EXTERN_C PVOID GetSyscallAddress(void) asm ("GetSyscallAddress");
-EXTERN_C PVOID GetLocalPEB(void) asm ("GetLocalPEB");
 
 //typedef struct _IO_STATUS_BLOCK
 //{

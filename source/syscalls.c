@@ -35,48 +35,41 @@ PVOID GetSyscallAddress(void)
     SyscallAddress = (PVOID)DoSysenter;
 
     // find the address of NTDLL
-    PVOID peb_address, ldr_pointer, ldr_address, module_list_pointer, first_LdrEntry_address;
-    peb_address = GetLocalPEB();
+    PSW2_PEB Peb = (PSW2_PEB)READ_MEMLOC(PEB_OFFSET);
+    PSW2_PEB_LDR_DATA Ldr = Peb->Ldr;
+    PIMAGE_EXPORT_DIRECTORY ExportDirectory = NULL;
+    PVOID DllBase = NULL;
+    PVOID BaseOfCode = NULL;
+    ULONG32 SizeOfCode = 0;
 
-#if _WIN64
-    ldr_pointer = peb_address + 0x18;
-#else
-    ldr_pointer = peb_address + 0xc;
-#endif
-
-    ldr_address = *(PVOID*)ldr_pointer;
-
-#if _WIN64
-    module_list_pointer = ldr_address + 0x20;
-#else
-    module_list_pointer = ldr_address + 0x14;
-#endif
-
-    first_LdrEntry_address = *(PVOID*)module_list_pointer;
-    struct LDR_DATA_TABLE_ENTRY* LdrEntry = (struct LDR_DATA_TABLE_ENTRY*)first_LdrEntry_address;
-
-    BOOL found_it = FALSE;
-    while (TRUE)
+    // Get the DllBase address of NTDLL.dll. NTDLL is not guaranteed to be the second
+    // in the list, so it's safer to loop through the full list and find it.
+    PSW2_LDR_DATA_TABLE_ENTRY LdrEntry;
+    for (LdrEntry = (PSW2_LDR_DATA_TABLE_ENTRY)Ldr->Reserved2[1]; LdrEntry->DllBase != NULL; LdrEntry = (PSW2_LDR_DATA_TABLE_ENTRY)LdrEntry->Reserved1[0])
     {
-        if (!MSVCRT$_wcsicmp(L"ntdll.dll", LdrEntry->BaseDllName.Buffer))
+        DllBase = LdrEntry->DllBase;
+        PIMAGE_DOS_HEADER DosHeader = (PIMAGE_DOS_HEADER)DllBase;
+        PIMAGE_NT_HEADERS NtHeaders = SW2_RVA2VA(PIMAGE_NT_HEADERS, DllBase, DosHeader->e_lfanew);
+        PIMAGE_DATA_DIRECTORY DataDirectory = (PIMAGE_DATA_DIRECTORY)NtHeaders->OptionalHeader.DataDirectory;
+        DWORD VirtualAddress = DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
+        if (VirtualAddress == 0) continue;
+
+        ExportDirectory = (PIMAGE_EXPORT_DIRECTORY)SW2_RVA2VA(ULONG_PTR, DllBase, VirtualAddress);
+
+        // If this is NTDLL.dll, exit loop.
+        PCHAR DllName = SW2_RVA2VA(PCHAR, DllBase, ExportDirectory->Name);
+        if ((*(ULONG*)DllName | 0x20202020) != 0x6c64746e) continue;
+        if ((*(ULONG*)(DllName + 4) | 0x20202020) == 0x6c642e6c)
         {
-            found_it = TRUE;
+            BaseOfCode = SW2_RVA2VA(PVOID, DllBase, NtHeaders->OptionalHeader.BaseOfCode);
+            SizeOfCode = NtHeaders->OptionalHeader.SizeOfCode;
             break;
         }
-        LdrEntry = (struct LDR_DATA_TABLE_ENTRY*)LdrEntry->InMemoryOrderLinks.Flink;
-        if (LdrEntry == first_LdrEntry_address)
-            break;
     }
-    if (!found_it)
+    if (!BaseOfCode || !SizeOfCode)
         return SyscallAddress;
 
     // try to find a 'syscall' instruction inside of NTDLL's code section
-
-    PVOID DllBase = LdrEntry->DllBase;
-    PIMAGE_DOS_HEADER DosHeader = (PIMAGE_DOS_HEADER)DllBase;
-    PIMAGE_NT_HEADERS NtHeaders = SW2_RVA2VA(PIMAGE_NT_HEADERS, DllBase, DosHeader->e_lfanew);
-    PVOID BaseOfCode = SW2_RVA2VA(PVOID, DllBase, NtHeaders->OptionalHeader.BaseOfCode);
-    ULONG32 SizeOfCode = NtHeaders->OptionalHeader.SizeOfCode;
 
 #ifdef _WIN64
     BYTE syscall_code[] = { 0xf, 0x5, 0xc3 };

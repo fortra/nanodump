@@ -3,12 +3,6 @@
 
 #if _WIN64
 
-#define GetLocalPEB GetLocalPEB
-__asm__("GetLocalPEB: \n\
-	mov rax, gs:[0x60] \n\
-	ret \n\
-");
-
 #define ZwOpenProcess NtOpenProcess
 __asm__("NtOpenProcess: \n\
 	push rcx \n\
@@ -286,12 +280,6 @@ __asm__("NtWriteFile: \n\
 ");
 
 #else
-
-#define GetLocalPEB GetLocalPEB
-__asm__("GetLocalPEB: \n\
-	mov eax, fs:[0x30] \n\
-	ret \n\
-");
 
 #define IsWoW64 IsWoW64
 __asm__("IsWoW64: \n\

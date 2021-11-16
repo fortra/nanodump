@@ -24,7 +24,7 @@ __attribute__((naked)) void DoSysenter(void)
 /*
  * the idea here is to find a 'syscall' instruction in 'ntdll.dll'
  * so that we can call it from our code and try to hide the fact
- * that we call our own syscalls
+ * that we use direct syscalls
  */
 PVOID GetSyscallAddress(void)
 {
@@ -72,13 +72,13 @@ PVOID GetSyscallAddress(void)
     // try to find a 'syscall' instruction inside of NTDLL's code section
 
 #ifdef _WIN64
-    BYTE syscall_code[] = { 0xf, 0x5, 0xc3 };
+    BYTE syscall_code[] = { 0x0f, 0x05, 0xc3 };
 #else
-    BYTE syscall_code[] = { 0xf, 0x34, 0xc3 };
+    BYTE syscall_code[] = { 0x0f, 0x34, 0xc3 };
 #endif
 
     PVOID CurrentAddress = BaseOfCode;
-    while ((ULONGSIZE)CurrentAddress < (ULONGSIZE)BaseOfCode + SizeOfCode - sizeof(syscall_code) + 1)
+    while ((ULONGSIZE)CurrentAddress <= (ULONGSIZE)BaseOfCode + SizeOfCode - sizeof(syscall_code) + 1)
     {
         if (!MSVCRT$strncmp((PVOID)syscall_code, CurrentAddress, sizeof(syscall_code)))
         {

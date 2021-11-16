@@ -8,7 +8,7 @@ all:
 	$(CC_x64) -c source/nanodump.c -o compiled/$(BOFNAME).x64.o   -masm=intel -Wall -DBOF
 	$(STRIP_x64) --strip-unneeded compiled/$(BOFNAME).x64.o
 
-#	$(CC_x86) -c source/nanodump.c -o compiled/$(BOFNAME).x86.om  -masm=intel -Wall -DBOF
+#	$(CC_x86) -c source/nanodump.c -o compiled/$(BOFNAME).x86.o   -masm=intel -Wall -DBOF
 #	$(STRIP_x86) --strip-unneeded compiled/$(BOFNAME).x86.o
 
 	$(CC_x64)    source/nanodump.c -o compiled/$(BOFNAME).x64.exe -masm=intel -Wall

@@ -6,8 +6,20 @@
 SW2_SYSCALL_LIST SW2_SyscallList __attribute__ ((section(".data")));
 PVOID SyscallAddress __attribute__ ((section(".data"))) = NULL;
 
+/*
+ * If no 'syscall' instruction is found in NTDLL,
+ * this function will be called.
+ * By default just returns STATUS_NOT_FOUND.
+ * The idea is to avoid having a 'syscall' instruction
+ * on this program's .text section to evade static analysis
+ */
 __attribute__((naked)) void DoSysenter(void)
 {
+    __asm__("DoSysenter: \n\
+        mov eax, 0xC0000225 \n\
+        ret \n\
+    ");
+    /*
 #ifdef _WIN64
     __asm__("DoSysenter: \n\
         syscall \n\
@@ -19,6 +31,7 @@ __attribute__((naked)) void DoSysenter(void)
       ret \n\
     ");
 #endif
+    */
 }
 
 /*

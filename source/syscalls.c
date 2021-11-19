@@ -44,6 +44,15 @@ PVOID GetSyscallAddress(void)
     // Return early if the SyscallAddress is already defined
     if (SyscallAddress) return SyscallAddress;
 
+#ifndef _WIN64
+    if (IsWoW64())
+    {
+        // if we are a WoW64 process, jump to WOW32Reserved
+        SyscallAddress = (PVOID)READ_MEMLOC(0xc0);
+        return SyscallAddress;
+    }
+#endif
+
     // set the fallback as the default
     SyscallAddress = (PVOID)DoSysenter;
 

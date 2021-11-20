@@ -3,6 +3,12 @@
 
 #if _WIN64
 
+#define IsWoW64 IsWoW64
+__asm__("IsWoW64: \n\
+	mov rax, 0 \n\
+	ret \n\
+");
+
 #define ZwOpenProcess NtOpenProcess
 __asm__("NtOpenProcess: \n\
 	push rcx \n\

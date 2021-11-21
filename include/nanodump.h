@@ -18,16 +18,16 @@
 #define CALLBACK_FILE_WRITE 0x08
 #define CALLBACK_FILE_CLOSE 0x09
 
+#define MEM_COMMIT 0x1000
+//#define MEM_IMAGE 0x1000000
+#define MEM_MAPPED 0x40000
+#define PAGE_NOACCESS 0x01
+#define PAGE_GUARD 0x100
+
 // 70 MiB
 #define DUMP_MAX_SIZE 0x4600000
 // 900 KiB
 #define CHUNK_SIZE 0xe1000
-
-#ifdef _WIN64
-#define ULONGSIZE ULONG64
-#else
-#define ULONGSIZE ULONG32
-#endif
 
 #ifndef _WIN64
 // for some reason, x86 has conflicting types with these functions

@@ -15,7 +15,7 @@ void writeat(
     unsigned size
 )
 {
-    void* dst = (void*)(((ULONGSIZE)(dc->BaseAddress)) + rva);
+    void* dst = (void*)((ULONG_PTR)dc->BaseAddress + rva);
     MSVCRT$memcpy(dst, data, size);
 }
 
@@ -884,7 +884,7 @@ struct module_info* write_module_list_stream(
     while (curr_module)
     {
         struct MiniDumpModule module;
-        module.BaseOfImage = (ULONGSIZE)curr_module->dll_base;
+        module.BaseOfImage = (ULONG_PTR)curr_module->dll_base;
         module.SizeOfImage = curr_module->size_of_image;
         module.CheckSum = 0;
         module.TimeDateStamp = 0;
@@ -977,15 +977,15 @@ void free_linked_list(
 }
 
 BOOL is_important_module(
-    ULONGSIZE address,
+    PVOID address,
     struct module_info* module_list
 )
 {
     struct module_info* curr_module = module_list;
     while (curr_module)
     {
-        if (address >= (ULONGSIZE)curr_module->dll_base &&
-            address < (ULONGSIZE)curr_module->dll_base + curr_module->size_of_image)
+        if ((ULONG_PTR)address >= (ULONG_PTR)curr_module->dll_base &&
+            (ULONG_PTR)address < (ULONG_PTR)curr_module->dll_base + curr_module->size_of_image)
             return TRUE;
         curr_module = curr_module->next;
     }
@@ -1022,28 +1022,22 @@ struct MiniDumpMemoryDescriptor64* get_memory_ranges(
         // next memory range
         current_address = base_address + region_size;
 
-        ULONG32 mem_commit = 0x1000;
-        ULONG32 mem_image = 0x1000000;
-        ULONG32 mem_mapped = 0x40000;
-        ULONG32 no_access = 0x001;
-        ULONG32 guard = 0x100;
-
         // ignore non-commited pages
-        if (mbi.State != mem_commit)
+        if (mbi.State != MEM_COMMIT)
             continue;
-        // ignore pages with no permissions
-        if (mbi.Protect == no_access)
+        // ignore pages with PAGE_NOACCESS
+        if ((mbi.Protect & PAGE_NOACCESS) == PAGE_NOACCESS)
             continue;
         // ignore mapped pages
-        if (mbi.Type == mem_mapped)
+        if (mbi.Type == MEM_MAPPED)
             continue;
         // ignore pages with PAGE_GUARD as they can't be read
-        if ((guard & mbi.Protect) == guard)
+        if ((mbi.Protect & PAGE_GUARD) == PAGE_GUARD)
             continue;
         // ignore modules that are not relevant to mimikatz
-        if (mbi.Type == mem_image &&
+        if (mbi.Type == MEM_IMAGE &&
             !is_important_module(
-                (ULONGSIZE)base_address,
+                base_address,
                 module_list))
             continue;
 
@@ -1061,7 +1055,7 @@ struct MiniDumpMemoryDescriptor64* get_memory_ranges(
             return NULL;
         }
         new_range->next = NULL;
-        new_range->StartOfMemoryRange = (ULONGSIZE)base_address;
+        new_range->StartOfMemoryRange = (ULONG_PTR)base_address;
         new_range->DataSize = region_size;
 
         if (!ranges_list)
@@ -1140,7 +1134,7 @@ struct MiniDumpMemoryDescriptor64* write_memory64_list_stream(
         }
         NTSTATUS status = NtReadVirtualMemory(
             dc->hProcess,
-            (PVOID)(ULONGSIZE)curr_range->StartOfMemoryRange,
+            (PVOID)(ULONG_PTR)curr_range->StartOfMemoryRange,
             buffer,
             curr_range->DataSize,
             NULL

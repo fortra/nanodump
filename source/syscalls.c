@@ -100,7 +100,7 @@ PVOID GetSyscallAddress(void)
 #endif
 
     PVOID CurrentAddress = BaseOfCode;
-    while ((ULONGSIZE)CurrentAddress <= (ULONGSIZE)BaseOfCode + SizeOfCode - sizeof(syscall_code) + 1)
+    while ((ULONG_PTR)CurrentAddress <= (ULONG_PTR)BaseOfCode + SizeOfCode - sizeof(syscall_code) + 1)
     {
         if (!MSVCRT$strncmp((PVOID)syscall_code, CurrentAddress, sizeof(syscall_code)))
         {
@@ -108,7 +108,7 @@ PVOID GetSyscallAddress(void)
             SyscallAddress = CurrentAddress;
             return SyscallAddress;
         }
-        CurrentAddress = (PVOID)((ULONGSIZE)CurrentAddress + 1);
+        CurrentAddress = (PVOID)((ULONG_PTR)CurrentAddress + 1);
     }
     // syscall entry not found, using fallback
     return SyscallAddress;
@@ -121,7 +121,7 @@ DWORD SW2_HashSyscall(PCSTR FunctionName)
 
     while (FunctionName[i])
     {
-        WORD PartialName = *(WORD*)((ULONGSIZE)FunctionName + i++);
+        WORD PartialName = *(WORD*)((ULONG_PTR)FunctionName + i++);
         Hash ^= PartialName + SW2_ROR8(Hash);
     }
 

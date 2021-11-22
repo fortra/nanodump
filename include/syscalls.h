@@ -9,7 +9,7 @@
 #include <windows.h>
 #include "syscalls-asm.h"
 
-#define SW2_SEED 0x1FD3BF2C
+#define SW2_SEED 0x1337C0DE
 #define SW2_ROL8(v) (v << 8 | v >> 24)
 #define SW2_ROR8(v) (v >> 8 | v << 24)
 #define SW2_ROX8(v) ((SW2_SEED % 2) ? SW2_ROL8(v) : SW2_ROR8(v))

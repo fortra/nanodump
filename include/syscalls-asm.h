@@ -20,7 +20,7 @@ __asm__("NtOpenProcess: \n\
 	add rsp, 0x28 \n\
 	push rax \n\
 	sub rsp, 0x28 \n\
-	mov ecx, 0xA02C9FA1 \n\
+	mov ecx, 0xCD9B2A0F \n\
 	call SW2_GetSyscallNumber \n\
 	add rsp, 0x28 \n\
 	pop r11 \n\
@@ -43,7 +43,7 @@ __asm__("NtGetNextProcess: \n\
 	add rsp, 0x28 \n\
 	push rax \n\
 	sub rsp, 0x28 \n\
-	mov ecx, 0x6DB64468 \n\
+	mov ecx, 0xFFBF1A2F \n\
 	call SW2_GetSyscallNumber \n\
 	add rsp, 0x28 \n\
 	pop r11 \n\
@@ -66,7 +66,7 @@ __asm__("NtReadVirtualMemory: \n\
 	add rsp, 0x28 \n\
 	push rax \n\
 	sub rsp, 0x28 \n\
-	mov ecx, 0xC4572801 \n\
+	mov ecx, 0x118B7567 \n\
 	call SW2_GetSyscallNumber \n\
 	add rsp, 0x28 \n\
 	pop r11 \n\
@@ -89,7 +89,7 @@ __asm__("NtClose: \n\
 	add rsp, 0x28 \n\
 	push rax \n\
 	sub rsp, 0x28 \n\
-	mov ecx, 0x069597A9 \n\
+	mov ecx, 0x2252D33F \n\
 	call SW2_GetSyscallNumber \n\
 	add rsp, 0x28 \n\
 	pop r11 \n\
@@ -112,7 +112,7 @@ __asm__("NtOpenProcessToken: \n\
 	add rsp, 0x28 \n\
 	push rax \n\
 	sub rsp, 0x28 \n\
-	mov ecx, 0x012175C4 \n\
+	mov ecx, 0x8FA915A2 \n\
 	call SW2_GetSyscallNumber \n\
 	add rsp, 0x28 \n\
 	pop r11 \n\
@@ -135,7 +135,7 @@ __asm__("NtQueryInformationProcess: \n\
 	add rsp, 0x28 \n\
 	push rax \n\
 	sub rsp, 0x28 \n\
-	mov ecx, 0x8D2F92AC \n\
+	mov ecx, 0xBDBCBC20 \n\
 	call SW2_GetSyscallNumber \n\
 	add rsp, 0x28 \n\
 	pop r11 \n\
@@ -158,7 +158,7 @@ __asm__("NtQueryVirtualMemory: \n\
 	add rsp, 0x28 \n\
 	push rax \n\
 	sub rsp, 0x28 \n\
-	mov ecx, 0x03891517 \n\
+	mov ecx, 0x0393E980 \n\
 	call SW2_GetSyscallNumber \n\
 	add rsp, 0x28 \n\
 	pop r11 \n\
@@ -181,7 +181,7 @@ __asm__("NtAdjustPrivilegesToken: \n\
 	add rsp, 0x28 \n\
 	push rax \n\
 	sub rsp, 0x28 \n\
-	mov ecx, 0x2F653BDC \n\
+	mov ecx, 0x17AB1B32 \n\
 	call SW2_GetSyscallNumber \n\
 	add rsp, 0x28 \n\
 	pop r11 \n\
@@ -204,7 +204,7 @@ __asm__("NtAllocateVirtualMemory: \n\
 	add rsp, 0x28 \n\
 	push rax \n\
 	sub rsp, 0x28 \n\
-	mov ecx, 0x3FAF3541 \n\
+	mov ecx, 0x0595031B \n\
 	call SW2_GetSyscallNumber \n\
 	add rsp, 0x28 \n\
 	pop r11 \n\
@@ -227,7 +227,7 @@ __asm__("NtFreeVirtualMemory: \n\
 	add rsp, 0x28 \n\
 	push rax \n\
 	sub rsp, 0x28 \n\
-	mov ecx, 0x4B9E337F \n\
+	mov ecx, 0x01932F05 \n\
 	call SW2_GetSyscallNumber \n\
 	add rsp, 0x28 \n\
 	pop r11 \n\
@@ -250,7 +250,7 @@ __asm__("NtCreateFile: \n\
 	add rsp, 0x28 \n\
 	push rax \n\
 	sub rsp, 0x28 \n\
-	mov ecx, 0x1842C808 \n\
+	mov ecx, 0x96018EB6 \n\
 	call SW2_GetSyscallNumber \n\
 	add rsp, 0x28 \n\
 	pop r11 \n\
@@ -273,7 +273,7 @@ __asm__("NtWriteFile: \n\
 	add rsp, 0x28 \n\
 	push rax \n\
 	sub rsp, 0x28 \n\
-	mov ecx, 0xD057C6EC \n\
+	mov ecx, 0x24B22A1A \n\
 	call SW2_GetSyscallNumber \n\
 	add rsp, 0x28 \n\
 	pop r11 \n\
@@ -303,7 +303,7 @@ __asm__("IsWoW64: \n\
 __asm__("NtOpenProcess: \n\
 	call GetSyscallAddress \n\
 	push eax \n\
-	push 0xA02C9FA1 \n\
+	push 0xCD9B2A0F \n\
 	call SW2_GetSyscallNumber \n\
 	add esp, 4 \n\
 	pop ebx \n\
@@ -317,7 +317,7 @@ __asm__("NtOpenProcess: \n\
 __asm__("NtGetNextProcess: \n\
 	call GetSyscallAddress \n\
 	push eax \n\
-	push 0x6DB64468 \n\
+	push 0xFFBF1A2F \n\
 	call SW2_GetSyscallNumber \n\
 	add esp, 4 \n\
 	pop ebx \n\
@@ -331,7 +331,7 @@ __asm__("NtGetNextProcess: \n\
 __asm__("NtReadVirtualMemory: \n\
 	call GetSyscallAddress \n\
 	push eax \n\
-	push 0xC4572801 \n\
+	push 0x118B7567 \n\
 	call SW2_GetSyscallNumber \n\
 	add esp, 4 \n\
 	pop ebx \n\
@@ -345,7 +345,7 @@ __asm__("NtReadVirtualMemory: \n\
 __asm__("NtClose: \n\
 	call GetSyscallAddress \n\
 	push eax \n\
-	push 0x069597A9 \n\
+	push 0x2252D33F \n\
 	call SW2_GetSyscallNumber \n\
 	add esp, 4 \n\
 	pop ebx \n\
@@ -359,7 +359,7 @@ __asm__("NtClose: \n\
 __asm__("NtOpenProcessToken: \n\
 	call GetSyscallAddress \n\
 	push eax \n\
-	push 0x012175C4 \n\
+	push 0x8FA915A2 \n\
 	call SW2_GetSyscallNumber \n\
 	add esp, 4 \n\
 	pop ebx \n\
@@ -373,7 +373,7 @@ __asm__("NtOpenProcessToken: \n\
 __asm__("NtQueryInformationProcess: \n\
 	call GetSyscallAddress \n\
 	push eax \n\
-	push 0x8D2F92AC \n\
+	push 0xBDBCBC20 \n\
 	call SW2_GetSyscallNumber \n\
 	add esp, 4 \n\
 	pop ebx \n\
@@ -387,7 +387,7 @@ __asm__("NtQueryInformationProcess: \n\
 __asm__("NtQueryVirtualMemory: \n\
 	call GetSyscallAddress \n\
 	push eax \n\
-	push 0x03891517 \n\
+	push 0x0393E980 \n\
 	call SW2_GetSyscallNumber \n\
 	add esp, 4 \n\
 	pop ebx \n\
@@ -401,7 +401,7 @@ __asm__("NtQueryVirtualMemory: \n\
 __asm__("NtAdjustPrivilegesToken: \n\
 	call GetSyscallAddress \n\
 	push eax \n\
-	push 0x2F653BDC \n\
+	push 0x17AB1B32 \n\
 	call SW2_GetSyscallNumber \n\
 	add esp, 4 \n\
 	pop ebx \n\
@@ -415,7 +415,7 @@ __asm__("NtAdjustPrivilegesToken: \n\
 __asm__("NtAllocateVirtualMemory: \n\
 	call GetSyscallAddress \n\
 	push eax \n\
-	push 0x3FAF3541 \n\
+	push 0x0595031B \n\
 	call SW2_GetSyscallNumber \n\
 	add esp, 4 \n\
 	pop ebx \n\
@@ -429,7 +429,7 @@ __asm__("NtAllocateVirtualMemory: \n\
 __asm__("NtFreeVirtualMemory: \n\
 	call GetSyscallAddress \n\
 	push eax \n\
-	push 0x4B9E337F \n\
+	push 0x01932F05 \n\
 	call SW2_GetSyscallNumber \n\
 	add esp, 4 \n\
 	pop ebx \n\
@@ -443,7 +443,7 @@ __asm__("NtFreeVirtualMemory: \n\
 __asm__("NtCreateFile: \n\
 	call GetSyscallAddress \n\
 	push eax \n\
-	push 0x1842C808 \n\
+	push 0x96018EB6 \n\
 	call SW2_GetSyscallNumber \n\
 	add esp, 4 \n\
 	pop ebx \n\
@@ -457,7 +457,7 @@ __asm__("NtCreateFile: \n\
 __asm__("NtWriteFile: \n\
 	call GetSyscallAddress \n\
 	push eax \n\
-	push 0xD057C6EC \n\
+	push 0x24B22A1A \n\
 	call SW2_GetSyscallNumber \n\
 	add esp, 4 \n\
 	pop ebx \n\

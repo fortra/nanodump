@@ -150,34 +150,20 @@ EXTERN_C NTSTATUS NtReadVirtualMemory(
 	IN SIZE_T BufferSize,
 	OUT PSIZE_T NumberOfBytesRead OPTIONAL) asm ("NtReadVirtualMemory");
 
-#ifdef _WIN64
 EXTERN_C NTSTATUS NtClose(
 	IN HANDLE Handle) asm ("NtClose");
-#else
-EXTERN_C NTSTATUS _NtClose(
-	IN HANDLE Handle) asm ("_NtClose");
-#endif
 
 EXTERN_C NTSTATUS NtOpenProcessToken(
 	IN HANDLE ProcessHandle,
 	IN ACCESS_MASK DesiredAccess,
 	OUT PHANDLE TokenHandle) asm ("NtOpenProcessToken");
 
-#ifdef _WIN64
 EXTERN_C NTSTATUS NtQueryInformationProcess(
 	IN HANDLE ProcessHandle,
 	IN PROCESSINFOCLASS ProcessInformationClass,
 	OUT PVOID ProcessInformation,
 	IN ULONG ProcessInformationLength,
 	OUT PULONG ReturnLength OPTIONAL) asm ("NtQueryInformationProcess");
-#else
-EXTERN_C NTSTATUS _NtQueryInformationProcess(
-	IN HANDLE ProcessHandle,
-	IN PROCESSINFOCLASS ProcessInformationClass,
-	OUT PVOID ProcessInformation,
-	IN ULONG ProcessInformationLength,
-	OUT PULONG ReturnLength OPTIONAL) asm ("_NtQueryInformationProcess");
-#endif
 
 EXTERN_C NTSTATUS NtQueryVirtualMemory(
 	IN HANDLE ProcessHandle,
@@ -209,7 +195,6 @@ EXTERN_C NTSTATUS NtFreeVirtualMemory(
 	IN OUT PSIZE_T RegionSize,
 	IN ULONG FreeType) asm ("NtFreeVirtualMemory");
 
-#ifdef _WIN64
 EXTERN_C NTSTATUS NtCreateFile(
 	OUT PHANDLE FileHandle,
 	IN ACCESS_MASK DesiredAccess,
@@ -222,20 +207,6 @@ EXTERN_C NTSTATUS NtCreateFile(
 	IN ULONG CreateOptions,
 	IN PVOID EaBuffer OPTIONAL,
 	IN ULONG EaLength) asm ("NtCreateFile");
-#else
-EXTERN_C NTSTATUS _NtCreateFile(
-	OUT PHANDLE FileHandle,
-	IN ACCESS_MASK DesiredAccess,
-	IN POBJECT_ATTRIBUTES ObjectAttributes,
-	OUT PIO_STATUS_BLOCK IoStatusBlock,
-	IN PLARGE_INTEGER AllocationSize OPTIONAL,
-	IN ULONG FileAttributes,
-	IN ULONG ShareAccess,
-	IN ULONG CreateDisposition,
-	IN ULONG CreateOptions,
-	IN PVOID EaBuffer OPTIONAL,
-	IN ULONG EaLength) asm ("_NtCreateFile");
-#endif
 
 EXTERN_C NTSTATUS NtWriteFile(
 	IN HANDLE FileHandle,

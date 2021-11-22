@@ -30,7 +30,7 @@
 #define CHUNK_SIZE 0xe1000
 
 #ifndef _WIN64
-// for some reason, x86 has conflicting types with these functions
+// x86 has conflicting types with these functions
 #define NtClose _NtClose
 #define NtQueryInformationProcess _NtQueryInformationProcess
 #define NtCreateFile _NtCreateFile

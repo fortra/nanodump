@@ -341,8 +341,8 @@ __asm__("NtReadVirtualMemory: \n\
 	ret \n\
 ");
 
-#define ZwClose _NtClose
-__asm__("_NtClose: \n\
+#define ZwClose NtClose
+__asm__("NtClose: \n\
 	call GetSyscallAddress \n\
 	push eax \n\
 	push 0x069597A9 \n\
@@ -369,8 +369,8 @@ __asm__("NtOpenProcessToken: \n\
 	ret \n\
 ");
 
-#define ZwQueryInformationProcess _NtQueryInformationProcess
-__asm__("_NtQueryInformationProcess: \n\
+#define ZwQueryInformationProcess NtQueryInformationProcess
+__asm__("NtQueryInformationProcess: \n\
 	call GetSyscallAddress \n\
 	push eax \n\
 	push 0x8D2F92AC \n\
@@ -439,8 +439,8 @@ __asm__("NtFreeVirtualMemory: \n\
 	ret \n\
 ");
 
-#define ZwCreateFile _NtCreateFile
-__asm__("_NtCreateFile: \n\
+#define ZwCreateFile NtCreateFile
+__asm__("NtCreateFile: \n\
 	call GetSyscallAddress \n\
 	push eax \n\
 	push 0x1842C808 \n\

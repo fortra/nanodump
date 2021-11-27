@@ -136,6 +136,16 @@ EXTERN_C NTSTATUS NtOpenProcess(
 	IN POBJECT_ATTRIBUTES ObjectAttributes,
 	IN PCLIENT_ID ClientId OPTIONAL) asm ("NtOpenProcess");
 
+EXTERN_C NTSTATUS NtCreateProcess(
+	OUT PHANDLE ProcessHandle,
+	IN ACCESS_MASK DesiredAccess,
+	IN POBJECT_ATTRIBUTES ObjectAttributes OPTIONAL,
+	IN HANDLE ParentProcess,
+	IN BOOLEAN InheritObjectTable,
+	IN HANDLE SectionHandle OPTIONAL,
+	IN HANDLE DebugPort OPTIONAL,
+	IN HANDLE ExceptionPort OPTIONAL) asm ("NtCreateProcess");
+
 EXTERN_C NTSTATUS NtGetNextProcess(
 	IN HANDLE ProcessHandle,
 	IN ACCESS_MASK DesiredAccess,

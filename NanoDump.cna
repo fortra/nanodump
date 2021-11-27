@@ -81,7 +81,6 @@ alias nanodump {
         {
             # set arg to true for process cloning
             $clone = 1;
-            $i++;
         }
         else if (@_[$i] eq "--valid" || @_[$i] eq "-v")
         {

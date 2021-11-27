@@ -75,6 +75,9 @@ Where to write the dumpfile. If this parameter is not provided, the dump will be
 If entered, the minidump will have a valid signature.  
 If not entered, before analyzing the dump restore the signature of the dump, with: `bash restore_signature.sh <dumpfile>`  
 
+#### --clone -c (optional)
+If selected alongside a provided PID, nanodump will first create a handle to the target process with `PROCESS_CREATE_PROCESS` access, before spawning a 'clone' of the process. This new instance of the process will then be the target for memory dumping. While this will result in a new process creation, it removes the need to initially create a handle to lsass with `PROCESS_VM_READ`, which may trigger detection.
+
 ## HTTPS redirectors
 If you are using an HTTPS redirector (as you should), you might run into issues due to the size of the requests that leak the dump.  
 Increase the max size of requests on your web server to allow nanodump to download the dump.
@@ -97,4 +100,4 @@ location ~ ^...$ {
 - [skelsec](https://twitter.com/skelsec) for writing [minidump](https://github.com/skelsec/minidump), which was crucial for learning the minidump file format.
 - [freefirex](https://twitter.com/freefirex2) from [CS-Situational-Awareness-BOF](https://github.com/trustedsec/CS-Situational-Awareness-BOF) at Trustedsec for many cool tricks for BOFs
 - [Jackson_T](https://twitter.com/Jackson_T) for [SysWhispers2](https://github.com/jthuraisamy/SysWhispers2)
-
+- [BillDemirkapi](https://twitter.com/BillDemirkapi) for [Process Forking](https://billdemirkapi.me/abusing-windows-implementation-of-fork-for-stealthy-memory-operations/)

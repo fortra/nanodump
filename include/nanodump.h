@@ -13,6 +13,10 @@
 #define STATUS_OBJECT_PATH_NOT_FOUND 0xC000003A
 #define STATUS_NO_MORE_ENTRIES 0x8000001A
 #define STATUS_INVALID_CID 0xC000000B
+#define STATUS_INFO_LENGTH_MISMATCH 0xC0000004
+
+#define SystemHandleInformation 0x10
+#define ObjectTypeInformation 2
 
 #define CALLBACK_FILE       0x02
 #define CALLBACK_FILE_WRITE 0x08
@@ -34,6 +38,8 @@
 #define NtClose _NtClose
 #define NtQueryInformationProcess _NtQueryInformationProcess
 #define NtCreateFile _NtCreateFile
+#define NtQuerySystemInformation _NtQuerySystemInformation
+#define NtQueryObject _NtQueryObject
 #endif
 
 #ifdef _WIN64
@@ -219,3 +225,13 @@ struct linked_list
 {
     struct linked_list* next;
 };
+
+typedef struct SYSTEM_HANDLE_TABLE_ENTRY_INFO
+{
+    ULONG ProcessId;
+    BYTE ObjectTypeNumber;
+    BYTE Flags;
+    USHORT Handle;
+    PVOID Object;
+    ACCESS_MASK GrantedAccess;
+} SYSTEM_HANDLE_TABLE_ENTRY_INFO, *PSYSTEM_HANDLE_TABLE_ENTRY_INFO;

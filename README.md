@@ -13,6 +13,7 @@ A Beacon Object File that creates a minidump of the LSASS process.
 - You don't need to provide the PID of LSASS
 - No calls to *dbghelp* or any other library are made, all the dump logic is implemented in nanodump
 - Supports process forking to avoid the permission `PROCESS_VM_READ`
+- Supports handle duplication
 - You can use the .exe version to run *nanodump* outside of Cobalt Strike :smile:
 
 ## Usage
@@ -66,8 +67,9 @@ python3 -m pypykatz lsa minidump <dumpfie>
 
 ## Parameters
 
-#### --pid -p < PID > (optional unless --clone is used)
-PID of lsass. If not entered, nanodump will find it dynamically.
+#### --pid -p < PID > (required only for --fork and --dup)
+PID of lsass. If not entered, nanodump will find it dynamically.  
+If the options --fork or --dup are used, this parameter is required
 
 #### --write -w < path > (optional)
 Where to write the dumpfile. If this parameter is not provided, the dump will be downloaded in a fileless manner.
@@ -76,8 +78,11 @@ Where to write the dumpfile. If this parameter is not provided, the dump will be
 If entered, the minidump will have a valid signature.  
 If not entered, before analyzing the dump restore the signature of the dump, with: `bash restore_signature.sh <dumpfile>`  
 
-#### --clone -c (optional)
-If selected alongside a provided PID, nanodump will first create a handle to the target process with `PROCESS_CREATE_PROCESS` access, before spawning a 'clone' of the process. This new instance of the process will then be the target for memory dumping. While this will result in a new process creation, it removes the need to initially create a handle to lsass with `PROCESS_VM_READ`, which may trigger detection.
+#### --fork -f (optional)
+If selected, nanodump will first create a handle to the target process with `PROCESS_CREATE_PROCESS` access, before spawning a 'clone' of the process. This new instance of the process will then be the target for memory dumping. While this will result in a new process creation, it removes the need to initially create a handle to lsass with `PROCESS_VM_READ`, which may trigger detection.
+
+#### --dup -d (optional)
+If selected, nanodump will search for an existing handle to LSASS and duplicate it in order to avoid opening a new handle
 
 ## HTTPS redirectors
 If you are using an HTTPS redirector (as you should), you might run into issues due to the size of the requests that leak the dump.  

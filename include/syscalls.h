@@ -229,4 +229,26 @@ EXTERN_C NTSTATUS NtCreateProcess(
 	IN HANDLE DebugPort OPTIONAL,
 	IN HANDLE ExceptionPort OPTIONAL) asm ("NtCreateProcess");
 
+EXTERN_C NTSTATUS NtQuerySystemInformation(
+	IN SYSTEM_INFORMATION_CLASS SystemInformationClass,
+	IN OUT PVOID SystemInformation,
+	IN ULONG SystemInformationLength,
+	OUT PULONG ReturnLength OPTIONAL) asm ("NtQuerySystemInformation");
+
+EXTERN_C NTSTATUS NtDuplicateObject(
+	IN HANDLE SourceProcessHandle,
+	IN HANDLE SourceHandle,
+	IN HANDLE TargetProcessHandle OPTIONAL,
+	OUT PHANDLE TargetHandle OPTIONAL,
+	IN ACCESS_MASK DesiredAccess,
+	IN ULONG HandleAttributes,
+	IN ULONG Options) asm ("NtDuplicateObject");
+
+EXTERN_C NTSTATUS NtQueryObject(
+	IN HANDLE Handle,
+	IN OBJECT_INFORMATION_CLASS ObjectInformationClass,
+	OUT PVOID ObjectInformation OPTIONAL,
+	IN ULONG ObjectInformationLength,
+	OUT PULONG ReturnLength OPTIONAL) asm ("NtQueryObject");
+
 #endif

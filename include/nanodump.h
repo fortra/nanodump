@@ -103,7 +103,7 @@ WINBASEAPI void __cdecl MSVCRT$memset(void *dest, int c, size_t count);
 
 #endif
 
-struct MiniDumpHeader
+typedef struct _MiniDumpHeader
 {
      ULONG32       Signature;
      SHORT         Version;
@@ -114,24 +114,24 @@ struct MiniDumpHeader
      ULONG32       Reserved;
      ULONG32       TimeDateStamp;
      ULONG32       Flags;
-};
+} MiniDumpHeader, *PMiniDumpHeader;
 
-struct MiniDumpDirectory
+typedef struct _MiniDumpDirectory
 {
      ULONG32       StreamType;
      ULONG32       DataSize;
      ULONG32       Rva;
-};
+} MiniDumpDirectory, *PMiniDumpDirectory;
 
-struct dump_context
+typedef struct _dump_context
 {
     HANDLE  hProcess;
     void*   BaseAddress;
     ULONG32 rva;
     char*   signature;
-};
+} dump_context, *Pdump_context;
 
-struct MiniDumpSystemInfo
+typedef struct _MiniDumpSystemInfo
 {
     SHORT ProcessorArchitecture;
     SHORT ProcessorLevel;
@@ -156,7 +156,7 @@ struct MiniDumpSystemInfo
         ULONG32 FeatureInformation;
         ULONG32 AMDExtendedCpuFeatures;
 #endif
-};
+} MiniDumpSystemInfo, *PMiniDumpSystemInfo;
 
 struct LDR_DATA_TABLE_ENTRY
 {
@@ -170,16 +170,16 @@ struct LDR_DATA_TABLE_ENTRY
     struct _UNICODE_STRING BaseDllName;                                     //0x58
 };
 
-struct module_info
+typedef struct _module_info
 {
-    struct module_info* next;
+    struct _module_info* next;
     PVOID dll_base;
     ULONG32 size_of_image;
     char dll_name[256];
     ULONG32 name_rva;
-};
+} module_info, *Pmodule_info;
 
-struct VsFixedFileInfo
+typedef struct _VsFixedFileInfo
 {
     ULONG32 dwSignature;
     ULONG32 dwStrucVersion;
@@ -194,39 +194,39 @@ struct VsFixedFileInfo
     ULONG32 dwFileSubtype;
     ULONG32 dwFileDateMS;
     ULONG32 dwFileDateLS;
-};
+} VsFixedFileInfo, *PVsFixedFileInfo;
 
-struct MiniDumpLocationDescriptor
+typedef struct _MiniDumpLocationDescriptor
 {
     ULONG32 DataSize;
     ULONG32 rva;
-};
+} MiniDumpLocationDescriptor, *PMiniDumpLocationDescriptor;
 
-struct MiniDumpModule
+typedef struct _MiniDumpModule
 {
     ULONG64 BaseOfImage;
     ULONG32 SizeOfImage;
     ULONG32 CheckSum;
     ULONG32 TimeDateStamp;
     ULONG32 ModuleNameRva;
-    struct VsFixedFileInfo VersionInfo;
-    struct MiniDumpLocationDescriptor CvRecord;
-    struct MiniDumpLocationDescriptor MiscRecord;
+    VsFixedFileInfo VersionInfo;
+    MiniDumpLocationDescriptor CvRecord;
+    MiniDumpLocationDescriptor MiscRecord;
     ULONG64 Reserved0;
     ULONG64 Reserved1;
-};
+} MiniDumpModule, *PMiniDumpModule;
 
-struct MiniDumpMemoryDescriptor64
+typedef struct _MiniDumpMemoryDescriptor64
 {
-    struct MiniDumpMemoryDescriptor64* next;
+    struct _MiniDumpMemoryDescriptor64* next;
     ULONG64 StartOfMemoryRange;
     ULONG64 DataSize;
-};
+} MiniDumpMemoryDescriptor64, *PMiniDumpMemoryDescriptor64;
 
-struct linked_list
+typedef struct _linked_list
 {
-    struct linked_list* next;
-};
+    struct _linked_list* next;
+} linked_list, *Plinked_list;
 
 typedef struct SYSTEM_HANDLE_TABLE_ENTRY_INFO
 {

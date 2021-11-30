@@ -45,9 +45,11 @@
 #endif
 
 #ifdef _WIN64
+#define CID_OFFSET 0x40
 #define PEB_OFFSET 0x60
 #define READ_MEMLOC __readgsqword
 #else
+#define CID_OFFSET 0x20
 #define PEB_OFFSET 0x30
 #define READ_MEMLOC __readfsdword
 #endif

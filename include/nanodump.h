@@ -130,7 +130,9 @@ typedef struct _dump_context
     HANDLE  hProcess;
     void*   BaseAddress;
     ULONG32 rva;
-    char*   signature;
+    ULONG32 Signature;
+    SHORT   Version;
+    SHORT   ImplementationVersion;
 } dump_context, *Pdump_context;
 
 typedef struct _MiniDumpSystemInfo

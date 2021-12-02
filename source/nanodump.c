@@ -550,18 +550,18 @@ BOOL write_system_info_stream(
     pPeb = (PVOID)READ_MEMLOC(PEB_OFFSET);
 
 #if _WIN64
-    OSMajorVersion = (PULONG32)(((ULONG64)(pPeb)) + 0x118);
-    OSMinorVersion = (PULONG32)(((ULONG64)(pPeb)) + 0x11c);
-    OSBuildNumber = (PUSHORT)(((ULONG64)(pPeb)) + 0x120);
-    OSPlatformId = (PULONG32)(((ULONG64)(pPeb)) + 0x124);
-    CSDVersion = (PUNICODE_STRING)(((ULONG64)(pPeb)) + 0x2e8);
+    OSMajorVersion = (PULONG32)((ULONG_PTR)pPeb + 0x118);
+    OSMinorVersion = (PULONG32)((ULONG_PTR)pPeb + 0x11c);
+    OSBuildNumber = (PUSHORT)((ULONG_PTR)pPeb + 0x120);
+    OSPlatformId = (PULONG32)((ULONG_PTR)pPeb + 0x124);
+    CSDVersion = (PUNICODE_STRING)((ULONG_PTR)pPeb + 0x2e8);
     system_info.ProcessorArchitecture = 9; // AMD64
 #else
-    OSMajorVersion = (PULONG32)(((ULONG32)(pPeb)) + 0xa4);
-    OSMinorVersion = (PULONG32)(((ULONG32)(pPeb)) + 0xa8);
-    OSBuildNumber = (PUSHORT)(((ULONG32)(pPeb)) + 0xac);
-    OSPlatformId = (PULONG32)(((ULONG32)(pPeb)) + 0xb0);
-    CSDVersion = (PUNICODE_STRING)(((ULONG32)(pPeb)) + 0x1f0);
+    OSMajorVersion = (PULONG32)((ULONG_PTR)pPeb + 0xa4);
+    OSMinorVersion = (PULONG32)((ULONG_PTR)pPeb + 0xa8);
+    OSBuildNumber = (PUSHORT)((ULONG_PTR)pPeb + 0xac);
+    OSPlatformId = (PULONG32)((ULONG_PTR)pPeb + 0xb0);
+    CSDVersion = (PUNICODE_STRING)((ULONG_PTR)pPeb + 0x1f0);
     system_info.ProcessorArchitecture = 0; // INTEL
 #endif
 
@@ -765,8 +765,10 @@ Pmodule_info add_new_module(
         return NULL;
     }
     new_module->next = NULL;
-    new_module->dll_base = (PVOID)ldr_entry->DllBase;
+    new_module->dll_base = (ULONG64)(ULONG_PTR)ldr_entry->DllBase;
     new_module->size_of_image = ldr_entry->SizeOfImage;
+    new_module->TimeDateStamp = ldr_entry->TimeDateStamp;
+    new_module->CheckSum = ldr_entry->CheckSum;
 
     // read the full path of the DLL
     NTSTATUS status = NtReadVirtualMemory(
@@ -957,7 +959,7 @@ Pmodule_info write_module_list_stream(
     // write the full path of each dll
     Pmodule_info curr_module = module_list;
     ULONG32 number_of_modules = 0;
-    while(curr_module)
+    while (curr_module)
     {
         number_of_modules++;
         curr_module->name_rva = dc->rva;
@@ -981,8 +983,8 @@ Pmodule_info write_module_list_stream(
         MiniDumpModule module;
         module.BaseOfImage = (ULONG_PTR)curr_module->dll_base;
         module.SizeOfImage = curr_module->size_of_image;
-        module.CheckSum = 0;
-        module.TimeDateStamp = 0;
+        module.CheckSum = curr_module->CheckSum;
+        module.TimeDateStamp = curr_module->TimeDateStamp;
         module.ModuleNameRva = curr_module->name_rva;
         module.VersionInfo.dwSignature = 0;
         module.VersionInfo.dwStrucVersion = 0;
@@ -1051,9 +1053,9 @@ void free_linked_list(
     if (!head)
         return;
 
-    ULONG32 number_of_nodes = 1;
     Plinked_list node = (Plinked_list)head;
-    while(node->next)
+    ULONG32 number_of_nodes = 0;
+    while (node)
     {
         number_of_nodes++;
         node = node->next;
@@ -1064,7 +1066,7 @@ void free_linked_list(
         Plinked_list node = (Plinked_list)head;
 
         int jumps = i;
-        while(jumps--)
+        while (jumps--)
             node = node->next;
 
         intFree(node); node = NULL;
@@ -1188,10 +1190,13 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
         return NULL;
 
     // write the number of ranges
-    ULONG64 number_of_ranges = 1;
     PMiniDumpMemoryDescriptor64 curr_range = memory_ranges;
-    while(curr_range->next && number_of_ranges++)
+    ULONG64 number_of_ranges = 0;
+    while (curr_range)
+    {
+        number_of_ranges++;
         curr_range = curr_range->next;
+    }
     append(dc, &number_of_ranges, 8);
 
     // write the rva of the actual memory content

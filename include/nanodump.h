@@ -54,9 +54,6 @@
 #define READ_MEMLOC __readfsdword
 #endif
 
-#define intAlloc(size) KERNEL32$HeapAlloc(KERNEL32$GetProcessHeap(), HEAP_ZERO_MEMORY, size)
-#define intFree(addr) KERNEL32$HeapFree(KERNEL32$GetProcessHeap(), 0, addr)
-
 #ifdef BOF
 
 WINBASEAPI HANDLE WINAPI KERNEL32$GetProcessHeap();
@@ -80,30 +77,31 @@ WINBASEAPI int WINAPI MSVCRT$rand();
 WINBASEAPI time_t WINAPI MSVCRT$time(time_t *time);
 WINBASEAPI void __cdecl MSVCRT$memset(void *dest, int c, size_t count);
 
-#else
+#define GetProcessHeap KERNEL32$GetProcessHeap
+#define HeapAlloc KERNEL32$HeapAlloc
+#define HeapFree KERNEL32$HeapFree
+#define GetLastError KERNEL32$GetLastError
 
-#define KERNEL32$GetProcessHeap GetProcessHeap
-#define KERNEL32$HeapAlloc HeapAlloc
-#define KERNEL32$HeapFree HeapFree
-#define KERNEL32$GetLastError GetLastError
+#define LookupPrivilegeValueW ADVAPI32$LookupPrivilegeValueW
 
-#define ADVAPI32$LookupPrivilegeValueW LookupPrivilegeValueW
-
-#define MSVCRT$strrchr strrchr
-#define MSVCRT$memcpy memcpy
-#define MSVCRT$strnlen strnlen
-#define MSVCRT$wcsnlen wcsnlen
-#define MSVCRT$wcscpy wcscpy
-#define MSVCRT$mbstowcs mbstowcs
-#define MSVCRT$wcsncat wcsncat
-#define MSVCRT$strncmp strncmp
-#define MSVCRT$_wcsicmp _wcsicmp
-#define MSVCRT$srand srand
-#define MSVCRT$rand rand
-#define MSVCRT$time time
-#define MSVCRT$memset memset
+#define strrchr MSVCRT$strrchr
+#define memcpy MSVCRT$memcpy
+#define strnlen MSVCRT$strnlen
+#define wcsnlen MSVCRT$wcsnlen
+#define wcscpy MSVCRT$wcscpy
+#define mbstowcs MSVCRT$mbstowcs
+#define wcsncat MSVCRT$wcsncat
+#define strncmp MSVCRT$strncmp
+#define _wcsicmp MSVCRT$_wcsicmp
+#define srand MSVCRT$srand
+#define rand MSVCRT$rand
+#define time MSVCRT$time
+#define memset MSVCRT$memset
 
 #endif
+
+#define intAlloc(size) HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size)
+#define intFree(addr) HeapFree(GetProcessHeap(), 0, addr)
 
 #define MINIDUMP_SIGNATURE 0x504d444d
 #define MINIDUMP_VERSION 42899

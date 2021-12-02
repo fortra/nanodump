@@ -103,7 +103,7 @@ PVOID GetSyscallAddress(void)
     PVOID EndOfCode = SW2_RVA2VA(PVOID, BaseOfCode, SizeOfCode - sizeof(syscall_code) + 1);
     while ((ULONG_PTR)CurrentAddress <= (ULONG_PTR)EndOfCode)
     {
-        if (!MSVCRT$strncmp((PVOID)syscall_code, CurrentAddress, sizeof(syscall_code)))
+        if (!strncmp((PVOID)syscall_code, CurrentAddress, sizeof(syscall_code)))
         {
             // found 'syscall' instruction in ntdll
             SyscallAddress = CurrentAddress;

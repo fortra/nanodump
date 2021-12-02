@@ -1954,15 +1954,15 @@ void usage(char* procname)
 
 int main(int argc, char* argv[])
 {
-    int pid = 0;
-    BOOL fork = FALSE;
-    BOOL dup = FALSE;
-    char* dump_name = NULL;
+    int     pid = 0;
+    BOOL    fork = FALSE;
+    BOOL    dup = FALSE;
+    char*   dump_name = NULL;
     ULONG32 Signature;
-    SHORT Version;
-    SHORT ImplementationVersion;
-    BOOL success;
-    BOOL use_valid_sig = FALSE;
+    SHORT   Version;
+    SHORT   ImplementationVersion;
+    BOOL    success;
+    BOOL    use_valid_sig = FALSE;
 
 #ifndef _WIN64
     if(IsWoW64())

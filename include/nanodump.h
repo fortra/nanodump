@@ -58,45 +58,45 @@
 
 WINBASEAPI HANDLE WINAPI KERNEL32$GetProcessHeap();
 WINBASEAPI void * WINAPI KERNEL32$HeapAlloc (HANDLE hHeap, DWORD dwFlags, SIZE_T dwBytes);
-WINBASEAPI BOOL WINAPI KERNEL32$HeapFree (HANDLE, DWORD, PVOID);
-WINBASEAPI DWORD WINAPI KERNEL32$GetLastError (VOID);
+WINBASEAPI BOOL   WINAPI KERNEL32$HeapFree (HANDLE, DWORD, PVOID);
+WINBASEAPI DWORD  WINAPI KERNEL32$GetLastError (VOID);
 
 WINADVAPI BOOL WINAPI ADVAPI32$LookupPrivilegeValueW (LPCWSTR lpSystemName, LPCWSTR lpName, PLUID lpLuid);
 
-WINBASEAPI char *__cdecl MSVCRT$strrchr(const char *_Str,int _Ch);
-WINBASEAPI void * __cdecl MSVCRT$memcpy(void * __restrict__ _Dst,const void * __restrict__ _Src,size_t _MaxCount);
-WINBASEAPI size_t __cdecl MSVCRT$strnlen(const char *s, size_t maxlen);
-WINBASEAPI size_t __cdecl MSVCRT$wcsnlen(const wchar_t *_Src,size_t _MaxCount);
+WINBASEAPI char *    __cdecl MSVCRT$strrchr(const char *_Str,int _Ch);
+WINBASEAPI void *    __cdecl MSVCRT$memcpy(void * __restrict__ _Dst,const void * __restrict__ _Src,size_t _MaxCount);
+WINBASEAPI size_t    __cdecl MSVCRT$strnlen(const char *s, size_t maxlen);
+WINBASEAPI size_t    __cdecl MSVCRT$wcsnlen(const wchar_t *_Src,size_t _MaxCount);
 WINBASEAPI wchar_t * __cdecl MSVCRT$wcscpy(wchar_t * __restrict__ __dst, const wchar_t * __restrict__ __src);
-WINBASEAPI size_t __cdecl MSVCRT$mbstowcs(wchar_t * __restrict__ _Dest,const char * __restrict__ _Source,size_t _MaxCount);
+WINBASEAPI size_t    __cdecl MSVCRT$mbstowcs(wchar_t * __restrict__ _Dest,const char * __restrict__ _Source,size_t _MaxCount);
 WINBASEAPI wchar_t * __cdecl MSVCRT$wcsncat(wchar_t * __restrict__ _Dest,const wchar_t * __restrict__ _Source,size_t _Count);
-WINBASEAPI int    __cdecl MSVCRT$strncmp(const char *s1, const char *s2, size_t n);
-WINBASEAPI int __cdecl MSVCRT$_wcsicmp(const wchar_t *_Str1,const wchar_t *_Str2);
-WINBASEAPI void WINAPI MSVCRT$srand(int initial);
-WINBASEAPI int WINAPI MSVCRT$rand();
-WINBASEAPI time_t WINAPI MSVCRT$time(time_t *time);
-WINBASEAPI void __cdecl MSVCRT$memset(void *dest, int c, size_t count);
+WINBASEAPI int       __cdecl MSVCRT$strncmp(const char *s1, const char *s2, size_t n);
+WINBASEAPI int       __cdecl MSVCRT$_wcsicmp(const wchar_t *_Str1,const wchar_t *_Str2);
+WINBASEAPI void      __cdecl MSVCRT$srand(int initial);
+WINBASEAPI int       __cdecl MSVCRT$rand();
+WINBASEAPI time_t    __cdecl MSVCRT$time(time_t *time);
+WINBASEAPI void      __cdecl MSVCRT$memset(void *dest, int c, size_t count);
 
 #define GetProcessHeap KERNEL32$GetProcessHeap
-#define HeapAlloc KERNEL32$HeapAlloc
-#define HeapFree KERNEL32$HeapFree
-#define GetLastError KERNEL32$GetLastError
+#define HeapAlloc      KERNEL32$HeapAlloc
+#define HeapFree       KERNEL32$HeapFree
+#define GetLastError   KERNEL32$GetLastError
 
 #define LookupPrivilegeValueW ADVAPI32$LookupPrivilegeValueW
 
-#define strrchr MSVCRT$strrchr
-#define memcpy MSVCRT$memcpy
-#define strnlen MSVCRT$strnlen
-#define wcsnlen MSVCRT$wcsnlen
-#define wcscpy MSVCRT$wcscpy
+#define strrchr  MSVCRT$strrchr
+#define memcpy   MSVCRT$memcpy
+#define strnlen  MSVCRT$strnlen
+#define wcsnlen  MSVCRT$wcsnlen
+#define wcscpy   MSVCRT$wcscpy
 #define mbstowcs MSVCRT$mbstowcs
-#define wcsncat MSVCRT$wcsncat
-#define strncmp MSVCRT$strncmp
+#define wcsncat  MSVCRT$wcsncat
+#define strncmp  MSVCRT$strncmp
 #define _wcsicmp MSVCRT$_wcsicmp
-#define srand MSVCRT$srand
-#define rand MSVCRT$rand
-#define time MSVCRT$time
-#define memset MSVCRT$memset
+#define srand    MSVCRT$srand
+#define rand     MSVCRT$rand
+#define time     MSVCRT$time
+#define memset   MSVCRT$memset
 
 #endif
 

@@ -107,6 +107,27 @@ WINBASEAPI void      __cdecl MSVCRT$memset(void *dest, int c, size_t count);
 #define MINIDUMP_VERSION 42899
 #define MINIDUMP_IMPL_VERSION 0
 
+#define SIZE_OF_HEADER 32
+#define SIZE_OF_DIRECTORY 12
+#ifdef _WIN64
+#define SIZE_OF_SYSTEM_INFO_STREAM 48
+#else
+#define SIZE_OF_SYSTEM_INFO_STREAM 56
+#endif
+
+enum StreamType
+{
+    SystemInfoStream = 7,
+    ModuleListStream = 4,
+    Memory64ListStream = 9,
+};
+
+enum ProcessorArchitecture
+{
+    AMD64 = 9,
+    INTEL = 0,
+};
+
 typedef struct _MiniDumpHeader
 {
      ULONG32       Signature;

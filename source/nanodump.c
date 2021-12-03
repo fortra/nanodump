@@ -478,13 +478,13 @@ void write_header(
     header.Version = dc->Version;
     header.ImplementationVersion = dc->ImplementationVersion;
     header.NumberOfStreams = 3; // we only need: SystemInfoStream, ModuleListStream and Memory64ListStream
-    header.StreamDirectoryRva = 32;
+    header.StreamDirectoryRva = SIZE_OF_HEADER;
     header.CheckSum = 0;
     header.Reserved = 0;
     header.TimeDateStamp = 0;
     header.Flags = 0; // MiniDumpNormal
 
-    char header_bytes[32];
+    char header_bytes[SIZE_OF_HEADER];
     int offset = 0;
     memcpy(header_bytes + offset, &header.Signature, 4); offset += 4;
     memcpy(header_bytes + offset, &header.Version, 2); offset += 2;
@@ -495,7 +495,7 @@ void write_header(
     memcpy(header_bytes + offset, &header.Reserved, 4); offset += 4;
     memcpy(header_bytes + offset, &header.TimeDateStamp, 4); offset += 4;
     memcpy(header_bytes + offset, &header.Flags, 4);
-    append(dc, header_bytes, 32);
+    append(dc, header_bytes, SIZE_OF_HEADER);
 }
 
 void write_directory(
@@ -503,7 +503,7 @@ void write_directory(
     MiniDumpDirectory directory
 )
 {
-    byte directory_bytes[12];
+    BYTE directory_bytes[SIZE_OF_DIRECTORY];
     int offset = 0;
     memcpy(directory_bytes + offset, &directory.StreamType, 4); offset += 4;
     memcpy(directory_bytes + offset, &directory.DataSize, 4); offset += 4;
@@ -516,19 +516,19 @@ void write_directories(
 )
 {
     MiniDumpDirectory system_info_directory;
-    system_info_directory.StreamType = 7; // SystemInfoStream
+    system_info_directory.StreamType = SystemInfoStream;
     system_info_directory.DataSize = 0; // this is calculated and written later
     system_info_directory.Rva = 0; // this is calculated and written later
     write_directory(dc, system_info_directory);
 
     MiniDumpDirectory module_list_directory;
-    module_list_directory.StreamType = 4; // ModuleListStream
+    module_list_directory.StreamType = ModuleListStream;
     module_list_directory.DataSize = 0; // this is calculated and written later
     module_list_directory.Rva = 0; // this is calculated and written later
     write_directory(dc, module_list_directory);
 
     MiniDumpDirectory memory64_list_directory;
-    memory64_list_directory.StreamType = 9; // Memory64ListStream
+    memory64_list_directory.StreamType = Memory64ListStream;
     memory64_list_directory.DataSize = 0; // this is calculated and written later
     memory64_list_directory.Rva = 0; // this is calculated and written later
     write_directory(dc, memory64_list_directory);
@@ -555,14 +555,14 @@ BOOL write_system_info_stream(
     OSBuildNumber = (PUSHORT)((ULONG_PTR)pPeb + 0x120);
     OSPlatformId = (PULONG32)((ULONG_PTR)pPeb + 0x124);
     CSDVersion = (PUNICODE_STRING)((ULONG_PTR)pPeb + 0x2e8);
-    system_info.ProcessorArchitecture = 9; // AMD64
+    system_info.ProcessorArchitecture = AMD64;
 #else
     OSMajorVersion = (PULONG32)((ULONG_PTR)pPeb + 0xa4);
     OSMinorVersion = (PULONG32)((ULONG_PTR)pPeb + 0xa8);
     OSBuildNumber = (PUSHORT)((ULONG_PTR)pPeb + 0xac);
     OSPlatformId = (PULONG32)((ULONG_PTR)pPeb + 0xb0);
     CSDVersion = (PUNICODE_STRING)((ULONG_PTR)pPeb + 0x1f0);
-    system_info.ProcessorArchitecture = 0; // INTEL
+    system_info.ProcessorArchitecture = INTEL;
 #endif
 
     system_info.ProcessorLevel = 0;
@@ -591,13 +591,8 @@ BOOL write_system_info_stream(
     system_info.AMDExtendedCpuFeatures = 0;
 #endif
 
-#if _WIN64
-    ULONG32 stream_size = 48;
-    char system_info_bytes[48];
-#else
-    ULONG32 stream_size = 56;
-    char system_info_bytes[56];
-#endif
+    ULONG32 stream_size = SIZE_OF_SYSTEM_INFO_STREAM;
+    char system_info_bytes[SIZE_OF_SYSTEM_INFO_STREAM];
 
     int offset = 0;
     memcpy(system_info_bytes + offset, &system_info.ProcessorArchitecture, 2); offset += 2;
@@ -628,10 +623,10 @@ BOOL write_system_info_stream(
     append(dc, system_info_bytes, stream_size);
 
     // write our length in the MiniDumpSystemInfo directory
-    writeat(dc, 32 + 4, &stream_size, 4); // header + streamType
+    writeat(dc, SIZE_OF_HEADER + 4, &stream_size, 4); // header + streamType
 
     // write our RVA in the MiniDumpSystemInfo directory
-    writeat(dc, 32 + 4 + 4, &stream_rva, 4); // header + streamType + Location.DataSize
+    writeat(dc, SIZE_OF_HEADER + 4 + 4, &stream_rva, 4); // header + streamType + Location.DataSize
 
     // write the service pack
     ULONG32 sp_rva = dc->rva;
@@ -1036,12 +1031,12 @@ Pmodule_info write_module_list_stream(
         curr_module = curr_module->next;
     }
 
-    // write our length in the MiniDumpSystemInfo directory
+    // write our length in the ModuleListStream directory
     ULONG32 stream_size = 4 + number_of_modules * sizeof(module_bytes);
-    writeat(dc, 32 + 12 + 4, &stream_size, 4); // header + 1 directory + streamType
+    writeat(dc, SIZE_OF_HEADER + SIZE_OF_DIRECTORY + 4, &stream_size, 4); // header + 1 directory + streamType
 
-    // write our RVA in the MiniDumpSystemInfo directory
-    writeat(dc, 32 + 12 + 4 + 4, &stream_rva, 4); // header + 1 directory + streamType + Location.DataSize
+    // write our RVA in the ModuleListStream directory
+    writeat(dc, SIZE_OF_HEADER + SIZE_OF_DIRECTORY + 4 + 4, &stream_rva, 4); // header + 1 directory + streamType + Location.DataSize
 
     return module_list;
 }
@@ -1213,11 +1208,11 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
         curr_range = curr_range->next;
     }
 
-    // write our length in the MiniDumpSystemInfo directory
-    writeat(dc, 32 + 12 * 2 + 4, &stream_size, 4); // header + 2 directories + streamType
+    // write our length in the Memory64ListStream directory
+    writeat(dc, SIZE_OF_HEADER + SIZE_OF_DIRECTORY * 2 + 4, &stream_size, 4); // header + 2 directories + streamType
 
-    // write our RVA in the MiniDumpSystemInfo directory
-    writeat(dc, 32 + 12 * 2 + 4 + 4, &stream_rva, 4); // header + 2 directories + streamType + Location.DataSize
+    // write our RVA in the Memory64ListStream directory
+    writeat(dc, SIZE_OF_HEADER + SIZE_OF_DIRECTORY * 2 + 4 + 4, &stream_rva, 4); // header + 2 directories + streamType + Location.DataSize
 
     // dump all the selected memory ranges
     curr_range = memory_ranges;

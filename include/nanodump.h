@@ -82,8 +82,6 @@ WINBASEAPI void      __cdecl MSVCRT$memset(void *dest, int c, size_t count);
 #define HeapFree       KERNEL32$HeapFree
 #define GetLastError   KERNEL32$GetLastError
 
-#define LookupPrivilegeValueW ADVAPI32$LookupPrivilegeValueW
-
 #define strrchr  MSVCRT$strrchr
 #define memcpy   MSVCRT$memcpy
 #define strnlen  MSVCRT$strnlen

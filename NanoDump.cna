@@ -95,6 +95,15 @@ alias nanodump {
         }
     }
 
+    if($write_file == 1)
+    {
+        if(!lindexOf($dump_name, "\\"))
+        {
+            berror($1, "You must provide a full path: " . $dump_name);
+            return;
+        }
+    }
+
     if($fork == 1 && $dup == 1)
     {
         berror($1, "Cannot set both --fork and --dup.");
@@ -119,6 +128,6 @@ alias nanodump {
     $args = bof_pack($1, "iziiii", $pid, $dump_name, $write_file, $use_valid_sig, $fork, $dup);
 
     # run
-    btask($1, "Running NanoDump");
+    btask($1, "Running NanoDump BOF");
     beacon_inline_execute($1, $data, "go", $args);
 }

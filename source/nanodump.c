@@ -839,54 +839,6 @@ void go(char* args, int length)
     fork = (BOOL)BeaconDataInt(&parser);
     dup = (BOOL)BeaconDataInt(&parser);
 
-#ifndef _WIN64
-    if(IsWoW64())
-    {
-        BeaconPrintf(
-            CALLBACK_ERROR,
-            "Nanodump does not support WoW64"
-        );
-        return;
-    }
-#endif
-
-    if (do_write && !strrchr(dump_name, '\\'))
-    {
-        BeaconPrintf(
-            CALLBACK_ERROR,
-            "You must provide a full path: %s",
-            dump_name
-        );
-        return;
-    }
-
-    if (fork && dup)
-    {
-        BeaconPrintf(
-            CALLBACK_ERROR,
-            "Cannot set both --fork and --dup"
-        );
-        return;
-    }
-
-    if (fork && !pid)
-    {
-        BeaconPrintf(
-            CALLBACK_ERROR,
-            "Process forking requires a PID"
-        );
-        return;
-    }
-
-    if (dup && !pid)
-    {
-        BeaconPrintf(
-            CALLBACK_ERROR,
-            "Handle duplication requires a PID"
-        );
-        return;
-    }
-
     // set the signature
     if (use_valid_sig)
     {

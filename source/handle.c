@@ -123,9 +123,9 @@ HANDLE get_process_handle(
     }
     else if (!NT_SUCCESS(status))
     {
+#ifdef DEBUG
         if (!quiet)
         {
-#ifdef DEBUG
 #ifdef BOF
             BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -134,8 +134,8 @@ HANDLE get_process_handle(
                 "Failed to call NtOpenProcess, status: 0x%lx\n",
                 status
             );
-#endif
         }
+#endif
         return NULL;
     }
 

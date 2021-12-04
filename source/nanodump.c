@@ -19,7 +19,11 @@ void writeat(
     unsigned size
 )
 {
-    PVOID dst = (PVOID)((ULONG_PTR)dc->BaseAddress + rva);
+    PVOID dst = RVA(
+        PVOID,
+        dc->BaseAddress,
+        rva
+    );
     memcpy(dst, data, size);
 }
 
@@ -364,18 +368,18 @@ BOOL write_system_info_stream(
     pPeb = (PVOID)READ_MEMLOC(PEB_OFFSET);
 
 #if _WIN64
-    OSMajorVersion = (PULONG32)((ULONG_PTR)pPeb + 0x118);
-    OSMinorVersion = (PULONG32)((ULONG_PTR)pPeb + 0x11c);
-    OSBuildNumber = (PUSHORT)((ULONG_PTR)pPeb + 0x120);
-    OSPlatformId = (PULONG32)((ULONG_PTR)pPeb + 0x124);
-    CSDVersion = (PUNICODE_STRING)((ULONG_PTR)pPeb + 0x2e8);
+    OSMajorVersion = RVA(PULONG32, pPeb, 0x118);
+    OSMinorVersion = RVA(PULONG32, pPeb, 0x11c);
+    OSBuildNumber = RVA(PUSHORT, pPeb, 0x120);
+    OSPlatformId = RVA(PULONG32, pPeb, 0x124);
+    CSDVersion = RVA(PUNICODE_STRING, pPeb, 0x2e8);
     system_info.ProcessorArchitecture = AMD64;
 #else
-    OSMajorVersion = (PULONG32)((ULONG_PTR)pPeb + 0xa4);
-    OSMinorVersion = (PULONG32)((ULONG_PTR)pPeb + 0xa8);
-    OSBuildNumber = (PUSHORT)((ULONG_PTR)pPeb + 0xac);
-    OSPlatformId = (PULONG32)((ULONG_PTR)pPeb + 0xb0);
-    CSDVersion = (PUNICODE_STRING)((ULONG_PTR)pPeb + 0x1f0);
+    OSMajorVersion = RVA(PULONG32, pPeb, 0xa4);
+    OSMinorVersion = RVA(PULONG32, pPeb, 0xa8);
+    OSBuildNumber = RVA(PUSHORT, pPeb, 0xac);
+    OSPlatformId = RVA(PULONG32, pPeb, 0xb0);
+    CSDVersion = RVA(PUNICODE_STRING, pPeb, 0x1f0);
     system_info.ProcessorArchitecture = INTEL;
 #endif
 
@@ -574,7 +578,7 @@ BOOL is_important_module(
     while (curr_module)
     {
         if ((ULONG_PTR)address >= (ULONG_PTR)curr_module->dll_base &&
-            (ULONG_PTR)address < (ULONG_PTR)curr_module->dll_base + curr_module->size_of_image)
+            (ULONG_PTR)address < RVA(ULONG_PTR, curr_module->dll_base, curr_module->size_of_image))
             return TRUE;
         curr_module = curr_module->next;
     }

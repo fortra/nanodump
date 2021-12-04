@@ -2,6 +2,8 @@
 
 #include <windows.h>
 
+#define RVA(type, base_addr, rva) (type)((ULONG_PTR) base_addr + rva)
+
 #define NtCurrentProcess() ( (HANDLE)(LONG_PTR) -1 )
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof((a)[0]))
 #ifndef NT_SUCCESS
@@ -60,8 +62,6 @@ WINBASEAPI HANDLE WINAPI KERNEL32$GetProcessHeap();
 WINBASEAPI void * WINAPI KERNEL32$HeapAlloc (HANDLE hHeap, DWORD dwFlags, SIZE_T dwBytes);
 WINBASEAPI BOOL   WINAPI KERNEL32$HeapFree (HANDLE, DWORD, PVOID);
 WINBASEAPI DWORD  WINAPI KERNEL32$GetLastError (VOID);
-
-WINADVAPI BOOL WINAPI ADVAPI32$LookupPrivilegeValueW (LPCWSTR lpSystemName, LPCWSTR lpName, PLUID lpLuid);
 
 WINBASEAPI char *    __cdecl MSVCRT$strrchr(const char *_Str,int _Ch);
 WINBASEAPI void *    __cdecl MSVCRT$memcpy(void * __restrict__ _Dst,const void * __restrict__ _Src,size_t _MaxCount);

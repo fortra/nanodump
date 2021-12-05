@@ -41,8 +41,12 @@ __attribute__((naked)) void DoSysenter(void)
  */
 PVOID GetSyscallAddress(void)
 {
-    // Return early if the SyscallAddress is already defined
-    if (SyscallAddress) return SyscallAddress;
+#ifdef _WIN64
+    BYTE syscall_code[] = { 0x0f, 0x05, 0xc3 };
+#else
+    BYTE syscall_code[] = { 0x0f, 0x34, 0xc3 };
+#endif
+
 
 #ifndef _WIN64
     if (IsWoW64())
@@ -52,6 +56,14 @@ PVOID GetSyscallAddress(void)
         return SyscallAddress;
     }
 #endif
+
+    // Return early if the SyscallAddress is already defined
+    if (SyscallAddress)
+    {
+        // make sure the instructions have not been replaced
+        if (!strncmp((PVOID)syscall_code, SyscallAddress, sizeof(syscall_code)))
+            return SyscallAddress;
+    }
 
     // set the fallback as the default
     SyscallAddress = (PVOID)DoSysenter;
@@ -92,12 +104,6 @@ PVOID GetSyscallAddress(void)
         return SyscallAddress;
 
     // try to find a 'syscall' instruction inside of NTDLL's code section
-
-#ifdef _WIN64
-    BYTE syscall_code[] = { 0x0f, 0x05, 0xc3 };
-#else
-    BYTE syscall_code[] = { 0x0f, 0x34, 0xc3 };
-#endif
 
     PVOID CurrentAddress = BaseOfCode;
     PVOID EndOfCode = SW2_RVA2VA(PVOID, BaseOfCode, SizeOfCode - sizeof(syscall_code) + 1);

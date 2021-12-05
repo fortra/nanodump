@@ -1,3 +1,4 @@
+#include "../include/utils.h"
 #include "../include/syscalls.h"
 
 void free_linked_list(

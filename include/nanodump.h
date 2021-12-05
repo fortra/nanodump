@@ -1,6 +1,9 @@
 #pragma once
 
 #include <windows.h>
+#include <winternl.h>
+#include <stdio.h>
+#include <time.h>
 
 #define RVA(type, base_addr, rva) (type)((ULONG_PTR) base_addr + rva)
 
@@ -9,8 +12,6 @@
 #ifndef NT_SUCCESS
 #define NT_SUCCESS(Status) ((NTSTATUS)(Status) >= 0)
 #endif
-
-#define MAX_PROCESSES 5000
 
 #define STATUS_PARTIAL_COPY 0x8000000D
 #define STATUS_ACCESS_DENIED 0xC0000022
@@ -353,24 +354,3 @@ typedef struct _MiniDumpMemoryDescriptor64
     DWORD   Protect;
     DWORD   Type;
 } MiniDumpMemoryDescriptor64, *PMiniDumpMemoryDescriptor64;
-
-typedef struct _linked_list
-{
-    struct _linked_list* next;
-} linked_list, *Plinked_list;
-
-typedef struct SYSTEM_HANDLE_TABLE_ENTRY_INFO
-{
-    ULONG ProcessId;
-    BYTE ObjectTypeNumber;
-    BYTE Flags;
-    USHORT Handle;
-    PVOID Object;
-    ACCESS_MASK GrantedAccess;
-} SYSTEM_HANDLE_TABLE_ENTRY_INFO, *PSYSTEM_HANDLE_TABLE_ENTRY_INFO;
-
-typedef struct _PROCESS_LIST
-{
-    ULONG Count;
-    ULONG ProcessId[MAX_PROCESSES];
-} PROCESS_LIST, *PPROCESS_LIST;

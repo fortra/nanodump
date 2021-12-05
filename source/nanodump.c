@@ -1,10 +1,5 @@
-#include <windows.h>
-#include <winternl.h>
-#include <stdio.h>
-#include <time.h>
-
-#include "../include/beacon.h"
 #include "../include/nanodump.h"
+#include "../include/beacon.h"
 #include "utils.c"
 #include "handle.c"
 #include "modules.c"

@@ -114,6 +114,7 @@ HANDLE GetLibraryAddress(
         if (strcmp_i(DllName, LibName))
             return DllBase;
     }
+    // the library is not currently loaded
     // avoid an infinite loop
     if (strcmp_i(KERNEL32, LibName))
         return NULL;
@@ -123,6 +124,8 @@ HANDLE GetLibraryAddress(
         GetLibraryAddress(KERNEL32),
         LoadLibraryA_SW2_HASH
     );
+    if (!pLoadLibraryA)
+        return NULL;
     // load the library
     return pLoadLibraryA(LibName);
 }

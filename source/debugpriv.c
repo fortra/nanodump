@@ -78,7 +78,7 @@ BOOL enable_debug_priv(void)
         NULL,
         NULL
     );
-    NtClose(hToken);
+    NtClose(hToken); hToken = NULL;
     if (!NT_SUCCESS(status))
     {
 #ifdef DEBUG

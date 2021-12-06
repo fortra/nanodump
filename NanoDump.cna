@@ -60,6 +60,11 @@ alias nanodump {
             # set the PID of LSASS
             $i++;
             $pid = @_[$i];
+            if(!-isnumber $pid || $pid eq "0")
+            {
+                berror($1, "Invalid PID: " . $pid);
+                return;
+            }
         }
         else if (@_[$i] eq "--write" || @_[$i] eq "-w")
         {
@@ -67,6 +72,11 @@ alias nanodump {
             $write_file = 1;
             $i++;
             $dump_name = @_[$i];
+            if(!lindexOf($dump_name, "\\"))
+            {
+                berror($1, "You must provide a full path: " . $dump_name);
+                return;
+            }
         }
         else if (@_[$i] eq "--fork" || @_[$i] eq "-f")
         {
@@ -91,15 +101,6 @@ alias nanodump {
         else
         {
             berror($1, "invalid argument: " . @_[$i]);
-            return;
-        }
-    }
-
-    if($write_file == 1)
-    {
-        if(!lindexOf($dump_name, "\\"))
-        {
-            berror($1, "You must provide a full path: " . $dump_name);
             return;
         }
     }

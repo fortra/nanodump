@@ -1010,11 +1010,23 @@ int main(int argc, char* argv[])
                  !strncmp(argv[i], "--write", 8))
         {
             dump_name = argv[++i];
+            if (!strrchr(dump_name, '\\'))
+            {
+                printf("You must provide a full path: %s\n", dump_name);
+                return -1;
+            }
         }
         else if (!strncmp(argv[i], "-p", 3) ||
                  !strncmp(argv[i], "--pid", 6))
         {
-            pid = atoi(argv[++i]);
+            i++;
+            pid = atoi(argv[i]);
+            if (!pid ||
+                strspn(argv[i], "0123456789") != strlen(argv[i]))
+            {
+                printf("Invalid PID: %s\n", argv[i]);
+                return -1;
+            }
         }
         else if (!strncmp(argv[i], "-f", 3) ||
                  !strncmp(argv[i], "--fork", 7))
@@ -1043,12 +1055,6 @@ int main(int argc, char* argv[])
     {
         printf("You must provide the dump file: --write C:\\Windows\\Temp\\doc.docx\n\n");
         usage(argv[0]);
-        return -1;
-    }
-
-    if (!strrchr(dump_name, '\\'))
-    {
-        printf("You must provide a full path: %s\n", dump_name);
         return -1;
     }
 

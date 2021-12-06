@@ -23,7 +23,7 @@ BOOL strcmp_i(LPCSTR s1, LPCSTR s2)
 
 PVOID GetFunctionAddress(
     HMODULE hLibrary,
-    LPCSTR ProcName
+    DWORD FunctionHash
 )
 {
     PIMAGE_NT_HEADERS pNtHeaders;
@@ -61,7 +61,7 @@ PVOID GetFunctionAddress(
                 hLibrary,
                 *pRVA
             );
-            if (strcmp_i(functionName, ProcName))
+            if (FunctionHash == SW2_HashSyscall(functionName))
             {
                 // found it
                 short* pRVA2 = RVA(
@@ -115,13 +115,13 @@ HANDLE GetLibraryAddress(
             return DllBase;
     }
     // avoid an infinite loop
-    if (strcmp_i("Kernel32.dll", LibName))
+    if (strcmp_i(KERNEL32, LibName))
         return NULL;
     // get the address of LoadLibraryA
     LOADLIBRARYA pLoadLibraryA;
     pLoadLibraryA = (LOADLIBRARYA)GetFunctionAddress(
-        GetLibraryAddress("Kernel32.dll"),
-        "LoadLibraryA"
+        GetLibraryAddress(KERNEL32),
+        LoadLibraryA_SW2_HASH
     );
     // load the library
     return pLoadLibraryA(LibName);

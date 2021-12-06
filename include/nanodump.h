@@ -5,6 +5,24 @@
 #include <stdio.h>
 #include <time.h>
 
+#define LSASS_PERMISSIONS PROCESS_QUERY_INFORMATION|PROCESS_VM_READ
+
+#if _WIN64
+#define OSMAJORVERSION_OFFSET 0x118
+#define OSMINORVERSION_OFFSET 0x11c
+#define OSBUILDNUMBER_OFFSET 0x120
+#define OSPLATFORMID_OFFSET 0x124
+#define CSDVERSION_OFFSET 0x2e8
+#define PROCESSOR_ARCHITECTURE AMD64
+#else
+#define OSMAJORVERSION_OFFSET 0xa4
+#define OSMINORVERSION_OFFSET 0xa8
+#define OSBUILDNUMBER_OFFSET 0xac
+#define OSPLATFORMID_OFFSET 0xb0
+#define CSDVERSION_OFFSET 0x1f0
+#define PROCESSOR_ARCHITECTURE INTEL
+#endif
+
 #define RVA(type, base_addr, rva) (type)((ULONG_PTR) base_addr + rva)
 
 #define NtCurrentProcess() ( (HANDLE)(LONG_PTR) -1 )
@@ -113,6 +131,7 @@ WINBASEAPI void      __cdecl MSVCRT$memset(void *dest, int c, size_t count);
 #else
 #define SIZE_OF_SYSTEM_INFO_STREAM 56
 #endif
+#define SIZE_OF_MINIDUMP_MODULE 108
 
 enum StreamType
 {

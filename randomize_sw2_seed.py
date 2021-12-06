@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import re
+import glob
 import random
 import struct
 
@@ -38,7 +39,7 @@ def get_function_hash(seed, function_name):
     return function_hash
 
 
-def replace_hashes(seed):
+def replace_syscall_hashes(seed):
     with open('include/syscalls-asm.h') as f:
         code = f.read()
     regex = re.compile(r'__asm__\("(Nt\w+):')
@@ -62,11 +63,30 @@ def replace_hashes(seed):
         f.write(code)
 
 
+def replace_dinvoke_hashes(seed):
+    for header_file in glob.glob("include/*.h"):
+        with open(header_file) as f:
+            code = f.read()
+        regex = re.compile(r'#define (\w+)_SW2_HASH (0x[a-fA-F0-9]{8})')
+        matches = re.findall(regex, code)
+        for function_name, old_hash in matches:
+            new_hash = get_function_hash(seed, function_name)
+            code = code.replace(
+                old_hash,
+                f'0x{new_hash:08X}',
+                2
+            )
+        if matches:
+            with open(header_file, 'w') as f:
+                f.write(code)
+
+
 def main():
     new_seed = random.randint(2 ** 28, 2 ** 32 - 1)
     old_seed = get_old_seed()
     replace_seed(old_seed, new_seed)
-    replace_hashes(new_seed)
+    replace_syscall_hashes(new_seed)
+    replace_dinvoke_hashes(new_seed)
     print('done! recompile with: \'make\'')
 
 

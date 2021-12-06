@@ -10,8 +10,8 @@ BOOL enable_debug_priv(void)
 
     // find the address of LookupPrivilegeValueW dynamically
     pLookupPrivilegeValueW = (LOOKUPPRIVILEGEVALUEW)GetFunctionAddress(
-        GetLibraryAddress("Advapi32.dll"),
-        "LookupPrivilegeValueW"
+        GetLibraryAddress(ADVAPI32),
+        LookupPrivilegeValueW_SW2_HASH
     );
     if (!pLookupPrivilegeValueW)
     {
@@ -27,10 +27,9 @@ BOOL enable_debug_priv(void)
         return FALSE;
     }
 
-    LPCWSTR lpwPriv = L"SeDebugPrivilege";
     ok = pLookupPrivilegeValueW(
         NULL,
-        lpwPriv,
+        SeDebugPrivilege,
         &tkp.Privileges[0].Luid
     );
     if (!ok)

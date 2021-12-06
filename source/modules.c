@@ -42,11 +42,7 @@ PVOID get_module_list_address(
     if (!peb_address)
         return NULL;
 
-#if _WIN64
-    ldr_pointer = peb_address + 0x18;
-#else
-    ldr_pointer = peb_address + 0xc;
-#endif
+    ldr_pointer = peb_address + LDR_POINTER_OFFSET;
 
     NTSTATUS status = NtReadVirtualMemory(
         hProcess,
@@ -75,11 +71,7 @@ PVOID get_module_list_address(
         return NULL;
     }
 
-#if _WIN64
-    module_list_pointer = ldr_address + 0x20;
-#else
-    module_list_pointer = ldr_address + 0x14;
-#endif
+    module_list_pointer = ldr_address + MODULE_LIST_POINTER_OFFSET;
 
     status = NtReadVirtualMemory(
         hProcess,
@@ -257,7 +249,7 @@ Pmodule_info find_modules(
             if (!_wcsicmp(important_modules[i], base_dll_name))
             {
                 // check if the DLL is 'lsasrv.dll' so that we know the process is indeed LSASS
-                if (!_wcsicmp(important_modules[i], L"lsasrv.dll"))
+                if (!_wcsicmp(important_modules[i], LSASRV_DLL))
                     lsasrv_found = TRUE;
 
                 // add the new module to the linked list

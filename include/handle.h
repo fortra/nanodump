@@ -1,5 +1,8 @@
 #pragma once
 
+#define LSASS_EXE L"lsass.exe"
+#define PROCESS_TYPE L"Process"
+
 #define MAX_PROCESSES 5000
 
 typedef struct _PROCESS_LIST

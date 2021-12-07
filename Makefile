@@ -18,4 +18,4 @@ all:
 	$(STRIP_x86) --strip-all compiled/$(BOFNAME).x86.exe
 
 clean:
-	rm compiled/$(BOFNAME).*.*
+	rm compiled/*

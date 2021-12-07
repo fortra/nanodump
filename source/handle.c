@@ -253,7 +253,7 @@ PPROCESS_LIST get_processes_from_handle_table(
         if (!process_is_included(process_list, handleInfo->ProcessId))
         {
             process_list->ProcessId[process_list->Count++] = handleInfo->ProcessId;
-            if (process_list->Count == MAX_PROCESSES)
+            if (process_list->Count > MAX_PROCESSES)
             {
 #ifdef BOF
                 BeaconPrintf(CALLBACK_ERROR,
@@ -262,7 +262,8 @@ PPROCESS_LIST get_processes_from_handle_table(
 #endif
                     "Too many processes, please increase MAX_PROCESSES\n"
                 );
-                break;
+                intFree(process_list); process_list = NULL;
+                return NULL;
             }
         }
     }
@@ -331,7 +332,10 @@ HANDLE duplicate_lsass_handle(
 
     PPROCESS_LIST process_list = get_processes_from_handle_table(handleTableInformation);
     if (!process_list)
+    {
+        intFree(handleTableInformation); handleTableInformation = NULL;
         return NULL;
+    }
 
     DWORD local_pid = (DWORD)READ_MEMLOC(CID_OFFSET);
 

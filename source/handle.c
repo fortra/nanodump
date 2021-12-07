@@ -255,7 +255,6 @@ PPROCESS_LIST get_processes_from_handle_table(
             process_list->ProcessId[process_list->Count++] = handleInfo->ProcessId;
             if (process_list->Count == MAX_PROCESSES)
             {
-#ifdef DEBUG
 #ifdef BOF
                 BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -263,7 +262,6 @@ PPROCESS_LIST get_processes_from_handle_table(
 #endif
                     "Too many processes, please increase MAX_PROCESSES\n"
                 );
-#endif
                 break;
             }
         }

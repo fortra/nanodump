@@ -57,14 +57,23 @@ PVOID allocate_memory(
     return BaseAddress;
 }
 
+void encrypt_dump(
+    Pdump_context dc
+)
+{
+    // add your code here
+    return;
+}
+
 void erase_dump_from_memory(
-    PVOID BaseAddress,
-    SIZE_T RegionSize
+    Pdump_context dc
 )
 {
     // delete all trace of the dump from memory
-    memset(BaseAddress, 0, RegionSize);
+    memset(dc->BaseAddress, 0, dc->rva);
     // free the memory area where the dump was
+    PVOID BaseAddress = dc->BaseAddress;
+    SIZE_T RegionSize = dc->DumpMaxSize;
     NTSTATUS status = NtFreeVirtualMemory(
         NtCurrentProcess(),
         &BaseAddress,

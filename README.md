@@ -24,7 +24,7 @@ A Beacon Object File that creates a minidump of the LSASS process.
 git clone https://github.com/helpsystems/nanodump.git
 ```
 
-### Compile (optional)
+### Compile with MinGW (optional)
 
 ```bash
 cd nanodump

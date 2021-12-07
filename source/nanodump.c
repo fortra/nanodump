@@ -22,15 +22,14 @@ void writeat(
     memcpy(dst, data, size);
 }
 
-void append(
+BOOL append(
     Pdump_context dc,
     const PVOID data,
     unsigned size
 )
 {
-    if (dc->rva + size > DUMP_MAX_SIZE)
+    if (dc->rva + size > dc->DumpMaxSize)
     {
-#ifdef DEBUG
 #ifdef BOF
         BeaconPrintf(CALLBACK_ERROR,
 #else
@@ -38,12 +37,13 @@ void append(
 #endif
             "The dump is too big, please increase DUMP_MAX_SIZE.\n"
         );
-#endif
+        return FALSE;
     }
     else
     {
         writeat(dc, dc->rva, data, size);
         dc->rva += size;
+        return TRUE;
     }
 }
 
@@ -281,7 +281,7 @@ BOOL download_file(
 }
 #endif
 
-void write_header(
+BOOL write_header(
     Pdump_context dc
 )
 {
@@ -308,10 +308,13 @@ void write_header(
     memcpy(header_bytes + offset, &header.Reserved, 4); offset += 4;
     memcpy(header_bytes + offset, &header.TimeDateStamp, 4); offset += 4;
     memcpy(header_bytes + offset, &header.Flags, 4);
-    append(dc, header_bytes, SIZE_OF_HEADER);
+    if (!append(dc, header_bytes, SIZE_OF_HEADER))
+        return FALSE;
+
+    return TRUE;
 }
 
-void write_directory(
+BOOL write_directory(
     Pdump_context dc,
     MiniDumpDirectory directory
 )
@@ -321,10 +324,13 @@ void write_directory(
     memcpy(directory_bytes + offset, &directory.StreamType, 4); offset += 4;
     memcpy(directory_bytes + offset, &directory.DataSize, 4); offset += 4;
     memcpy(directory_bytes + offset, &directory.Rva, 4);
-    append(dc, directory_bytes, sizeof(directory_bytes));
+    if (!append(dc, directory_bytes, sizeof(directory_bytes)))
+        return FALSE;
+
+    return TRUE;
 }
 
-void write_directories(
+BOOL write_directories(
     Pdump_context dc
 )
 {
@@ -332,19 +338,24 @@ void write_directories(
     system_info_directory.StreamType = SystemInfoStream;
     system_info_directory.DataSize = 0; // this is calculated and written later
     system_info_directory.Rva = 0; // this is calculated and written later
-    write_directory(dc, system_info_directory);
+    if (!write_directory(dc, system_info_directory))
+        return FALSE;
 
     MiniDumpDirectory module_list_directory;
     module_list_directory.StreamType = ModuleListStream;
     module_list_directory.DataSize = 0; // this is calculated and written later
     module_list_directory.Rva = 0; // this is calculated and written later
-    write_directory(dc, module_list_directory);
+    if (!write_directory(dc, module_list_directory))
+        return FALSE;
 
     MiniDumpDirectory memory64_list_directory;
     memory64_list_directory.StreamType = Memory64ListStream;
     memory64_list_directory.DataSize = 0; // this is calculated and written later
     memory64_list_directory.Rva = 0; // this is calculated and written later
-    write_directory(dc, memory64_list_directory);
+    if (!write_directory(dc, memory64_list_directory))
+        return FALSE;
+
+    return TRUE;
 }
 
 BOOL write_system_info_stream(
@@ -423,7 +434,8 @@ BOOL write_system_info_stream(
 #endif
 
     ULONG32 stream_rva = dc->rva;
-    append(dc, system_info_bytes, stream_size);
+    if (!append(dc, system_info_bytes, stream_size))
+        return FALSE;
 
     // write our length in the MiniDumpSystemInfo directory
     writeat(dc, SIZE_OF_HEADER + 4, &stream_size, 4); // header + streamType
@@ -435,9 +447,11 @@ BOOL write_system_info_stream(
     ULONG32 sp_rva = dc->rva;
     ULONG32 Length = CSDVersion->Length;
     // write the length
-    append(dc, &Length, 4);
+    if (!append(dc, &Length, 4))
+        return FALSE;
     // write the service pack name
-    append(dc, CSDVersion->Buffer, CSDVersion->Length);
+    if (!append(dc, CSDVersion->Buffer, CSDVersion->Length))
+        return FALSE;
     // write the service pack RVA in the SystemInfoStream
     writeat(dc, stream_rva + 24, &sp_rva, 4); // addrof CSDVersionRva
 
@@ -475,15 +489,27 @@ Pmodule_info write_module_list_stream(
         full_name_length++; // account for the null byte at the end
         full_name_length *= 2;
         // write the length of the name
-        append(dc, &full_name_length, 4);
+        if (!append(dc, &full_name_length, 4))
+        {
+            free_linked_list(module_list); module_list = NULL;
+            return NULL;
+        }
         // write the path
-        append(dc, curr_module->dll_name, full_name_length);
+        if (!append(dc, curr_module->dll_name, full_name_length))
+        {
+            free_linked_list(module_list); module_list = NULL;
+            return NULL;
+        }
         curr_module = curr_module->next;
     }
 
     ULONG32 stream_rva = dc->rva;
     // write the number of modules
-    append(dc, &number_of_modules, 4);
+    if (!append(dc, &number_of_modules, 4))
+    {
+        free_linked_list(module_list); module_list = NULL;
+        return NULL;
+    }
     BYTE module_bytes[SIZE_OF_MINIDUMP_MODULE];
     curr_module = module_list;
     while (curr_module)
@@ -540,7 +566,11 @@ Pmodule_info write_module_list_stream(
         memcpy(module_bytes + offset, &module.Reserved0, 8); offset += 8;
         memcpy(module_bytes + offset, &module.Reserved1, 8);
 
-        append(dc, module_bytes, sizeof(module_bytes));
+        if (!append(dc, module_bytes, sizeof(module_bytes)))
+        {
+            free_linked_list(module_list); module_list = NULL;
+            return NULL;
+        }
         curr_module = curr_module->next;
     }
 
@@ -681,19 +711,35 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
         number_of_ranges++;
         curr_range = curr_range->next;
     }
-    append(dc, &number_of_ranges, 8);
+    if (!append(dc, &number_of_ranges, 8))
+    {
+        free_linked_list(memory_ranges); memory_ranges = NULL;
+        return NULL;
+    }
 
     // write the rva of the actual memory content
     ULONG32 stream_size = 16 + 16 * number_of_ranges;
     ULONG64 base_rva = stream_rva + stream_size;
-    append(dc, &base_rva, 8);
+    if (!append(dc, &base_rva, 8))
+    {
+        free_linked_list(memory_ranges); memory_ranges = NULL;
+        return NULL;
+    }
 
     // write the start and size of each memory range
     curr_range = memory_ranges;
     while (curr_range)
     {
-        append(dc, &curr_range->StartOfMemoryRange, 8);
-        append(dc, &curr_range->DataSize, 8);
+        if (!append(dc, &curr_range->StartOfMemoryRange, 8))
+        {
+            free_linked_list(memory_ranges); memory_ranges = NULL;
+            return NULL;
+        }
+        if (!append(dc, &curr_range->DataSize, 8))
+        {
+            free_linked_list(memory_ranges); memory_ranges = NULL;
+            return NULL;
+        }
         curr_range = curr_range->next;
     }
 
@@ -751,7 +797,12 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
 #endif
             //return NULL;
         }
-        append(dc, buffer, curr_range->DataSize);
+        if (!append(dc, buffer, curr_range->DataSize))
+        {
+            free_linked_list(memory_ranges); memory_ranges = NULL;
+            intFree(buffer); buffer = NULL;
+            return NULL;
+        }
         // overwrite it first, just in case
         memset(buffer, 0, curr_range->DataSize);
         intFree(buffer); buffer = NULL;
@@ -765,9 +816,11 @@ BOOL NanoDumpWriteDump(
     Pdump_context dc
 )
 {
-    write_header(dc);
+    if (!write_header(dc))
+        return FALSE;
 
-    write_directories(dc);
+    if (!write_directories(dc))
+        return FALSE;
 
     if (!write_system_info_stream(dc))
         return FALSE;
@@ -790,15 +843,6 @@ BOOL NanoDumpWriteDump(
     free_linked_list(memory_ranges); memory_ranges = NULL;
 
     return TRUE;
-}
-
-void encrypt_dump(
-    PVOID BaseAddress,
-    ULONG32 Size
-)
-{
-    // add your code here
-    return;
 }
 
 #ifdef BOF
@@ -894,6 +938,7 @@ void go(char* args, int length)
     dc.hProcess = hProcess;
     dc.BaseAddress = BaseAddress;
     dc.rva = 0;
+    dc.DumpMaxSize = RegionSize;
     dc.Signature = Signature;
     dc.Version = Version;
     dc.ImplementationVersion = ImplementationVersion;
@@ -904,7 +949,7 @@ void go(char* args, int length)
     NtClose(hProcess); hProcess = NULL; dc.hProcess = NULL;
 
     // at this point, you can encrypt or obfuscate the dump
-    encrypt_dump(dc.BaseAddress, dc.rva);
+    encrypt_dump(&dc);
 
     if (success)
     {
@@ -926,7 +971,7 @@ void go(char* args, int length)
         }
     }
 
-    erase_dump_from_memory(BaseAddress, RegionSize);
+    erase_dump_from_memory(&dc);
 
     if (success)
     {
@@ -1145,6 +1190,7 @@ int main(int argc, char* argv[])
     dc.hProcess = hProcess;
     dc.BaseAddress = BaseAddress;
     dc.rva = 0;
+    dc.DumpMaxSize = RegionSize;
     dc.Signature = Signature;
     dc.Version = Version;
     dc.ImplementationVersion = ImplementationVersion;
@@ -1155,7 +1201,7 @@ int main(int argc, char* argv[])
     NtClose(hProcess); hProcess = NULL; dc.hProcess = NULL;
 
     // at this point, you can encrypt or obfuscate the dump
-    encrypt_dump(dc.BaseAddress, dc.rva);
+    encrypt_dump(&dc);
 
     if (success)
     {
@@ -1166,7 +1212,7 @@ int main(int argc, char* argv[])
         );
     }
 
-    erase_dump_from_memory(BaseAddress, RegionSize);
+    erase_dump_from_memory(&dc);
 
     if (success)
     {

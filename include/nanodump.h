@@ -174,8 +174,9 @@ typedef struct _MiniDumpDirectory
 typedef struct _dump_context
 {
     HANDLE  hProcess;
-    void*   BaseAddress;
+    PVOID   BaseAddress;
     ULONG32 rva;
+    SIZE_T  DumpMaxSize;
     ULONG32 Signature;
     SHORT   Version;
     SHORT   ImplementationVersion;

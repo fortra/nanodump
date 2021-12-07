@@ -7,5 +7,6 @@ typedef struct _linked_list
 
 void free_linked_list(PVOID head);
 PVOID allocate_memory(PSIZE_T RegionSize);
-void erase_dump_from_memory(PVOID BaseAddress, SIZE_T RegionSize);
+void encrypt_dump(Pdump_context dc);
+void erase_dump_from_memory(Pdump_context dc);
 void generate_invalid_sig(PULONG32 Signature, PSHORT Version, PSHORT ImplementationVersion);

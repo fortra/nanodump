@@ -64,15 +64,15 @@ PVOID GetFunctionAddress(
             if (FunctionHash == SW2_HashSyscall(functionName))
             {
                 // found it
-                short* pRVA2 = RVA(
-                    short*,
+                PSHORT pRVA2 = RVA(
+                    PSHORT,
                     hLibrary,
                     pExpDir->AddressOfNameOrdinals + i * 2
                 );
                 ULONG32 FunctionOrdinal = pExpDir->Base + *pRVA2;
 
-                ULONG32* pFunctionRVA = RVA(
-                    ULONG32*,
+                PULONG32 pFunctionRVA = RVA(
+                    PULONG32,
                     hLibrary,
                     pExpDir->AddressOfFunctions + 4 * (FunctionOrdinal - pExpDir->Base)
                 );

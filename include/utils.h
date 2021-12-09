@@ -5,6 +5,9 @@ typedef struct _linked_list
     struct _linked_list* next;
 } linked_list, *Plinked_list;
 
+BOOL wait_for_process(HANDLE hProcess);
+BOOL delete_file(LPCSTR filepath);
+BOOL file_exists(LPCSTR filepath);
 DWORD get_lsass_pid(void);
 void print_success(LPCSTR dump_name, BOOL use_valid_sig, BOOL do_write, BOOL is_BOF);
 void free_linked_list(PVOID head);

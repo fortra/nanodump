@@ -134,18 +134,6 @@ alias nanodump {
         }
     }
 
-    if($fork == 1 && $dup == 1)
-    {
-        berror($1, "Cannot set both --fork and --dup.");
-        return;
-    }
-
-    if($fork == 1 && $use_seclogon == 1)
-    {
-        berror($1, "Cannot set both --fork and --seclogon.");
-        return;
-    }
-
     if($dup == 1 && $use_seclogon == 1)
     {
         berror($1, "Cannot set both --dup and --seclogon.");

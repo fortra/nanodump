@@ -37,6 +37,7 @@
 #define STATUS_NO_MORE_ENTRIES 0x8000001A
 #define STATUS_INVALID_CID 0xC000000B
 #define STATUS_INFO_LENGTH_MISMATCH 0xC0000004
+#define STATUS_OBJECT_NAME_NOT_FOUND 0xC0000034
 
 #define SystemHandleInformation 0x10
 #define ObjectTypeInformation 2

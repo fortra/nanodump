@@ -82,6 +82,7 @@ WINBASEAPI void * WINAPI KERNEL32$HeapAlloc (HANDLE hHeap, DWORD dwFlags, SIZE_T
 WINBASEAPI BOOL   WINAPI KERNEL32$HeapFree (HANDLE, DWORD, PVOID);
 WINBASEAPI DWORD  WINAPI KERNEL32$GetLastError (VOID);
 
+WINBASEAPI wchar_t * __cdecl MSVCRT$wcsstr(const wchar_t *_Str,const wchar_t *_SubStr);
 WINBASEAPI char *    __cdecl MSVCRT$strrchr(const char *_Str,int _Ch);
 WINBASEAPI void *    __cdecl MSVCRT$memcpy(void * __restrict__ _Dst,const void * __restrict__ _Src,size_t _MaxCount);
 WINBASEAPI size_t    __cdecl MSVCRT$strnlen(const char *s, size_t maxlen);
@@ -101,6 +102,7 @@ WINBASEAPI void      __cdecl MSVCRT$memset(void *dest, int c, size_t count);
 #define HeapFree       KERNEL32$HeapFree
 #define GetLastError   KERNEL32$GetLastError
 
+#define wcsstr   MSVCRT$wcsstr
 #define strrchr  MSVCRT$strrchr
 #define memcpy   MSVCRT$memcpy
 #define strnlen  MSVCRT$strnlen

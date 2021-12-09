@@ -1,21 +1,74 @@
 #include "../include/handle.h"
 #include "../include/modules.h"
 
+PVOID get_process_image(HANDLE hProcess)
+{
+    NTSTATUS status;
+    ULONG BufferLength = 0x200;
+    PVOID buffer;
+    do
+    {
+        buffer = intAlloc(BufferLength);
+        if (!buffer)
+        {
+#ifdef DEBUG
+#ifdef BOF
+            BeaconPrintf(CALLBACK_ERROR,
+#else
+            printf(
+#endif
+                "Failed to call HeapAlloc for 0x%llx bytes, error: %ld\n",
+                BufferLength,
+                GetLastError()
+            );
+#endif
+            return NULL;
+        }
+        status = NtQueryInformationProcess(
+            hProcess,
+            ProcessImageFileName,
+            buffer,
+            BufferLength,
+            &BufferLength
+        );
+        if (NT_SUCCESS(status))
+            return buffer;
+
+        intFree(buffer); buffer = NULL;
+    } while (status == STATUS_INFO_LENGTH_MISMATCH);
+
+#ifdef DEBUG
+#ifdef BOF
+    BeaconPrintf(CALLBACK_ERROR,
+#else
+    printf(
+#endif
+        "Failed to call NtQueryInformationProcess, status: 0x%lx\n",
+        status
+    );
+#endif
+    return NULL;
+}
+
 BOOL is_lsass(HANDLE hProcess)
 {
-    // if the process has 'lsass.exe' loaded, then we found LSASS
-    wchar_t* module_name[] = { LSASS_EXE };
-    Pmodule_info module_list = find_modules(
-        hProcess,
-        module_name,
-        ARRAY_SIZE(module_name),
-        FALSE
-    );
-    if (module_list)
+    PUNICODE_STRING image = get_process_image(hProcess);
+    if (!image)
+        return FALSE;
+
+    if (image->Length == 0)
     {
-        free_linked_list(module_list); module_list = NULL;
+        intFree(image); image = NULL;
+        return FALSE;
+    }
+
+    if (wcsstr(image->Buffer, L"\\Windows\\System32\\lsass.exe"))
+    {
+        intFree(image); image = NULL;
         return TRUE;
     }
+
+    intFree(image); image = NULL;
     return FALSE;
 }
 

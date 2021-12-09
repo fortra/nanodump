@@ -463,9 +463,9 @@ HANDLE duplicate_lsass_handle(
                 (HANDLE)(DWORD_PTR)handleInfo->HandleValue,
                 NtCurrentProcess(),
                 &hDuped,
-                permissions,
                 0,
-                0
+                0,
+                DUPLICATE_SAME_ACCESS
             );
             if (!NT_SUCCESS(status))
                 continue;

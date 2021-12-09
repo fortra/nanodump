@@ -121,14 +121,14 @@ alias nanodump {
     # check if --fork was enabled with no PID
     if($fork == 1 && $pid == 0)
     {
-        berror($1, "The option --fork requires a PID.");
+        berror($1, "The option --fork requires a PID. Run with --getpid first.");
         return;
     }
 
     # check if --dup was enabled with no PID
     if($dup == 1 && $pid == 0)
     {
-        berror($1, "The option --dup requires a PID.");
+        berror($1, "The option --dup requires a PID. Run with --getpid first.");
         return;
     }
 

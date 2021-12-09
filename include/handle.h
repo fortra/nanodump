@@ -1,5 +1,7 @@
 #pragma once
 
+#include <unistd.h>
+
 #define LSASS_EXE L"lsass.exe"
 #define PROCESS_TYPE L"Process"
 
@@ -60,17 +62,18 @@ typedef struct _PROCESS_LIST
     ULONG ProcessId[MAX_PROCESSES];
 } PROCESS_LIST, *PPROCESS_LIST;
 
-typedef struct SYSTEM_HANDLE_TABLE_ENTRY_INFO
+typedef struct _SYSTEM_HANDLE_TABLE_ENTRY_INFO
 {
-    ULONG ProcessId;
-    BYTE ObjectTypeNumber;
-    BYTE Flags;
-    USHORT Handle;
+    USHORT UniqueProcessId;
+    USHORT CreatorBackTraceIndex;
+    UCHAR ObjectTypeIndex;
+    UCHAR HandleAttributes;
+    USHORT HandleValue;
     PVOID Object;
-    ACCESS_MASK GrantedAccess;
-} SYSTEM_HANDLE_TABLE_ENTRY_INFO, *PSYSTEM_HANDLE_TABLE_ENTRY_INFO;
+    ULONG GrantedAccess;
+} SYSTEM_HANDLE_TABLE_ENTRY_INFO, * PSYSTEM_HANDLE_TABLE_ENTRY_INFO;
 
-HANDLE obtain_lsass_handle(DWORD pid, BOOL fork, BOOL dup);
+HANDLE obtain_lsass_handle(DWORD pid, BOOL fork, BOOL dup, BOOL is_seclogon_stage_2, LPCSTR dump_name);
 HANDLE duplicate_lsass_handle(DWORD lsass_pid);
 HANDLE get_process_handle(DWORD dwPid, DWORD dwFlags, BOOL quiet);
 HANDLE fork_lsass_process(DWORD dwPid);

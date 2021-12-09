@@ -251,4 +251,9 @@ EXTERN_C NTSTATUS NtQueryObject(
 	IN ULONG ObjectInformationLength,
 	OUT PULONG ReturnLength OPTIONAL) asm ("NtQueryObject");
 
+EXTERN_C NTSTATUS NtWaitForSingleObject(
+	IN HANDLE ObjectHandle,
+	IN BOOLEAN Alertable,
+	IN PLARGE_INTEGER TimeOut OPTIONAL) asm ("NtWaitForSingleObject");
+
 #endif

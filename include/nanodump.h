@@ -63,6 +63,7 @@
 #define NtCreateFile _NtCreateFile
 #define NtQuerySystemInformation _NtQuerySystemInformation
 #define NtQueryObject _NtQueryObject
+#define NtWaitForSingleObject _NtWaitForSingleObject
 #endif
 
 #ifdef _WIN64

@@ -14,6 +14,7 @@ A Beacon Object File that creates a minidump of the LSASS process.
 - No calls to *dbghelp* or any other library are made, all the dump logic is implemented in nanodump
 - Supports process forking to avoid the permission `PROCESS_VM_READ`
 - Supports handle duplication
+- Supports MalSecLogon
 - You can use the .exe version to run *nanodump* outside of Cobalt Strike :smile:
 
 ## Usage
@@ -67,14 +68,14 @@ python3 -m pypykatz lsa minidump <dumpfie>
 
 ## Parameters
 
-#### --getpid
+#### --getpid (optional)
 get PID of lsass and leave.
 
 #### --pid -p < PID > (required only for --fork and --dup)
 PID of lsass. If not entered, nanodump will find it dynamically.  
 If the options --fork or --dup are used, this parameter is required
 
-#### --write -w < path > (optional)
+#### --write -w < path > (optional for BOF)
 Where to write the dumpfile. If this parameter is not provided, the dump will be downloaded in a fileless manner.
 
 #### --valid -v (optional)
@@ -86,6 +87,10 @@ If selected, nanodump will first create a handle to the target process with `PRO
 
 #### --dup -d (optional)
 If selected, nanodump will search for an existing handle to LSASS and duplicate it in order to avoid opening a new handle
+
+#### --seclogon -sl (optional)
+If selected, nanodump will use MalSecLogon to leak a handle to LSASS.  
+If used as BOF, a nanodump binary will be uploaded to the host!
 
 ## HTTPS redirectors
 If you are using an HTTPS redirector (as you should), you might run into issues due to the size of the requests that leak the dump.  
@@ -110,3 +115,4 @@ location ~ ^...$ {
 - [freefirex](https://twitter.com/freefirex2) from [CS-Situational-Awareness-BOF](https://github.com/trustedsec/CS-Situational-Awareness-BOF) at Trustedsec for many cool tricks for BOFs
 - [Jackson_T](https://twitter.com/Jackson_T) for [SysWhispers2](https://github.com/jthuraisamy/SysWhispers2)
 - [BillDemirkapi](https://twitter.com/BillDemirkapi) for [Process Forking](https://billdemirkapi.me/abusing-windows-implementation-of-fork-for-stealthy-memory-operations/)
+- [Antonio Cocomazzi](https://twitter.com/splinter_code) for [MalSecLogon](https://splintercod3.blogspot.com/p/the-hidden-side-of-seclogon-part-2.html)

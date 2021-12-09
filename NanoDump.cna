@@ -1,5 +1,4 @@
 
-
 sub generate_rand_string {
 local('@dictionary $string $min_length $max_length $length');
     @dictionary = @("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9");
@@ -141,9 +140,15 @@ alias nanodump {
         return;
     }
 
-    if($use_seclogon && $pid == 0)
+    if($fork == 1 && $use_seclogon == 1)
     {
-        berror($1, "The option --seclogon requires a PID. Run with --getpid first.");
+        berror($1, "Cannot set both --fork and --seclogon.");
+        return;
+    }
+
+    if($dup == 1 && $use_seclogon == 1)
+    {
+        berror($1, "Cannot set both --dup and --seclogon.");
         return;
     }
 
@@ -171,20 +176,6 @@ alias nanodump {
         }
         # upload the nanodump binary
         bupload_raw($1, $nanodump_binary, $exe);
-    }
-
-    # check if --fork was enabled with no PID
-    if($fork == 1 && $pid == 0)
-    {
-        berror($1, "The option --fork requires a PID. Run with --getpid first.");
-        return;
-    }
-
-    # check if --dup was enabled with no PID
-    if($dup == 1 && $pid == 0)
-    {
-        berror($1, "The option --dup requires a PID. Run with --getpid first.");
-        return;
     }
 
     # pack the arguments

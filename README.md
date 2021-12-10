@@ -80,7 +80,8 @@ Where to write the dumpfile.
 
 #### --valid -v
 The minidump will have a valid signature.  
-If not entered, the signature will be invalid. Before analyzing the dump restore the signature of the dump, with: `bash restore_signature.sh <dumpfile>`  
+If not entered, the signature will be invalid. Before analyzing the dump restore the signature of the dump, with:  
+`bash restore_signature.sh <dumpfile>`  
 
 #### --fork -f
 Create a handle to LSASS with `PROCESS_CREATE_PROCESS` access and then create a 'clone' of the process. This new process will then be the target for memory dumping. While this will result in a new process creation, it removes the need to read LSASS directly.
@@ -90,7 +91,7 @@ List all the handles in the system and look for an existing handle to LSASS. If 
 *(Be aware that there is no guarantee to find such handle)*
 
 #### --seclogon -sl
-Leak a handle to LSASS by abusing SecLogon with `CreateProcessWithLogonW`. This eliminates the need to open a new handle to LSASS directly.
+Leak a handle to LSASS by abusing SecLogon with `CreateProcessWithLogonW`. This eliminates the need to open a new handle to LSASS directly.  
 **If used as BOF, an unsigned binary will be written to disk!**
 
 ## Examples

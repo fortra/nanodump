@@ -24,7 +24,7 @@ struct TEB
 
 typedef BOOL(WINAPI* CREATEPROCESSWITHLOGONW) (LPCWSTR lpUsername, LPCWSTR lpDomain, LPCWSTR lpPassword, DWORD dwLogonFlags, LPCWSTR lpApplicationName, LPWSTR lpCommandLine, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
 
-BOOL seclogon_stage_1(LPCSTR program_name, LPCSTR dump_name, BOOL fork, BOOL valid, DWORD lsass_pid);
+BOOL seclogon_stage_1(LPCSTR program_name, LPCSTR dump_name, BOOL fork, BOOL valid, BOOL dup, DWORD lsass_pid);
 #ifndef BOF
-HANDLE seclogon_stage_2(LPCSTR dump_path, BOOL fork);
+HANDLE seclogon_stage_2(LPCSTR dump_path);
 #endif

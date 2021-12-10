@@ -259,4 +259,8 @@ EXTERN_C NTSTATUS NtWaitForSingleObject(
 EXTERN_C NTSTATUS NtDeleteFile(
 	IN POBJECT_ATTRIBUTES ObjectAttributes) asm ("NtDeleteFile");
 
+EXTERN_C NTSTATUS NtTerminateProcess(
+	IN HANDLE ProcessHandle OPTIONAL,
+	IN NTSTATUS ExitStatus) asm ("NtTerminateProcess");
+
 #endif

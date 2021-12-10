@@ -15,16 +15,7 @@ PVOID get_peb_address(
     );
     if (!NT_SUCCESS(status))
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Failed to call NtQueryInformationProcess, status: 0x%lx\n",
-            status
-        );
-#endif
+        syscall_failed("NtQueryInformationProcess", status);
         return 0;
     }
 
@@ -58,16 +49,7 @@ PVOID get_module_list_address(
     }
     if (!NT_SUCCESS(status))
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Failed to call NtReadVirtualMemory, status: 0x%lx\n",
-            status
-        );
-#endif
+        syscall_failed("NtReadVirtualMemory", status);
         return NULL;
     }
 
@@ -82,16 +64,7 @@ PVOID get_module_list_address(
     );
     if (!NT_SUCCESS(status))
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Failed to call NtReadVirtualMemory, status: 0x%lx\n",
-            status
-        );
-#endif
+        syscall_failed("NtReadVirtualMemory", status);
         return NULL;
     }
 
@@ -106,17 +79,7 @@ Pmodule_info add_new_module(
     Pmodule_info new_module = intAlloc(sizeof(module_info));
     if (!new_module)
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Failed to call HeapAlloc for 0x%x bytes, error: %ld\n",
-            (ULONG32)sizeof(module_info),
-            GetLastError()
-        );
-#endif
+        malloc_failed();
         return NULL;
     }
     new_module->next = NULL;
@@ -135,16 +98,7 @@ Pmodule_info add_new_module(
     );
     if (!NT_SUCCESS(status))
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Failed to call NtReadVirtualMemory, status: 0x%lx\n",
-            status
-        );
-#endif
+        syscall_failed("NtReadVirtualMemory", status);
         return NULL;
     }
     return new_module;
@@ -167,16 +121,7 @@ BOOL read_ldr_entry(
     );
     if (!NT_SUCCESS(status))
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Failed to call NtReadVirtualMemory, status: 0x%lx\n",
-            status
-        );
-#endif
+        syscall_failed("NtReadVirtualMemory", status);
         return FALSE;
     }
     // initialize base_dll_name with all null-bytes
@@ -191,16 +136,7 @@ BOOL read_ldr_entry(
     );
     if (!NT_SUCCESS(status))
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Failed to call NtReadVirtualMemory, status: 0x%lx\n",
-            status
-        );
-#endif
+        syscall_failed("NtReadVirtualMemory", status);
         return FALSE;
     }
     return TRUE;

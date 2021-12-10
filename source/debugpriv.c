@@ -34,16 +34,7 @@ BOOL enable_debug_priv(void)
     );
     if (!ok)
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Failed to call LookupPrivilegeValueW, error: %ld\n",
-            GetLastError()
-        );
-#endif
+        function_failed("LookupPrivilegeValueW");
         return FALSE;
     }
 
@@ -54,16 +45,7 @@ BOOL enable_debug_priv(void)
     );
     if(!NT_SUCCESS(status))
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Failed to call NtOpenProcessToken, status: 0x%lx\n",
-            status
-        );
-#endif
+        syscall_failed("NtOpenProcessToken", status);
         return FALSE;
     }
 
@@ -81,16 +63,7 @@ BOOL enable_debug_priv(void)
     NtClose(hToken); hToken = NULL;
     if (!NT_SUCCESS(status))
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Failed to call NtAdjustPrivilegesToken, status: 0x%lx\n",
-            status
-        );
-#endif
+        syscall_failed("NtAdjustPrivilegesToken", status);
         return FALSE;
     }
 

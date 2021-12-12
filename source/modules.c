@@ -160,7 +160,7 @@ Pmodule_info find_modules(
     if (!ldr_entry_address)
         return NULL;
 
-    PVOID first_ldr_entry_address = ldr_entry_address;
+    PVOID first_ldr_entry_address = NULL;
     SHORT dlls_found = 0;
     BOOL lsasrv_found = FALSE;
     struct LDR_DATA_TABLE_ENTRY ldr_entry;
@@ -177,6 +177,9 @@ Pmodule_info find_modules(
         );
         if (!success)
             return NULL;
+
+        if (!first_ldr_entry_address)
+            first_ldr_entry_address = ldr_entry.InMemoryOrderLinks.Blink;
 
         // loop over each important module and see if we have a match
         for (int i = 0; i < number_of_important_modules; i++)

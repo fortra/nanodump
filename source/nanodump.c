@@ -620,6 +620,13 @@ void go(char* args, int length)
     use_seclogon = (BOOL)BeaconDataInt(&parser);
     binary_path = BeaconDataExtract(&parser, NULL);
 
+    if (do_write)
+    {
+        success = create_file(dump_name);
+        if (!success)
+            return;
+    }
+
     success = enable_debug_priv();
     if (!success)
         return;
@@ -993,6 +1000,10 @@ int main(int argc, char* argv[])
 
     if (!binary_path)
         binary_path = argv[0];
+
+    success = create_file(dump_name);
+    if (!success)
+        return -1;
 
     // set the signature
     if (use_valid_sig)

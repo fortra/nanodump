@@ -15,26 +15,21 @@ BOOL write_file(
     largeInteger.QuadPart = fileLength;
     wchar_t wcFilePath[MAX_PATH];
     wchar_t wcFileName[MAX_PATH];
-    PUNICODE_STRING pUnicodeFilePath = intAlloc(sizeof(UNICODE_STRING));
-    if (!pUnicodeFilePath)
-    {
-        malloc_failed();
-        return FALSE;
-    }
+    UNICODE_STRING UnicodeFilePath;
 
     // create a UNICODE_STRING with the file path
     mbstowcs(wcFileName, fileName, MAX_PATH);
     wcscpy(wcFilePath, L"\\??\\");
     wcsncat(wcFilePath, wcFileName, MAX_PATH);
-    pUnicodeFilePath->Buffer = wcFilePath;
-    pUnicodeFilePath->Length = wcsnlen(pUnicodeFilePath->Buffer, MAX_PATH);
-    pUnicodeFilePath->Length *= 2;
-    pUnicodeFilePath->MaximumLength = pUnicodeFilePath->Length + 2;
+    UnicodeFilePath.Buffer = wcFilePath;
+    UnicodeFilePath.Length = wcsnlen(UnicodeFilePath.Buffer, MAX_PATH);
+    UnicodeFilePath.Length *= 2;
+    UnicodeFilePath.MaximumLength = UnicodeFilePath.Length + 2;
 
     // init the object attributes
     InitializeObjectAttributes(
         &objAttr,
-        pUnicodeFilePath,
+        &UnicodeFilePath,
         OBJ_CASE_INSENSITIVE,
         NULL,
         NULL
@@ -42,7 +37,7 @@ BOOL write_file(
     // create the file
     NTSTATUS status = NtCreateFile(
         &hFile,
-        FILE_GENERIC_READ | FILE_GENERIC_WRITE | SYNCHRONIZE,
+        FILE_GENERIC_WRITE,
         &objAttr,
         &IoStatusBlock,
         &largeInteger,
@@ -53,7 +48,6 @@ BOOL write_file(
         NULL,
         0
     );
-    intFree(pUnicodeFilePath); pUnicodeFilePath = NULL;
     if (status == STATUS_OBJECT_PATH_NOT_FOUND ||
         status == STATUS_OBJECT_NAME_INVALID)
     {
@@ -91,6 +85,71 @@ BOOL write_file(
         return FALSE;
     }
 
+    return TRUE;
+}
+
+BOOL create_file(
+    LPCSTR fileName
+)
+{
+    HANDLE hFile;
+    OBJECT_ATTRIBUTES objAttr;
+    IO_STATUS_BLOCK IoStatusBlock;
+    wchar_t wcFilePath[MAX_PATH];
+    wchar_t wcFileName[MAX_PATH];
+    UNICODE_STRING UnicodeFilePath;
+
+    // create a UNICODE_STRING with the file path
+    mbstowcs(wcFileName, fileName, MAX_PATH);
+    wcscpy(wcFilePath, L"\\??\\");
+    wcsncat(wcFilePath, wcFileName, MAX_PATH);
+    UnicodeFilePath.Buffer = wcFilePath;
+    UnicodeFilePath.Length = wcsnlen(UnicodeFilePath.Buffer, MAX_PATH);
+    UnicodeFilePath.Length *= 2;
+    UnicodeFilePath.MaximumLength = UnicodeFilePath.Length + 2;
+
+    // init the object attributes
+    InitializeObjectAttributes(
+        &objAttr,
+        &UnicodeFilePath,
+        OBJ_CASE_INSENSITIVE,
+        NULL,
+        NULL
+    );
+    // call NtCreateFile with FILE_OPEN_IF
+    // FILE_OPEN_IF: If the file already exists, open it. If it does not, create the given file.
+    NTSTATUS status = NtCreateFile(
+        &hFile,
+        FILE_GENERIC_READ,
+        &objAttr,
+        &IoStatusBlock,
+        NULL,
+        FILE_ATTRIBUTE_NORMAL,
+        0,
+        FILE_OPEN_IF,
+        FILE_SYNCHRONOUS_IO_NONALERT,
+        NULL,
+        0
+    );
+    if (status == STATUS_OBJECT_PATH_NOT_FOUND ||
+        status == STATUS_OBJECT_NAME_INVALID)
+    {
+#ifdef BOF
+        BeaconPrintf(CALLBACK_ERROR,
+#else
+        printf(
+#endif
+            "The path '%s' is invalid.\n",
+            fileName
+        );
+        return FALSE;
+    }
+    if (!NT_SUCCESS(status))
+    {
+        syscall_failed("NtCreateFile", status);
+        return FALSE;
+    }
+    NtClose(hFile); hFile = NULL;
     return TRUE;
 }
 
@@ -252,26 +311,21 @@ BOOL delete_file(
     OBJECT_ATTRIBUTES objAttr;
     wchar_t wcFilePath[MAX_PATH];
     wchar_t wcFileName[MAX_PATH];
-    PUNICODE_STRING pUnicodeFilePath = intAlloc(sizeof(UNICODE_STRING));
-    if (!pUnicodeFilePath)
-    {
-        malloc_failed();
-        return FALSE;
-    }
+    UNICODE_STRING UnicodeFilePath;
 
     // create a UNICODE_STRING with the file path
     mbstowcs(wcFileName, filepath, MAX_PATH);
     wcscpy(wcFilePath, L"\\??\\");
     wcsncat(wcFilePath, wcFileName, MAX_PATH);
-    pUnicodeFilePath->Buffer = wcFilePath;
-    pUnicodeFilePath->Length = wcsnlen(pUnicodeFilePath->Buffer, MAX_PATH);
-    pUnicodeFilePath->Length *= 2;
-    pUnicodeFilePath->MaximumLength = pUnicodeFilePath->Length + 2;
+    UnicodeFilePath.Buffer = wcFilePath;
+    UnicodeFilePath.Length = wcsnlen(UnicodeFilePath.Buffer, MAX_PATH);
+    UnicodeFilePath.Length *= 2;
+    UnicodeFilePath.MaximumLength = UnicodeFilePath.Length + 2;
 
     // init the object attributes
     InitializeObjectAttributes(
         &objAttr,
-        pUnicodeFilePath,
+        &UnicodeFilePath,
         OBJ_CASE_INSENSITIVE,
         NULL,
         NULL
@@ -297,26 +351,21 @@ BOOL file_exists(
     largeInteger.QuadPart = 0;
     wchar_t wcFilePath[MAX_PATH];
     wchar_t wcFileName[MAX_PATH];
-    PUNICODE_STRING pUnicodeFilePath = intAlloc(sizeof(UNICODE_STRING));
-    if (!pUnicodeFilePath)
-    {
-        malloc_failed();
-        return FALSE;
-    }
+    UNICODE_STRING UnicodeFilePath;
 
     // create a UNICODE_STRING with the file path
     mbstowcs(wcFileName, filepath, MAX_PATH);
     wcscpy(wcFilePath, L"\\??\\");
     wcsncat(wcFilePath, wcFileName, MAX_PATH);
-    pUnicodeFilePath->Buffer = wcFilePath;
-    pUnicodeFilePath->Length = wcsnlen(pUnicodeFilePath->Buffer, MAX_PATH);
-    pUnicodeFilePath->Length *= 2;
-    pUnicodeFilePath->MaximumLength = pUnicodeFilePath->Length + 2;
+    UnicodeFilePath.Buffer = wcFilePath;
+    UnicodeFilePath.Length = wcsnlen(UnicodeFilePath.Buffer, MAX_PATH);
+    UnicodeFilePath.Length *= 2;
+    UnicodeFilePath.MaximumLength = UnicodeFilePath.Length + 2;
 
     // init the object attributes
     InitializeObjectAttributes(
         &objAttr,
-        pUnicodeFilePath,
+        &UnicodeFilePath,
         OBJ_CASE_INSENSITIVE,
         NULL,
         NULL
@@ -335,7 +384,6 @@ BOOL file_exists(
         NULL,
         0
     );
-    intFree(pUnicodeFilePath); pUnicodeFilePath = NULL;
     if (status == STATUS_OBJECT_NAME_NOT_FOUND)
         return FALSE;
     if (!NT_SUCCESS(status))

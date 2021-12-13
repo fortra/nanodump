@@ -25,7 +25,7 @@ BOOL kill_process(
         hProcess,
         ERROR_SUCCESS
     );
-    if (NT_SUCCESS(status))
+    if (!NT_SUCCESS(status))
     {
         syscall_failed("NtTerminateProcess", status);
         return FALSE;

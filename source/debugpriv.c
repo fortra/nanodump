@@ -3,6 +3,8 @@
 
 BOOL enable_debug_priv(void)
 {
+    // you can remove this function by providing the compiler flag: -DNODPRIV
+#ifndef NODPRIV
     HANDLE hToken;
     TOKEN_PRIVILEGES tkp;
     LOOKUPPRIVILEGEVALUEW LookupPrivilegeValueW;
@@ -66,6 +68,6 @@ BOOL enable_debug_priv(void)
         syscall_failed("NtAdjustPrivilegesToken", status);
         return FALSE;
     }
-
+#endif
     return TRUE;
 }

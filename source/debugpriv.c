@@ -5,15 +5,15 @@ BOOL enable_debug_priv(void)
 {
     HANDLE hToken;
     TOKEN_PRIVILEGES tkp;
-    LOOKUPPRIVILEGEVALUEW pLookupPrivilegeValueW;
+    LOOKUPPRIVILEGEVALUEW LookupPrivilegeValueW;
     BOOL ok;
 
     // find the address of LookupPrivilegeValueW dynamically
-    pLookupPrivilegeValueW = (LOOKUPPRIVILEGEVALUEW)GetFunctionAddress(
+    LookupPrivilegeValueW = (LOOKUPPRIVILEGEVALUEW)GetFunctionAddress(
         GetLibraryAddress(ADVAPI32),
         LookupPrivilegeValueW_SW2_HASH
     );
-    if (!pLookupPrivilegeValueW)
+    if (!LookupPrivilegeValueW)
     {
 #ifdef DEBUG
 #ifdef BOF
@@ -27,7 +27,7 @@ BOOL enable_debug_priv(void)
         return FALSE;
     }
 
-    ok = pLookupPrivilegeValueW(
+    ok = LookupPrivilegeValueW(
         NULL,
         SeDebugPrivilege,
         &tkp.Privileges[0].Luid

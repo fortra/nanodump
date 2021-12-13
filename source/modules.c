@@ -229,7 +229,7 @@ Pmodule_info find_modules(
 #else
         printf(
 #endif
-            "This selected process is not LSASS.\n"
+            "The selected process is not LSASS.\n"
         );
         return NULL;
     }

@@ -110,7 +110,7 @@ HANDLE find_lsass(DWORD dwFlags)
 #else
             printf(
 #endif
-                "The LSASS process was not found.\n"
+                "The LSASS process was not found. Are you elevated?\n"
             );
             return NULL;
         }
@@ -178,7 +178,7 @@ HANDLE get_process_handle(
 #else
             printf(
 #endif
-                "Could not open a handle to %ld\n",
+                "Could not open a handle to %ld. Are you elevated?\n",
                 dwPid
             );
         }

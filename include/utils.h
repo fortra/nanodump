@@ -15,3 +15,7 @@ PVOID allocate_memory(PSIZE_T RegionSize);
 void encrypt_dump(Pdump_context dc);
 void erase_dump_from_memory(Pdump_context dc);
 void generate_invalid_sig(PULONG32 Signature, PSHORT Version, PSHORT ImplementationVersion);
+BOOL write_file(LPCSTR fileName, PBYTE fileData, ULONG32 fileLength);
+#ifdef BOF
+BOOL download_file(LPCSTR fileName, char fileData[], ULONG32 fileLength);
+#endif

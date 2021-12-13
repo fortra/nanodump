@@ -1004,15 +1004,13 @@ void go(char* args, int length)
 
 void usage(char* procname)
 {
-    printf("usage: %s --write C:\\Windows\\Temp\\doc.docx [--valid] [--fork] [--dup] [--pid 1234] [--help]\n", procname);
+    printf("usage: %s [--getpid] --write C:\\Windows\\Temp\\doc.docx [--valid] [--fork] [--dup] [--seclogon] [--binary C:\\Windows\\notepad.exe] [--help]\n", procname);
+    printf("    --getpid\n");
+    printf("            print the PID of LSASS and leave\n");
     printf("    --write PATH, -w PATH\n");
     printf("            full path to the dumpfile\n");
     printf("    --valid, -v\n");
     printf("            create a dump with a valid signature\n");
-    printf("    --pid PID, -p PID\n");
-    printf("            the PID of LSASS\n");
-    printf("    --getpid\n");
-    printf("            print the PID of LSASS and leave\n");
     printf("    --fork, -f\n");
     printf("            fork target process before dumping\n");
     printf("    --dup, -d\n");

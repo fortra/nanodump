@@ -68,10 +68,8 @@ python3 -m pypykatz lsa minidump <dumpfie>
 ## Parameters
 
 #### --getpid
-Get PID of LSASS and leave.
-
-#### --pid -p < PID >
-Provide the PID of LSASS. If not entered, nanodump will find it dynamically.
+Get PID of LSASS and leave.  
+This is just for convenience, nanodump does not need the PID of LSASS.
 
 #### --write -w < path > (required for EXE)
 Where to write the dumpfile.

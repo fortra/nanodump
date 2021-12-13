@@ -17,7 +17,7 @@ local('@dictionary $string $min_length $max_length $length');
 beacon_command_register(
 "nanodump",
 "Use syscalls to dump LSASS.",
-"Usage: nanodump [--getpid] [--pid 1234] [--valid] [--write C:\\Windows\\Temp\\doc.docx] [--fork] [--dup] [--seclogon]");
+"Usage: nanodump [--getpid] [--write C:\\Windows\\Temp\\doc.docx] [--valid] [--fork] [--dup] [--seclogon] [--binary C:\\Windows\\notepad.exe]");
 alias nanodump {
     local('$barch $handle $bof $exe $args $pid $cname $dump_name $write_file $use_valid_sig $fork $dup $i $get_pid $use_seclogon $folder $nanodump_binary');
 

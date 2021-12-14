@@ -805,7 +805,7 @@ void usage(char* procname)
     printf("            fork target process before dumping\n");
     printf("    --dup, -d\n");
     printf("            duplicate an existing LSASS handle\n");
-    printf("    --malseclogon, -ms\n");
+    printf("    --malseclogon, -m\n");
     printf("            obtain a handle to LSASS by (ab)using seclogon\n");
     printf("    --binary PATH, -b PATH\n");
     printf("            full path to the decoy binary used with --dup and --malseclogon\n");

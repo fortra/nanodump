@@ -88,7 +88,7 @@ Create a handle to LSASS with `PROCESS_CREATE_PROCESS` access and then create a 
 List all the handles in the system and look for an existing handle to LSASS. If found, duplicate it and access LSASS with it. This eliminates the need to open a new handle to LSASS directly.  
 *(Be aware that there is no guarantee to find such handle)*
 
-#### --malseclogon -ms
+#### --malseclogon -m
 Leak a handle to LSASS by abusing SecLogon with `CreateProcessWithLogonW`. This eliminates the need to open a new handle to LSASS directly.  
 When this option is used, errors while analyzing the minidump are to be expected. Use the latest version of pypykatz.  
 **If used as BOF, an unsigned binary will be written to disk unless --dup is also provided!**

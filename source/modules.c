@@ -16,6 +16,7 @@ PVOID get_peb_address(
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtQueryInformationProcess", status);
+        DPRINT_ERR("Could not get the PEB of the process");
         return 0;
     }
 
@@ -50,6 +51,7 @@ PVOID get_module_list_address(
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtReadVirtualMemory", status);
+        DPRINT_ERR("Could not get the address of the module list");
         return NULL;
     }
 
@@ -65,9 +67,13 @@ PVOID get_module_list_address(
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtReadVirtualMemory", status);
+        DPRINT_ERR("Could not get the address of the module list");
         return NULL;
     }
-
+    DPRINT(
+        "Got the address of the module list: 0x%p",
+        ldr_entry_address
+    );
     return ldr_entry_address;
 }
 
@@ -80,6 +86,7 @@ Pmodule_info add_new_module(
     if (!new_module)
     {
         malloc_failed();
+        DPRINT_ERR("Could not add new module");
         return NULL;
     }
     new_module->next = NULL;
@@ -99,6 +106,7 @@ Pmodule_info add_new_module(
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtReadVirtualMemory", status);
+        DPRINT_ERR("Could not add new module");
         return NULL;
     }
     return new_module;
@@ -122,6 +130,10 @@ BOOL read_ldr_entry(
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtReadVirtualMemory", status);
+        DPRINT_ERR(
+            "Could not read module information at: 0x%p",
+            ldr_entry_address
+        );
         return FALSE;
     }
     // initialize base_dll_name with all null-bytes
@@ -137,6 +149,10 @@ BOOL read_ldr_entry(
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtReadVirtualMemory", status);
+        DPRINT_ERR(
+            "Could not read module information at: 0x%p",
+            ldr_entry->BaseDllName.Buffer
+        );
         return FALSE;
     }
     return TRUE;
@@ -187,6 +203,11 @@ Pmodule_info find_modules(
             // compare the DLLs' name, case insensitive
             if (!_wcsicmp(important_modules[i], base_dll_name))
             {
+                DPRINT(
+                    "Found %ls at 0x%p",
+                    base_dll_name,
+                    ldr_entry_address
+                );
                 // check if the DLL is 'lsasrv.dll' so that we know the process is indeed LSASS
                 if (!_wcsicmp(important_modules[i], LSASRV_DLL))
                     lsasrv_found = TRUE;

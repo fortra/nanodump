@@ -181,14 +181,14 @@ WINBASEAPI void      __cdecl MSVCRT$memset(void *dest, int c, size_t count);
 
 #define syscall_failed(syscall_name, status) \
     DPRINT_ERR( \
-        "Failed to call %s, status: 0x%lx\n", \
+        "Failed to call %s, status: 0x%lx", \
         syscall_name, \
         status \
     )
 
 #define function_failed(function) \
     DPRINT_ERR( \
-        "Failed to call '%s', error: %ld\n", \
+        "Failed to call '%s', error: %ld", \
         function, \
         GetLastError() \
     )

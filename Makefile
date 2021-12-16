@@ -28,4 +28,4 @@ debug: clean
 	$(CC_x86)    source/nanodump.c -o compiled/$(BOFNAME).x86.exe $(OPTIONS) -DDEBUG
 
 clean:
-	rm compiled/*
+	rm -f compiled/*

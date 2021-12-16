@@ -51,14 +51,10 @@ BOOL write_file(
     if (status == STATUS_OBJECT_PATH_NOT_FOUND ||
         status == STATUS_OBJECT_NAME_INVALID)
     {
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "The path '%s' is invalid.\n",
+        PRINT_ERR(
+            "The path '%s' is invalid.",
             fileName
-        );
+        )
         return FALSE;
     }
     if (!NT_SUCCESS(status))
@@ -134,14 +130,10 @@ BOOL create_file(
     if (status == STATUS_OBJECT_PATH_NOT_FOUND ||
         status == STATUS_OBJECT_NAME_INVALID)
     {
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "The path '%s' is invalid.\n",
+        PRINT_ERR(
+            "The path '%s' is invalid.",
             fileName
-        );
+        )
         return FALSE;
     }
     if (!NT_SUCCESS(status))
@@ -492,40 +484,32 @@ void print_success(
 {
     if (!use_valid_sig)
     {
-#ifdef BOF
-        BeaconPrintf(CALLBACK_OUTPUT,
-#else
-        printf(
-#endif
+        PRINT(
             "The minidump has an invalid signature, restore it running:\nbash restore_signature.sh %s",
             write_dump_to_disk? &strrchr(dump_path, '\\')[1] : dump_path
-        );
+        )
     }
     if (write_dump_to_disk)
     {
 #ifdef BOF
-        BeaconPrintf(CALLBACK_OUTPUT,
+        PRINT(
             "Done, to download the dump run:\ndownload %s\nto get the secretz run:\npython3 -m pypykatz lsa minidump %s",
             dump_path,
             &strrchr(dump_path, '\\')[1]
-        );
+        )
 #else
-        printf(
+        PRINT(
             "Done, to get the secretz run:\npython3 -m pypykatz lsa minidump %s",
             &strrchr(dump_path, '\\')[1]
-        );
+        )
 #endif
     }
     else
     {
-#ifdef BOF
-        BeaconPrintf(CALLBACK_OUTPUT,
-#else
-        printf(
-#endif
+        PRINT(
             "Done, to get the secretz run:\npython3 -m pypykatz lsa minidump %s",
             dump_path
-        );
+        )
     }
 }
 
@@ -571,15 +555,9 @@ PVOID allocate_memory(
     );
     if (!NT_SUCCESS(status))
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Could not allocate enough memory to write the dump\n"
-        );
-#endif
+        DPRINT_ERR(
+            "Could not allocate enough memory to write the dump"
+        )
         return NULL;
     }
     return BaseAddress;

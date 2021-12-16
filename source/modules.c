@@ -224,13 +224,7 @@ Pmodule_info find_modules(
     // the LSASS process should always have 'lsasrv.dll' loaded
     if (is_lsass && !lsasrv_found)
     {
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "The selected process is not LSASS.\n"
-        );
+        PRINT_ERR("The selected process is not LSASS.");
         return NULL;
     }
     return module_list;

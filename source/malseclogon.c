@@ -48,13 +48,7 @@ PHANDLE_LIST find_process_handles_in_lsass(
 
         if (handle_list->Count + 1 > MAX_HANDLES)
         {
-#ifdef BOF
-            BeaconPrintf(CALLBACK_ERROR,
-#else
-            printf(
-#endif
-                "Too many handles, please increase MAX_HANDLES\n"
-            );
+            PRINT_ERR("Too many handles, please increase MAX_HANDLES");
             intFree(handleTableInformation); handleTableInformation = NULL;
             intFree(handle_list); handle_list = NULL;
             return NULL;
@@ -113,13 +107,7 @@ BOOL save_new_process_pid(PPROCESS_LIST process_list, DWORD pid)
 
     if (process_list->Count + 1 > MAX_PROCESSES)
     {
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Too many processes, please increase MAX_PROCESSES\n"
-        );
+        PRINT_ERR("Too many processes, please increase MAX_PROCESSES");
         return FALSE;
     }
     process_list->ProcessId[process_list->Count++] = pid;
@@ -184,13 +172,7 @@ BOOL MalSecLogon(
     PPROCESS_LIST created_processes;
     BOOL success;
 
-#ifdef BOF
-    BeaconPrintf(CALLBACK_OUTPUT,
-#else
-    printf(
-#endif
-        "[!] MalSecLogon implementation is unstable, errors are to be expected\n"
-    );
+    PRINT("[!] MalSecLogon implementation is unstable, errors are to be expected");
     // if MalSecLogon is used to create other processes, save their PID
     if (!use_malseclogon_locally)
     {
@@ -215,13 +197,7 @@ BOOL MalSecLogon(
     );
     if (!success)
     {
-#ifdef BOF
-        BeaconPrintf(CALLBACK_OUTPUT,
-#else
-        printf(
-#endif
-            "MalSecLogon technique failed!\n"
-        );
+        PRINT_ERR("MalSecLogon technique failed!");
         if (created_processes)
         {
             intFree(created_processes); created_processes = NULL;
@@ -280,12 +256,8 @@ BOOL malseclogon_stage_1(
 
     if (handle_list->Count == 0)
     {
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "No process handles found in LSASS, is the PID %ld correct?.\n",
+        PRINT_ERR(
+            "No process handles found in LSASS, is the PID %ld correct?.",
             lsass_pid
         );
         intFree(handle_list); handle_list = NULL;
@@ -309,15 +281,7 @@ BOOL malseclogon_stage_1(
     );
     if (!CreateProcessWithLogonW)
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Address of 'CreateProcessWithLogonW' not found\n"
-        );
-#endif
+        DPRINT_ERR("Address of 'CreateProcessWithLogonW' not found");
         intFree(handle_list); handle_list = NULL;
         return FALSE;
     }

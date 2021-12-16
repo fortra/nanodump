@@ -17,15 +17,7 @@ BOOL enable_debug_priv(void)
     );
     if (!LookupPrivilegeValueW)
     {
-#ifdef DEBUG
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "Address of 'LookupPrivilegeValueW' not found\n"
-        );
-#endif
+        DPRINT_ERR("Address of 'LookupPrivilegeValueW' not found");
         return FALSE;
     }
 

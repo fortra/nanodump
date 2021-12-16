@@ -20,16 +20,12 @@ nanodump: clean
 
 debug: clean
 	$(CC_x64) -c source/nanodump.c -o compiled/$(BOFNAME).x64.o $(OPTIONS) -DBOF -DDEBUG
-	$(STRIP_x64) --strip-unneeded compiled/$(BOFNAME).x64.o
 
 #	$(CC_x86) -c source/nanodump.c -o compiled/$(BOFNAME).x86.o   -masm=intel -Wall -DBOF -DDEBUG
-#	$(STRIP_x86) --strip-unneeded compiled/$(BOFNAME).x86.o
 
 	$(CC_x64)    source/nanodump.c -o compiled/$(BOFNAME).x64.exe $(OPTIONS) -DDEBUG
-	$(STRIP_x64) --strip-all compiled/$(BOFNAME).x64.exe
 
 	$(CC_x86)    source/nanodump.c -o compiled/$(BOFNAME).x86.exe $(OPTIONS) -DDEBUG
-	$(STRIP_x86) --strip-all compiled/$(BOFNAME).x86.exe
 
 clean:
 	rm compiled/*

@@ -1,4 +1,4 @@
-#include "../include/debugpriv.h"
+#include "debugpriv.h"
 #include "dinvoke.c"
 
 BOOL enable_debug_priv(void)

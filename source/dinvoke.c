@@ -1,4 +1,4 @@
-#include "../include/dinvoke.h"
+#include "dinvoke.h"
 
 BOOL strcmp_i(LPCSTR s1, LPCSTR s2)
 {

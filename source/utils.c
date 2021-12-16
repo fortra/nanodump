@@ -1,6 +1,6 @@
-#include "../include/utils.h"
-#include "../include/handle.h"
-#include "../include/syscalls.h"
+#include "utils.h"
+#include "handle.h"
+#include "syscalls.h"
 
 BOOL write_file(
     LPCSTR fileName,

@@ -1,5 +1,5 @@
-#include "../include/nanodump.h"
-#include "../include/beacon.h"
+#include "nanodump.h"
+#include "beacon.h"
 #include "utils.c"
 #include "handle.c"
 #include "modules.c"

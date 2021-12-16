@@ -1,7 +1,7 @@
-#include "../include/utils.h"
-#include "../include/handle.h"
-#include "../include/modules.h"
-#include "../include/malseclogon.h"
+#include "utils.h"
+#include "handle.h"
+#include "modules.h"
+#include "malseclogon.h"
 
 /*
  * "The DuplicateHandle system call has an interesting behaviour

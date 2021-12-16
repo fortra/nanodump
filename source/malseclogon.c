@@ -1,5 +1,5 @@
-#include "../include/malseclogon.h"
-#include "../include/handle.h"
+#include "malseclogon.h"
+#include "handle.h"
 
 PHANDLE_LIST find_process_handles_in_lsass(
     DWORD lsass_pid

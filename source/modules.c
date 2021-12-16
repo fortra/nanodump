@@ -1,4 +1,4 @@
-#include "../include/modules.h"
+#include "modules.h"
 
 PVOID get_peb_address(
     HANDLE hProcess

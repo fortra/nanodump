@@ -7,6 +7,7 @@ A Beacon Object File that creates a minidump of the LSASS process.
 ### Features
 - It uses syscalls (with [SysWhispers2](https://github.com/jthuraisamy/SysWhispers2)) for most operations
 - Syscalls are called from an *ntdll* address to bypass some syscall detections
+- Windows APIs are called using dynamic invoke
 - You can choose to download the dump without touching disk or write it to a file
 - The minidump by default has an invalid signature to avoid detection
 - It reduces the size of the dump by ignoring irrelevant DLLs. The (nano)dump tends to be arround 10 MB in size

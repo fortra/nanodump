@@ -1,131 +1,249 @@
 #include "dinvoke.h"
 
-BOOL strcmp_i(LPCSTR s1, LPCSTR s2)
-{
-    BOOL matches = TRUE;
-    for (int i = 0; s1[i] || s2[i]; i++)
-    {
-        // make them lower case
-        char c1 = s1[i];
-        char c2 = s2[i];
-        if (c1 >= 'A' && c1 <= 'Z')
-            c1 += 32;
-        if (c2 >= 'A' && c2 <= 'Z')
-            c2 += 32;
-        if (c1 != c2)
-        {
-            matches = FALSE;
-            break;
-        }
-    }
-    return matches;
-}
-
-PVOID GetFunctionAddress(
-    HMODULE hLibrary,
-    DWORD FunctionHash
+/*
+ * Check that hLibrary is indeed a DLL and not something else
+ */
+BOOL is_dll(
+    HMODULE hLibrary
 )
 {
-    PIMAGE_NT_HEADERS pNtHeaders;
-    PIMAGE_DATA_DIRECTORY pDataDir;
-    PIMAGE_EXPORT_DIRECTORY pExpDir;
+    PIMAGE_DOS_HEADER dos;
+    PIMAGE_NT_HEADERS nt;
 
-    if (hLibrary == NULL)
-        return NULL;
+    if (!hLibrary)
+        return FALSE;
 
-    pNtHeaders = RVA(
-        PIMAGE_NT_HEADERS,
-        hLibrary,
-        ((PIMAGE_DOS_HEADER)hLibrary)->e_lfanew
-    );
+    dos = (PIMAGE_DOS_HEADER)hLibrary;
 
-    pDataDir = &pNtHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
-    if (pDataDir->Size)
+    // check the MZ magic bytes
+    if (dos->e_magic != MZ)
+        return FALSE;
+
+    nt = RVA(PIMAGE_NT_HEADERS, hLibrary, dos->e_lfanew);
+
+    // check the NT_HEADER signature
+    if (nt->Signature != IMAGE_NT_SIGNATURE)
+        return FALSE;
+
+    // check that it is a DLL and not a PE
+    USHORT Characteristics = nt->FileHeader.Characteristics;
+    if ((Characteristics & IMAGE_FILE_DLL) != IMAGE_FILE_DLL)
+        return FALSE;
+
+    return TRUE;
+}
+
+/*
+ * Look among all loaded DLLs for an export with certain function hash
+ */
+PVOID find_legacy_export(
+    HMODULE hOriginalLibrary,
+    DWORD fhash
+)
+{
+    PVOID addr;
+    PND_PEB Peb = (PND_PEB)READ_MEMLOC(PEB_OFFSET);
+    PND_PEB_LDR_DATA Ldr = Peb->Ldr;
+    PVOID FirstEntry = &Ldr->InMemoryOrderModuleList.Flink;
+    PND_LDR_DATA_TABLE_ENTRY Entry = (PND_LDR_DATA_TABLE_ENTRY)Ldr->InMemoryOrderModuleList.Flink;
+
+    for (; Entry != FirstEntry; Entry = (PND_LDR_DATA_TABLE_ENTRY)Entry->InMemoryOrderLinks.Flink)
     {
-        pExpDir = RVA(
-            PIMAGE_EXPORT_DIRECTORY,
-            hLibrary,
-            pDataDir->VirtualAddress
+        // avoid looking in the DLL that brought us here
+        if (Entry->DllBase == hOriginalLibrary)
+            continue;
+
+        // check if this DLL has an export with the function hash we are looking for
+        addr = get_function_address(
+            Entry->DllBase,
+            fhash,
+            0
         );
+        if (!addr)
+            continue;
 
-        // iterate over all the exports
-        for (int i = 0; i < pExpDir->NumberOfNames; i++)
-        {
-            ULONG32* pRVA = RVA(
-                ULONG32*,
-                hLibrary,
-                pExpDir->AddressOfNames + i * 4
-            );
-            LPCSTR functionName = RVA(
-                LPCSTR,
-                hLibrary,
-                *pRVA
-            );
-            if (FunctionHash == SW2_HashSyscall(functionName))
-            {
-                // found it
-                PSHORT pRVA2 = RVA(
-                    PSHORT,
-                    hLibrary,
-                    pExpDir->AddressOfNameOrdinals + i * 2
-                );
-                ULONG32 FunctionOrdinal = pExpDir->Base + *pRVA2;
-
-                PULONG32 pFunctionRVA = RVA(
-                    PULONG32,
-                    hLibrary,
-                    pExpDir->AddressOfFunctions + 4 * (FunctionOrdinal - pExpDir->Base)
-                );
-                PVOID FunctionPtr = RVA(
-                    PVOID,
-                    hLibrary,
-                    *pFunctionRVA
-                );
-                return FunctionPtr;
-            }
-        }
+        return addr;
     }
+
     return NULL;
 }
 
-HANDLE GetLibraryAddress(
-    LPCSTR LibName
+/*
+ * Follow the reference and return the real address of the function
+ */
+PVOID resolve_reference(
+    HMODULE hOriginalLibrary,
+    PVOID addr
 )
 {
-    PSW2_PEB Peb = (PSW2_PEB)READ_MEMLOC(PEB_OFFSET);
-    PSW2_PEB_LDR_DATA Ldr = Peb->Ldr;
-    PIMAGE_EXPORT_DIRECTORY ExportDirectory = NULL;
-    PVOID DllBase = NULL;
+    HANDLE hLibrary;
+    PVOID new_addr;
+    LPCSTR api;
 
-    // Get the DllBase address of LibName
-    PSW2_LDR_DATA_TABLE_ENTRY LdrEntry;
-    for (LdrEntry = (PSW2_LDR_DATA_TABLE_ENTRY)Ldr->Reserved2[1]; LdrEntry->DllBase != NULL; LdrEntry = (PSW2_LDR_DATA_TABLE_ENTRY)LdrEntry->Reserved1[0])
+    // addr points to a string like: NewLibrary.NewFunctionName
+    api = &strrchr(addr, '.')[1];
+    DWORD dll_length = (ULONG_PTR)api - (ULONG_PTR)addr;
+    char dll[MAX_PATH] = {0};
+    strncpy(dll, (LPCSTR)addr, dll_length);
+    strcat(dll, "dll");
+    wchar_t wc_dll[MAX_PATH] = {0};
+    mbstowcs(wc_dll, dll, MAX_PATH);
+
+    // try to find the library NewLibrary
+    hLibrary = get_library_address(wc_dll, FALSE);
+    if (!hLibrary)
     {
-        DllBase = LdrEntry->DllBase;
-        PIMAGE_DOS_HEADER DosHeader = (PIMAGE_DOS_HEADER)DllBase;
-        PIMAGE_NT_HEADERS NtHeaders = SW2_RVA2VA(PIMAGE_NT_HEADERS, DllBase, DosHeader->e_lfanew);
-        PIMAGE_DATA_DIRECTORY DataDirectory = (PIMAGE_DATA_DIRECTORY)NtHeaders->OptionalHeader.DataDirectory;
-        DWORD VirtualAddress = DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
-        if (VirtualAddress == 0) continue;
+        // the library is not loaded, meaning it is a legacy DLL
+        new_addr = find_legacy_export(
+            hOriginalLibrary,
+            SW2_HashSyscall(api)
+        );
 
-        ExportDirectory = SW2_RVA2VA(PIMAGE_EXPORT_DIRECTORY, DllBase, VirtualAddress);
-
-        LPCSTR DllName = SW2_RVA2VA(LPCSTR, DllBase, ExportDirectory->Name);
-        if (strcmp_i(DllName, LibName))
-            return DllBase;
+        return new_addr;
     }
-    // the library is not currently loaded
-    // avoid an infinite loop
-    if (strcmp_i(KERNEL32, LibName))
-        return NULL;
-    // get the address of LoadLibraryA
-    LOADLIBRARYA pLoadLibraryA;
-    pLoadLibraryA = (LOADLIBRARYA)GetFunctionAddress(
-        GetLibraryAddress(KERNEL32),
-        LoadLibraryA_SW2_HASH
+
+    // get the address of NewFunction in NewLibrary
+    new_addr = get_function_address(
+        hLibrary,
+        SW2_HashSyscall(api),
+        0
     );
-    if (!pLoadLibraryA)
+
+    return new_addr;
+}
+
+/*
+ * Find an export in a DLL
+ */
+PVOID get_function_address(
+    HMODULE hLibrary,
+    DWORD fhash,
+    WORD ordinal
+)
+{
+    PIMAGE_DOS_HEADER       dos;
+    PIMAGE_NT_HEADERS       nt;
+    PIMAGE_DATA_DIRECTORY   data;
+    PIMAGE_EXPORT_DIRECTORY exp;
+    DWORD                   exp_size;
+    PDWORD                  adr;
+    PDWORD                  sym;
+    PWORD                   ord;
+    LPCSTR                  api;
+    PVOID                   addr;
+
+    if (!is_dll(hLibrary))
         return NULL;
+
+    dos  = (PIMAGE_DOS_HEADER)hLibrary;
+    nt   = RVA(PIMAGE_NT_HEADERS, hLibrary, dos->e_lfanew);
+    data = (PIMAGE_DATA_DIRECTORY)nt->OptionalHeader.DataDirectory;
+
+    if (!data->Size || !data->VirtualAddress)
+        return NULL;
+
+    exp      = RVA(PIMAGE_EXPORT_DIRECTORY, hLibrary, data->VirtualAddress);
+    exp_size = data[IMAGE_DIRECTORY_ENTRY_EXPORT].Size;
+
+    adr = RVA(PDWORD, hLibrary, exp->AddressOfFunctions);
+    sym = RVA(PDWORD, hLibrary, exp->AddressOfNames);
+    ord = RVA(PWORD,  hLibrary, exp->AddressOfNameOrdinals);
+
+    addr = NULL;
+    if (fhash)
+    {
+        // iterate over all the exports
+        for (DWORD i = 0; i < exp->NumberOfNames; i++)
+        {
+            api = RVA(LPCSTR, hLibrary, sym[i]);
+            if (fhash == SW2_HashSyscall(api))
+            {
+                addr = RVA(PVOID, hLibrary, adr[ord[i]]);
+                break;
+            }
+        }
+    }
+    else
+    {
+        addr = RVA(PVOID, hLibrary, adr[ordinal - exp->Base]);
+    }
+    if (!addr)
+        return NULL;
+
+    // check if addr is a pointer to another function in another DLL
+    if (addr >= (PVOID)exp &&
+        addr <  (PVOID)exp + exp_size)
+    {
+        // the function seems to be defined somewhere else
+        addr = resolve_reference(
+            hLibrary,
+            addr
+        );
+    }
+    return addr;
+}
+
+/*
+ * Get the base address of a DLL
+ */
+HANDLE get_library_address(
+    LPWSTR LibName,
+    BOOL DoLoad
+)
+{
+    PND_PEB Peb = (PND_PEB)READ_MEMLOC(PEB_OFFSET);
+    PND_PEB_LDR_DATA Ldr = Peb->Ldr;
+    PVOID FirstEntry = &Ldr->InMemoryOrderModuleList.Flink;
+    PND_LDR_DATA_TABLE_ENTRY Entry = (PND_LDR_DATA_TABLE_ENTRY)Ldr->InMemoryOrderModuleList.Flink;
+
+    do
+    {
+        if (!_wcsicmp(LibName, Entry->BaseDllName.Buffer))
+            return Entry->DllBase;
+
+        Entry = (PND_LDR_DATA_TABLE_ENTRY)Entry->InMemoryOrderLinks.Flink;
+    } while (Entry != FirstEntry);
+
+    if (!DoLoad)
+        return NULL;
+
+    // the library is not currently loaded
+    // get the address of LdrLoadDll
+    LdrLoadDll_t LdrLoadDll = (LdrLoadDll_t)get_function_address(
+        get_library_address(NTDLL_DLL, FALSE),
+        LdrLoadDll_SW2_HASH,
+        0
+    );
+    if (!LdrLoadDll)
+    {
+        DPRINT_ERR("Address of 'LdrLoadDll' not found");
+        return NULL;
+    }
+
+    // create a UNICODE_STRING with the library name
+    UNICODE_STRING ModuleFileName;
+    ModuleFileName.Buffer = LibName;
+    ModuleFileName.Length = wcsnlen(ModuleFileName.Buffer, MAX_PATH);
+    ModuleFileName.Length *= 2;
+    ModuleFileName.MaximumLength = ModuleFileName.Length + 2;
+
     // load the library
-    return pLoadLibraryA(LibName);
+    HANDLE hLibrary = NULL;
+    NTSTATUS status = LdrLoadDll(
+        NULL,
+        0,
+        &ModuleFileName,
+        &hLibrary
+    );
+    if (!NT_SUCCESS(status))
+    {
+        DPRINT_ERR(
+            "Failed to load %ls, status: 0x%lx\n",
+            LibName,
+            status
+        );
+        return NULL;
+    }
+
+    return hLibrary;
 }

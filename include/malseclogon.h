@@ -3,7 +3,6 @@
 #define MAX_HANDLES 10000
 #define INVALID_HANDLE 6
 
-#define ADVAPI32 "Advapi32.dll"
 #define CreateProcessWithLogonW_SW2_HASH 0x39A92305
 
 typedef struct _HANDLE_LIST
@@ -22,7 +21,7 @@ struct TEB
     struct _PEB* ProcessEnvironmentBlock;
 };
 
-typedef BOOL(WINAPI* CREATEPROCESSWITHLOGONW) (LPCWSTR lpUsername, LPCWSTR lpDomain, LPCWSTR lpPassword, DWORD dwLogonFlags, LPCWSTR lpApplicationName, LPWSTR lpCommandLine, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
+typedef BOOL(WINAPI* CreateProcessWithLogonW_t) (LPCWSTR lpUsername, LPCWSTR lpDomain, LPCWSTR lpPassword, DWORD dwLogonFlags, LPCWSTR lpApplicationName, LPWSTR lpCommandLine, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
 
 void kill_created_processes(PPROCESS_LIST created_processes);
 BOOL MalSecLogon(LPCSTR binary_path, LPCSTR dump_path, BOOL fork, BOOL use_valid_sig, BOOL use_malseclogon_locally, DWORD lsass_pid, PPROCESS_LIST* Pcreated_processes);

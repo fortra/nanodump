@@ -7,13 +7,14 @@ BOOL enable_debug_priv(void)
 #ifndef NODPRIV
     HANDLE hToken;
     TOKEN_PRIVILEGES tkp;
-    LOOKUPPRIVILEGEVALUEW LookupPrivilegeValueW;
+    LookupPrivilegeValueW_t LookupPrivilegeValueW;
     BOOL ok;
 
     // find the address of LookupPrivilegeValueW dynamically
-    LookupPrivilegeValueW = (LOOKUPPRIVILEGEVALUEW)GetFunctionAddress(
-        GetLibraryAddress(ADVAPI32),
-        LookupPrivilegeValueW_SW2_HASH
+    LookupPrivilegeValueW = (LookupPrivilegeValueW_t)get_function_address(
+        get_library_address(ADVAPI32_DLL, TRUE),
+        LookupPrivilegeValueW_SW2_HASH,
+        0
     );
     if (!LookupPrivilegeValueW)
     {

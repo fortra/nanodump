@@ -21,6 +21,10 @@ BOOL enable_debug_priv(void)
         DPRINT_ERR("Could not enable SeDebugPrivilege");
         return FALSE;
     }
+    DPRINT(
+        "Got address of LookupPrivilegeValueW: 0x%p",
+        (PVOID)LookupPrivilegeValueW
+    );
 
     ok = LookupPrivilegeValueW(
         NULL,

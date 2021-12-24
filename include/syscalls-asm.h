@@ -3,8 +3,8 @@
 
 #if _WIN64
 
-#define IsWoW64 IsWoW64
-__asm__("IsWoW64: \n\
+#define local_is_wow64 local_is_wow64
+__asm__("local_is_wow64: \n\
 	mov rax, 0 \n\
 	ret \n\
 ");
@@ -448,8 +448,8 @@ __asm__("NtTerminateProcess: \n\
 
 #else
 
-#define IsWoW64 IsWoW64
-__asm__("IsWoW64: \n\
+#define local_is_wow64 local_is_wow64
+__asm__("local_is_wow64: \n\
 	mov eax, fs:[0xc0] \n\
 	test eax, eax \n\
 	jne wow64 \n\

@@ -8,27 +8,30 @@
 #define LSASS_PERMISSIONS PROCESS_QUERY_INFORMATION|PROCESS_VM_READ
 
 #if _WIN64
-#define OSMAJORVERSION_OFFSET 0x118
-#define OSMINORVERSION_OFFSET 0x11c
-#define OSBUILDNUMBER_OFFSET 0x120
-#define OSPLATFORMID_OFFSET 0x124
-#define CSDVERSION_OFFSET 0x2e8
-#define PROCESSOR_ARCHITECTURE AMD64
+ #define OSMAJORVERSION_OFFSET 0x118
+ #define OSMINORVERSION_OFFSET 0x11c
+ #define OSBUILDNUMBER_OFFSET 0x120
+ #define OSPLATFORMID_OFFSET 0x124
+ #define CSDVERSION_OFFSET 0x2e8
+ #define PROCESSOR_ARCHITECTURE AMD64
 #else
-#define OSMAJORVERSION_OFFSET 0xa4
-#define OSMINORVERSION_OFFSET 0xa8
-#define OSBUILDNUMBER_OFFSET 0xac
-#define OSPLATFORMID_OFFSET 0xb0
-#define CSDVERSION_OFFSET 0x1f0
-#define PROCESSOR_ARCHITECTURE INTEL
+ #define OSMAJORVERSION_OFFSET 0xa4
+ #define OSMINORVERSION_OFFSET 0xa8
+ #define OSBUILDNUMBER_OFFSET 0xac
+ #define OSPLATFORMID_OFFSET 0xb0
+ #define CSDVERSION_OFFSET 0x1f0
+ #define PROCESSOR_ARCHITECTURE INTEL
 #endif
 
 #define RVA(type, base_addr, rva) (type)((ULONG_PTR) base_addr + rva)
+#ifndef offsetof
+ #define offsetof(a,b) ((ULONG_PTR)(&(((a*)(0))->b)))
+#endif
 
 #define NtCurrentProcess() ( (HANDLE)(LONG_PTR) -1 )
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof((a)[0]))
 #ifndef NT_SUCCESS
-#define NT_SUCCESS(Status) ((NTSTATUS)(Status) >= 0)
+ #define NT_SUCCESS(Status) ((NTSTATUS)(Status) >= 0)
 #endif
 
 #define STATUS_PARTIAL_COPY 0x8000000D
@@ -58,70 +61,74 @@
 // 900 KiB
 #define CHUNK_SIZE 0xe1000
 
-#ifndef _WIN64
-// x86 has conflicting types with these functions
-#define NtClose _NtClose
-#define NtQueryInformationProcess _NtQueryInformationProcess
-#define NtCreateFile _NtCreateFile
-#define NtQuerySystemInformation _NtQuerySystemInformation
-#define NtQueryObject _NtQueryObject
-#define NtWaitForSingleObject _NtWaitForSingleObject
+#ifdef _M_IX86
+ // x86 has conflicting types with these functions
+ #define NtClose _NtClose
+ #define NtQueryInformationProcess _NtQueryInformationProcess
+ #define NtCreateFile _NtCreateFile
+ #define NtQuerySystemInformation _NtQuerySystemInformation
+ #define NtQueryObject _NtQueryObject
+ #define NtWaitForSingleObject _NtWaitForSingleObject
 #endif
 
 #ifdef _WIN64
-#define CID_OFFSET 0x40
-#define PEB_OFFSET 0x60
-#define READ_MEMLOC __readgsqword
+ #define CID_OFFSET 0x40
+ #define PEB_OFFSET 0x60
+ #define READ_MEMLOC __readgsqword
 #else
-#define CID_OFFSET 0x20
-#define PEB_OFFSET 0x30
-#define READ_MEMLOC __readfsdword
+ #define CID_OFFSET 0x20
+ #define PEB_OFFSET 0x30
+ #define READ_MEMLOC __readfsdword
 #endif
 
 #ifdef BOF
+ WINBASEAPI HANDLE WINAPI KERNEL32$GetProcessHeap();
+ WINBASEAPI void * WINAPI KERNEL32$HeapAlloc (HANDLE hHeap, DWORD dwFlags, SIZE_T dwBytes);
+ WINBASEAPI BOOL   WINAPI KERNEL32$HeapFree (HANDLE, DWORD, PVOID);
+ WINBASEAPI DWORD  WINAPI KERNEL32$GetLastError (VOID);
+ WINBASEAPI VOID   WINAPI KERNEL32$Sleep (DWORD dwMilliseconds);
 
-WINBASEAPI HANDLE WINAPI KERNEL32$GetProcessHeap();
-WINBASEAPI void * WINAPI KERNEL32$HeapAlloc (HANDLE hHeap, DWORD dwFlags, SIZE_T dwBytes);
-WINBASEAPI BOOL   WINAPI KERNEL32$HeapFree (HANDLE, DWORD, PVOID);
-WINBASEAPI DWORD  WINAPI KERNEL32$GetLastError (VOID);
-WINBASEAPI VOID   WINAPI KERNEL32$Sleep (DWORD dwMilliseconds);
+ WINBASEAPI wchar_t * __cdecl MSVCRT$wcsstr(const wchar_t *_Str,const wchar_t *_SubStr);
+ WINBASEAPI char *    __cdecl MSVCRT$strrchr(const char *_Str,int _Ch);
+ WINBASEAPI void *    __cdecl MSVCRT$memcpy(void * __restrict__ _Dst,const void * __restrict__ _Src,size_t _MaxCount);
+ WINBASEAPI size_t    __cdecl MSVCRT$strnlen(const char *s, size_t maxlen);
+ WINBASEAPI size_t    __cdecl MSVCRT$wcsnlen(const wchar_t *_Src,size_t _MaxCount);
+ WINBASEAPI wchar_t * __cdecl MSVCRT$wcscpy(wchar_t * __restrict__ __dst, const wchar_t * __restrict__ __src);
+ WINBASEAPI size_t    __cdecl MSVCRT$mbstowcs(wchar_t * __restrict__ _Dest,const char * __restrict__ _Source,size_t _MaxCount);
+ WINBASEAPI wchar_t * __cdecl MSVCRT$wcsncat(wchar_t * __restrict__ _Dest,const wchar_t * __restrict__ _Source,size_t _Count);
+ WINBASEAPI int       __cdecl MSVCRT$strncmp(const char *s1, const char *s2, size_t n);
+ WINBASEAPI int       __cdecl MSVCRT$_wcsicmp(const wchar_t *_Str1,const wchar_t *_Str2);
+ WINBASEAPI void      __cdecl MSVCRT$srand(int initial);
+ WINBASEAPI int       __cdecl MSVCRT$rand();
+ WINBASEAPI time_t    __cdecl MSVCRT$time(time_t *time);
+ WINBASEAPI void      __cdecl MSVCRT$memset(void *dest, int c, size_t count);
+ WINBASEAPI size_t    __cdecl MSVCRT$strlen(const char *s);
+ WINBASEAPI char *    __cdecl MSVCRT$strncpy(char * __restrict__ __dst, const char * __restrict__ __src, size_t __n);
+ WINBASEAPI char *    __cdecl MSVCRT$strcat(char * __restrict__ _Dest,const char * __restrict__ _Source);
 
-WINBASEAPI wchar_t * __cdecl MSVCRT$wcsstr(const wchar_t *_Str,const wchar_t *_SubStr);
-WINBASEAPI char *    __cdecl MSVCRT$strrchr(const char *_Str,int _Ch);
-WINBASEAPI void *    __cdecl MSVCRT$memcpy(void * __restrict__ _Dst,const void * __restrict__ _Src,size_t _MaxCount);
-WINBASEAPI size_t    __cdecl MSVCRT$strnlen(const char *s, size_t maxlen);
-WINBASEAPI size_t    __cdecl MSVCRT$wcsnlen(const wchar_t *_Src,size_t _MaxCount);
-WINBASEAPI wchar_t * __cdecl MSVCRT$wcscpy(wchar_t * __restrict__ __dst, const wchar_t * __restrict__ __src);
-WINBASEAPI size_t    __cdecl MSVCRT$mbstowcs(wchar_t * __restrict__ _Dest,const char * __restrict__ _Source,size_t _MaxCount);
-WINBASEAPI wchar_t * __cdecl MSVCRT$wcsncat(wchar_t * __restrict__ _Dest,const wchar_t * __restrict__ _Source,size_t _Count);
-WINBASEAPI int       __cdecl MSVCRT$strncmp(const char *s1, const char *s2, size_t n);
-WINBASEAPI int       __cdecl MSVCRT$_wcsicmp(const wchar_t *_Str1,const wchar_t *_Str2);
-WINBASEAPI void      __cdecl MSVCRT$srand(int initial);
-WINBASEAPI int       __cdecl MSVCRT$rand();
-WINBASEAPI time_t    __cdecl MSVCRT$time(time_t *time);
-WINBASEAPI void      __cdecl MSVCRT$memset(void *dest, int c, size_t count);
+ #define GetProcessHeap KERNEL32$GetProcessHeap
+ #define HeapAlloc      KERNEL32$HeapAlloc
+ #define HeapFree       KERNEL32$HeapFree
+ #define GetLastError   KERNEL32$GetLastError
+ #define Sleep          KERNEL32$Sleep
 
-#define GetProcessHeap KERNEL32$GetProcessHeap
-#define HeapAlloc      KERNEL32$HeapAlloc
-#define HeapFree       KERNEL32$HeapFree
-#define GetLastError   KERNEL32$GetLastError
-#define Sleep          KERNEL32$Sleep
-
-#define wcsstr   MSVCRT$wcsstr
-#define strrchr  MSVCRT$strrchr
-#define memcpy   MSVCRT$memcpy
-#define strnlen  MSVCRT$strnlen
-#define wcsnlen  MSVCRT$wcsnlen
-#define wcscpy   MSVCRT$wcscpy
-#define mbstowcs MSVCRT$mbstowcs
-#define wcsncat  MSVCRT$wcsncat
-#define strncmp  MSVCRT$strncmp
-#define _wcsicmp MSVCRT$_wcsicmp
-#define srand    MSVCRT$srand
-#define rand     MSVCRT$rand
-#define time     MSVCRT$time
-#define memset   MSVCRT$memset
-
+ #define wcsstr   MSVCRT$wcsstr
+ #define strrchr  MSVCRT$strrchr
+ #define memcpy   MSVCRT$memcpy
+ #define strnlen  MSVCRT$strnlen
+ #define wcsnlen  MSVCRT$wcsnlen
+ #define wcscpy   MSVCRT$wcscpy
+ #define mbstowcs MSVCRT$mbstowcs
+ #define wcsncat  MSVCRT$wcsncat
+ #define strncmp  MSVCRT$strncmp
+ #define _wcsicmp MSVCRT$_wcsicmp
+ #define srand    MSVCRT$srand
+ #define rand     MSVCRT$rand
+ #define time     MSVCRT$time
+ #define memset   MSVCRT$memset
+ #define strlen   MSVCRT$strlen
+ #define strncpy  MSVCRT$strncpy
+ #define strcat   MSVCRT$strcat
 #endif
 
 #define intAlloc(size) HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size)
@@ -202,9 +209,9 @@ WINBASEAPI void      __cdecl MSVCRT$memset(void *dest, int c, size_t count);
 #define SIZE_OF_HEADER 32
 #define SIZE_OF_DIRECTORY 12
 #ifdef _WIN64
-#define SIZE_OF_SYSTEM_INFO_STREAM 48
+ #define SIZE_OF_SYSTEM_INFO_STREAM 48
 #else
-#define SIZE_OF_SYSTEM_INFO_STREAM 56
+ #define SIZE_OF_SYSTEM_INFO_STREAM 56
 #endif
 #define SIZE_OF_MINIDUMP_MODULE 108
 

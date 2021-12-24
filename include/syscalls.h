@@ -54,7 +54,7 @@ typedef struct _SW2_PEB {
 DWORD SW2_HashSyscall(PCSTR FunctionName);
 BOOL SW2_PopulateSyscallList(void);
 EXTERN_C DWORD SW2_GetSyscallNumber(DWORD FunctionHash) asm ("SW2_GetSyscallNumber");
-EXTERN_C BOOL IsWoW64(void) asm ("IsWoW64");
+EXTERN_C BOOL local_is_wow64(void) asm ("local_is_wow64");
 EXTERN_C PVOID GetSyscallAddress(void) asm ("GetSyscallAddress");
 
 //typedef struct _IO_STATUS_BLOCK

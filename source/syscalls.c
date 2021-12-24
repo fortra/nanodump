@@ -47,9 +47,8 @@ PVOID GetSyscallAddress(void)
     BYTE syscall_code[] = { 0x0f, 0x34, 0xc3 };
 #endif
 
-
-#ifndef _WIN64
-    if (IsWoW64())
+#ifdef _M_IX86
+    if (local_is_wow64())
     {
         // if we are a WoW64 process, jump to WOW32Reserved
         SyscallAddress = (PVOID)READ_MEMLOC(0xc0);

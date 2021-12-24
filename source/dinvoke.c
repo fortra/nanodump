@@ -244,6 +244,7 @@ HANDLE get_library_address(
         );
         return NULL;
     }
+    DPRINT("Loaded %ls at 0x%p", LibName, hLibrary);
 
     return hLibrary;
 }

@@ -176,8 +176,8 @@ void go(char* args, int length)
         return;
 
     DPRINT(
-        "The dump was created successfully, final size: %lld bytes",
-        (ULONG64)dc.rva
+        "The dump was created successfully, final size: %d MiB",
+        (dc.rva/1024)/1024
     );
 
     // at this point, you can encrypt or obfuscate the dump
@@ -518,8 +518,8 @@ int main(int argc, char* argv[])
         return -1;
 
     DPRINT(
-        "The dump was created successfully, final size: %lld bytes",
-        (ULONG64)dc.rva
+        "The dump was created successfully, final size: %d MiB",
+        (dc.rva/1024)/1024
     );
 
     // at this point, you can encrypt or obfuscate the dump

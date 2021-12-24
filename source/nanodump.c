@@ -28,7 +28,13 @@ BOOL append(
     unsigned size
 )
 {
-    if (dc->rva + size > dc->DumpMaxSize)
+    ULONG32 new_rva = dc->rva + size;
+    if (new_rva < dc->rva)
+    {
+        PRINT_ERR("The dump size exceeds the 32-bit address space!");
+        return FALSE;
+    }
+    else if (new_rva >= dc->DumpMaxSize)
     {
         PRINT_ERR("The dump is too big, please increase DUMP_MAX_SIZE.");
         return FALSE;
@@ -36,7 +42,7 @@ BOOL append(
     else
     {
         writeat(dc, dc->rva, data, size);
-        dc->rva += size;
+        dc->rva = new_rva;
         return TRUE;
     }
 }

@@ -108,11 +108,6 @@ alias nanodump {
             # set the path where the minidump will be written to disk
             $write_file = 1;
             $dump_path = @_[$i];
-            if(!lindexOf($dump_path, "\\"))
-            {
-                berror($1, "You must provide a full path: " . $dump_path);
-                return;
-            }
         }
         else if (@_[$i] eq "--fork" || @_[$i] eq "-f")
         {

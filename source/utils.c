@@ -2,6 +2,27 @@
 #include "handle.h"
 #include "syscalls.h"
 
+BOOL is_full_path(
+    LPCSTR filename
+)
+{
+    char c;
+
+    c = filename[0] | 0x20;
+    if (c < 97 || c > 122)
+        return FALSE;
+
+    c = filename[1];
+    if (c != ':')
+        return FALSE;
+
+    c = filename[2];
+    if (c != '\\')
+        return FALSE;
+
+    return TRUE;
+}
+
 VOID get_full_path(
     PUNICODE_STRING full_dump_path,
     LPCSTR filename
@@ -11,8 +32,8 @@ VOID get_full_path(
 
     // add \??\ at the start
     wcscpy(full_dump_path->Buffer, L"\\??\\");
-    // it is just a filename, add the current directory
-    if (!strrchr(filename, '\\'))
+    // if it is just a relative path, add the current directory
+    if (!is_full_path(filename))
         wcsncat(full_dump_path->Buffer, get_cwd(), MAX_PATH);
     // convert the path to wide string
     mbstowcs(wcFileName, filename, MAX_PATH);
@@ -138,7 +159,8 @@ BOOL create_file(
         0
     );
     if (status == STATUS_OBJECT_PATH_NOT_FOUND ||
-        status == STATUS_OBJECT_NAME_INVALID)
+        status == STATUS_OBJECT_NAME_INVALID ||
+        status == STATUS_OBJECT_PATH_SYNTAX_BAD)
     {
         PRINT_ERR(
             "The path '%ls' is invalid.",

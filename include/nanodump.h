@@ -59,8 +59,8 @@
 #define PAGE_NOACCESS 0x01
 #define PAGE_GUARD 0x100
 
-// 70 MiB
-#define DUMP_MAX_SIZE 0x4600000
+// 200 MiB
+#define DUMP_MAX_SIZE 0xc800000
 // 900 KiB
 #define CHUNK_SIZE 0xe1000
 

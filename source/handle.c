@@ -3,6 +3,8 @@
 #include "modules.h"
 #include "malseclogon.h"
 
+#if defined(NANO) && !defined(SSP)
+
 /*
  * "The DuplicateHandle system call has an interesting behaviour
  * when using the pseudo current process handle, which has the value -1.
@@ -53,7 +55,7 @@ HANDLE obtain_lsass_handle(
     if (is_malseclogon_stage_2)
     {
         // this is always done from an EXE
-#ifndef BOF
+#ifdef EXE
         hProcess = malseclogon_stage_2(
             dump_path
         );
@@ -528,3 +530,5 @@ HANDLE fork_process(
     NtClose(hProcess); hProcess = NULL;
     return hCloneProcess;
 }
+
+#endif

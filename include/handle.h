@@ -1,5 +1,7 @@
 #pragma once
 
+#if defined(NANO) && !defined(SSP)
+
 #define LSASS_EXE L"lsass.exe"
 #define PROCESS_TYPE L"Process"
 
@@ -76,3 +78,5 @@ HANDLE duplicate_lsass_handle(DWORD lsass_pid, DWORD permissions);
 HANDLE get_process_handle(DWORD dwPid, DWORD dwFlags, BOOL quiet);
 HANDLE fork_process(DWORD dwPid, HANDLE hProcess);
 HANDLE find_lsass(DWORD dwFlags);
+
+#endif

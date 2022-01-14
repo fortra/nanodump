@@ -1,6 +1,8 @@
 #include "nanodump.c"
 
-#ifdef BOF
+
+#if defined(NANO) && defined(BOF)
+
 void go(char* args, int length)
 {
     datap   parser;
@@ -212,7 +214,7 @@ void go(char* args, int length)
     );
 }
 
-#elif defined(PE)
+#elif defined(NANO) && defined(EXE)
 
 void usage(char* procname)
 {
@@ -546,7 +548,7 @@ int main(int argc, char* argv[])
     return 0;
 }
 
-#elif defined(SSP)
+#elif defined(NANO) && defined(SSP)
 
 #include "ssp.h"
 

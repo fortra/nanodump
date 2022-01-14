@@ -1,6 +1,8 @@
 #include "malseclogon.h"
 #include "handle.h"
 
+#if defined(NANO) && !defined(SSP)
+
 PHANDLE_LIST find_process_handles_in_lsass(
     DWORD lsass_pid
 )
@@ -412,7 +414,8 @@ BOOL malseclogon_stage_1(
     }
 }
 
-#ifndef BOF
+#ifdef EXE
+
 HANDLE malseclogon_stage_2(
     LPCSTR dump_path
 )
@@ -436,4 +439,6 @@ HANDLE malseclogon_stage_2(
     }
     return hProcess;
 }
+#endif
+
 #endif

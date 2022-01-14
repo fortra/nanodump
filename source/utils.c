@@ -285,60 +285,6 @@ BOOL download_file(
 }
 #endif
 
-/*
- * kill a process by PID
- * used to kill processes created by MalSecLogon
- */
-BOOL kill_process(
-    DWORD pid
-)
-{
-    if (!pid)
-        return FALSE;
-    // open a handle with PROCESS_TERMINATE
-    HANDLE hProcess = get_process_handle(
-        pid,
-        PROCESS_TERMINATE,
-        FALSE
-    );
-    if (!hProcess)
-    {
-        DPRINT_ERR("Failed to kill process with PID: %ld", pid);
-        return FALSE;
-    }
-
-    NTSTATUS status = NtTerminateProcess(
-        hProcess,
-        ERROR_SUCCESS
-    );
-    if (!NT_SUCCESS(status))
-    {
-        syscall_failed("NtTerminateProcess", status);
-        DPRINT_ERR("Failed to kill process with PID: %ld", pid);
-        return FALSE;
-    }
-    DPRINT("Killed process with PID: %ld", pid);
-    return TRUE;
-}
-
-BOOL wait_for_process(
-    HANDLE hProcess
-)
-{
-    NTSTATUS status = NtWaitForSingleObject(
-        hProcess,
-        TRUE,
-        NULL
-    );
-    if (!NT_SUCCESS(status))
-    {
-        syscall_failed("NtWaitForSingleObject", status);
-        DPRINT_ERR("Could not wait for process");
-        return FALSE;
-    }
-    return TRUE;
-}
-
 BOOL delete_file(
     LPCSTR filepath
 )
@@ -414,6 +360,26 @@ BOOL file_exists(
         return FALSE;
     }
     NtClose(hFile); hFile = NULL;
+    return TRUE;
+}
+
+#if defined(NANO) && !defined(SSP)
+
+BOOL wait_for_process(
+    HANDLE hProcess
+)
+{
+    NTSTATUS status = NtWaitForSingleObject(
+        hProcess,
+        TRUE,
+        NULL
+    );
+    if (!NT_SUCCESS(status))
+    {
+        syscall_failed("NtWaitForSingleObject", status);
+        DPRINT_ERR("Could not wait for process");
+        return FALSE;
+    }
     return TRUE;
 }
 
@@ -497,6 +463,42 @@ DWORD get_pid(
     return basic_info.UniqueProcessId;
 }
 
+/*
+ * kill a process by PID
+ * used to kill processes created by MalSecLogon
+ */
+BOOL kill_process(
+    DWORD pid
+)
+{
+    if (!pid)
+        return FALSE;
+    // open a handle with PROCESS_TERMINATE
+    HANDLE hProcess = get_process_handle(
+        pid,
+        PROCESS_TERMINATE,
+        FALSE
+    );
+    if (!hProcess)
+    {
+        DPRINT_ERR("Failed to kill process with PID: %ld", pid);
+        return FALSE;
+    }
+
+    NTSTATUS status = NtTerminateProcess(
+        hProcess,
+        ERROR_SUCCESS
+    );
+    if (!NT_SUCCESS(status))
+    {
+        syscall_failed("NtTerminateProcess", status);
+        DPRINT_ERR("Failed to kill process with PID: %ld", pid);
+        return FALSE;
+    }
+    DPRINT("Killed process with PID: %ld", pid);
+    return TRUE;
+}
+
 DWORD get_lsass_pid(void)
 {
     DWORD lsass_pid;
@@ -515,6 +517,8 @@ DWORD get_lsass_pid(void)
     }
     return lsass_pid;
 }
+
+#endif
 
 void print_success(
     LPCSTR dump_path,

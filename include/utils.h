@@ -5,6 +5,7 @@ typedef struct _linked_list
     struct _linked_list* next;
 } linked_list, *Plinked_list;
 
+BOOL is_full_path(LPCSTR filename);
 LPCWSTR get_cwd(VOID);
 VOID get_full_path(PUNICODE_STRING full_dump_path, LPCSTR filename);
 BOOL wait_for_process(HANDLE hProcess);

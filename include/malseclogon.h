@@ -1,5 +1,7 @@
 #pragma once
 
+#if defined(NANO) && !defined(SSP)
+
 #define MAX_HANDLES 10000
 #define INVALID_HANDLE 6
 
@@ -26,6 +28,8 @@ typedef BOOL(WINAPI* CreateProcessWithLogonW_t) (LPCWSTR lpUsername, LPCWSTR lpD
 void kill_created_processes(PPROCESS_LIST created_processes);
 BOOL MalSecLogon(LPCSTR binary_path, LPCSTR dump_path, BOOL fork, BOOL use_valid_sig, BOOL use_malseclogon_locally, DWORD lsass_pid, PPROCESS_LIST* Pcreated_processes);
 BOOL malseclogon_stage_1(LPCSTR program_name, LPCSTR dump_path, BOOL fork_lsass, BOOL valid, BOOL use_malseclogon_locally, DWORD lsass_pid, PPROCESS_LIST process_list);
-#ifndef BOF
+#ifdef EXE
 HANDLE malseclogon_stage_2(LPCSTR dump_path);
+#endif
+
 #endif

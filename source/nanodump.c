@@ -456,6 +456,9 @@ PMiniDumpMemoryDescriptor64 get_memory_ranges(
                 base_address,
                 module_list))
             continue;
+        // if nanodump is running in LSASS, don't dump the dump :)
+        if (dc->BaseAddress == base_address && dc->hProcess == NtCurrentProcess())
+            continue;
 
         new_range = intAlloc(sizeof(MiniDumpMemoryDescriptor64));
         if(!new_range)

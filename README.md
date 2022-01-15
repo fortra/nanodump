@@ -67,10 +67,10 @@ If you prefer to stay on linux, you can use the python3 port of mimikatz called 
 python3 -m pypykatz lsa minidump <dumpfie>
 ```
 
-### Load nanodump as a SSP
-You can load nanodump as a SSP in LSASS to avoid opening a handle. The dump will be written to disk at the path that is hardcoded in the DLL (`C:\Windows\Temp\nano.dmp` by default).  
-Once the dump is completed, `DllMain` will return FALSE to make LSASS unload nanodump.  
-To access this functionality, use the `load_ssp` command.
+### Load nanodump as an SSP
+You can load nanodump as an SSP in LSASS to avoid opening a handle. The dump will be written to disk with an invalid signature at `C:\Windows\Temp\nano.dmp`. Once the dump is completed, `DllMain` will return FALSE to make LSASS unload nanodump.  
+To access this functionality, use the `load_ssp` command.  
+To change the dump path and signature configuration, modify the function `NanoDump` in [entry.c](source/entry.c) and recompile.
 
 
 ## Parameters

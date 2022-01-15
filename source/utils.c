@@ -179,7 +179,8 @@ BOOL create_file(
     return TRUE;
 }
 
-#ifdef BOF
+#if defined(NANO) && defined(BOF)
+
 BOOL download_file(
     LPCSTR fileName,
     char fileData[],
@@ -283,6 +284,7 @@ BOOL download_file(
     DPRINT("The dump was downloaded filessly");
     return TRUE;
 }
+
 #endif
 
 BOOL delete_file(

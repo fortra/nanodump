@@ -1,6 +1,8 @@
 #include "debugpriv.h"
 #include "dinvoke.c"
 
+#if defined(NANO) && !defined(SSP)
+
 BOOL enable_debug_priv(void)
 {
     // you can remove this function by providing the compiler flag: -DNODPRIV
@@ -73,3 +75,5 @@ BOOL enable_debug_priv(void)
 #endif
     return TRUE;
 }
+
+#endif

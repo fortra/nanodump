@@ -72,9 +72,9 @@ def replace_dinvoke_hashes(seed):
         for function_name, old_hash in matches:
             new_hash = get_function_hash(seed, function_name)
             code = code.replace(
-                old_hash,
-                f'0x{new_hash:08X}',
-                2
+                f'#define {function_name}_SW2_HASH {old_hash}',
+                f'#define {function_name}_SW2_HASH 0x{new_hash:08X}',
+                1
             )
         if matches:
             with open(header_file, 'w') as f:

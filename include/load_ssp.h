@@ -7,9 +7,9 @@
 #include <ntsecpkg.h>
 #include <ntsecpkg.h>
 
-typedef NTSTATUS(WINAPI* AddSecurityPackageA_t) (LPSTR pszPackageName, PSECURITY_PACKAGE_OPTIONS pOptions);
+typedef NTSTATUS(WINAPI* AddSecurityPackageW_t) (LPWSTR pszPackageName, PSECURITY_PACKAGE_OPTIONS pOptions);
 
-#define AddSecurityPackageA_SW2_HASH 0x09B0AC5A
+#define AddSecurityPackageW_SW2_HASH 0x09B08696
 
 #define SSPICLI_DLL L"SSPICLI.DLL"
 

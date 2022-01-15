@@ -554,10 +554,10 @@ int main(int argc, char* argv[])
 
 BOOL NanoDump(void)
 {
-    /****************** change this *******************/
-    LPCSTR  dump_path = "C:\\Windows\\Temp\\nano.dmp";
-    BOOL    use_valid_sig = FALSE;
-    /**************************************************/
+    /******************* change this *******************/
+    LPCSTR dump_path     = "C:\\Windows\\Temp\\nano.dmp";
+    BOOL   use_valid_sig = FALSE;
+    /***************************************************/
 
     ULONG32 Signature;
     SHORT   Version;

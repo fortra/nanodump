@@ -245,7 +245,7 @@ Pmodule_info find_modules(
     // the LSASS process should always have 'lsasrv.dll' loaded
     if (is_lsass && !lsasrv_found)
     {
-        PRINT_ERR("The selected process is not LSASS.");
+        PRINT_ERR("The selected process is not " LSASS ".");
         return NULL;
     }
     return module_list;

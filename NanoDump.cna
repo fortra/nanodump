@@ -261,6 +261,8 @@ alias load_ssp {
         }
         # upload the nanodump binary
         bupload_raw($1, $ssp_path, $exe);
+        # rm could also be used
+        blog($1, "Delete the DLL with: delete_file " . $ssp_path);
     }
 
     # pack the arguments
@@ -268,5 +270,47 @@ alias load_ssp {
 
     # run
     btask($1, "Running load_ssp BOF");
+    beacon_inline_execute($1, $bof, "go", $args);
+}
+
+beacon_command_register(
+"delete_file",
+"Delete a file.",
+"Usage: delete_file <file path>");
+alias delete_file {
+    local('$barch $handle $bof $args');
+
+    $barch = barch($1);
+
+    # make sure the beacon is not WoW64
+    $is64 = binfo($1, "is64");
+    if($barch eq "x86" && $is64 == 1)
+    {
+        berror($1, "delete_file does not support WoW64, use: rm");
+        return;
+    }
+
+
+    # read in the BOF file
+    $handle = openf(script_resource("compiled/delete_file." . $barch . ".o"));
+    $bof = readb($handle, -1);
+    closef($handle);
+    if(strlen($bof) == 0)
+    {
+        berror($1, "could not read bof file");
+        return;
+    }
+
+    if (size(@_) != 2)
+    {
+        berror($1, beacon_command_detail("delete_file"));
+        return;
+    }
+
+    # pack the arguments
+    $args = bof_pack($1, "z", $2);
+
+    # run
+    btask($1, "Running delete_file BOF");
     beacon_inline_execute($1, $bof, "go", $args);
 }

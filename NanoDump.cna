@@ -28,15 +28,6 @@ alias nanodump {
         return;
     }
 
-    ## make sure the beacon is not WoW64
-    #$barch = barch($1);
-    #$is64 = binfo($1, "is64");
-    #if($barch eq "x86" && $is64 == 1)
-    #{
-    #    berror($1, "Nanodump does not support WoW64");
-    #    return;
-    #}
-
     # reading lsass requires elevated privileges
     if(!-isadmin $1)
     {
@@ -215,15 +206,6 @@ alias load_ssp {
         return;
     }
 
-    ## make sure the beacon is not WoW64
-    #$barch = barch($1);
-    #$is64 = binfo($1, "is64");
-    #if($barch eq "x86" && $is64 == 1)
-    #{
-    #    berror($1, "Nanodump does not support WoW64");
-    #    return;
-    #}
-
     # loading an SSP requires elevated privileges
     if(!-isadmin $1)
     {
@@ -289,7 +271,6 @@ alias delete_file {
         berror($1, "delete_file does not support WoW64, use: rm");
         return;
     }
-
 
     # read in the BOF file
     $handle = openf(script_resource("compiled/delete_file." . $barch . ".o"));

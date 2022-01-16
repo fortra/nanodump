@@ -222,10 +222,7 @@ HANDLE get_library_address(
 
     // create a UNICODE_STRING with the library name
     UNICODE_STRING ModuleFileName;
-    wchar_t wcFilePath[MAX_PATH];
-    ModuleFileName.Buffer = wcFilePath;
-    wcscpy(ModuleFileName.Buffer, L"C:\\Windows\\System32\\");
-    wcsncat(ModuleFileName.Buffer, LibName, MAX_PATH);
+    ModuleFileName.Buffer = LibName;
     ModuleFileName.Length = wcsnlen(ModuleFileName.Buffer, MAX_PATH);
     ModuleFileName.Length *= 2;
     ModuleFileName.MaximumLength = ModuleFileName.Length + 2;

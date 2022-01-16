@@ -145,7 +145,7 @@ EXTERN_C NTSTATUS NtGetNextProcess(
 
 EXTERN_C NTSTATUS NtReadVirtualMemory(
 	IN HANDLE ProcessHandle,
-	IN PVOID BaseAddress OPTIONAL,
+	IN PVOID BaseAddress,
 	OUT PVOID Buffer,
 	IN SIZE_T BufferSize,
 	OUT PSIZE_T NumberOfBytesRead OPTIONAL) asm ("NtReadVirtualMemory");

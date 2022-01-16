@@ -55,6 +55,28 @@ __asm__("NtGetNextProcess: \n\
 	jmp r11 \n\
 ");
 
+#ifdef SSP
+
+// if SSP is used, NtReadVirtualMemory is no needed
+// simply read the memory directly
+
+#define ZwReadVirtualMemory NtReadVirtualMemory
+__asm__("NtReadVirtualMemory: \n\
+	test r9, r9 \n\
+	je donereading \n\
+	mov bl, [rdx] \n\
+	mov [r8], bl \n\
+	inc rdx \n\
+	inc r8 \n\
+	dec r9 \n\
+	jmp NtReadVirtualMemory \n\
+	donereading: \n\
+	xor rax, rax \n\
+	ret \n\
+");
+
+#else
+
 #define ZwReadVirtualMemory NtReadVirtualMemory
 __asm__("NtReadVirtualMemory: \n\
 	push rcx \n\
@@ -77,6 +99,8 @@ __asm__("NtReadVirtualMemory: \n\
 	mov r10, rcx \n\
 	jmp r11 \n\
 ");
+
+#endif
 
 #define ZwClose NtClose
 __asm__("NtClose: \n\
@@ -488,6 +512,34 @@ __asm__("NtGetNextProcess: \n\
 	ret \n\
 ");
 
+#ifdef SSP
+
+// if SSP is used, NtReadVirtualMemory is no needed
+// simply read the memory directly
+
+#define ZwReadVirtualMemory NtReadVirtualMemory
+__asm__("NtReadVirtualMemory: \n\
+	mov edx, [esp+0x08] \n\
+	mov ecx, [esp+0x0c] \n\
+	mov eax, [esp+0x10] \n\
+	test eax, eax \n\
+	jne copy1 \n\
+	xor eax, eax \n\
+	ret \n\
+	copy1: \n\
+	mov bl, [edx] \n\
+	mov [ecx], bl \n\
+	inc edx \n\
+	inc ecx \n\
+	dec eax \n\
+	test eax, eax \n\
+	jne copy1 \n\
+	xor eax, eax \n\
+	ret \n\
+");
+
+#else
+
 #define ZwReadVirtualMemory NtReadVirtualMemory
 __asm__("NtReadVirtualMemory: \n\
 	call GetSyscallAddress \n\
@@ -501,6 +553,8 @@ __asm__("NtReadVirtualMemory: \n\
 	call ebx \n\
 	ret \n\
 ");
+
+#endif
 
 #define ZwClose NtClose
 __asm__("NtClose: \n\

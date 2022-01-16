@@ -4,6 +4,11 @@ PVOID get_peb_address(
     HANDLE hProcess
 )
 {
+#ifdef SSP
+    // if nanodump is running as an SSP,
+    // avoid calling NtQueryInformationProcess
+    return (PVOID)READ_MEMLOC(PEB_OFFSET);
+#else
     PROCESS_BASIC_INFORMATION basic_info;
     PROCESSINFOCLASS ProcessInformationClass = 0;
     NTSTATUS status = NtQueryInformationProcess(
@@ -21,6 +26,7 @@ PVOID get_peb_address(
     }
 
     return basic_info.PebBaseAddress;
+#endif
 }
 
 PVOID get_module_list_address(

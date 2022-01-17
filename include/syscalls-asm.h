@@ -55,6 +55,7 @@ __asm__("NtGetNextProcess: \n\
 	jmp r11 \n\
 ");
 
+/*
 #ifdef SSP
 
 // if SSP is used, NtReadVirtualMemory is no needed
@@ -76,6 +77,7 @@ __asm__("NtReadVirtualMemory: \n\
 ");
 
 #else
+*/
 
 #define ZwReadVirtualMemory NtReadVirtualMemory
 __asm__("NtReadVirtualMemory: \n\
@@ -100,7 +102,7 @@ __asm__("NtReadVirtualMemory: \n\
 	jmp r11 \n\
 ");
 
-#endif
+//#endif
 
 #define ZwClose NtClose
 __asm__("NtClose: \n\
@@ -512,6 +514,7 @@ __asm__("NtGetNextProcess: \n\
 	ret \n\
 ");
 
+/*
 #ifdef SSP
 
 // if SSP is used, NtReadVirtualMemory is no needed
@@ -539,6 +542,7 @@ __asm__("NtReadVirtualMemory: \n\
 ");
 
 #else
+*/
 
 #define ZwReadVirtualMemory NtReadVirtualMemory
 __asm__("NtReadVirtualMemory: \n\
@@ -554,7 +558,7 @@ __asm__("NtReadVirtualMemory: \n\
 	ret \n\
 ");
 
-#endif
+//#endif
 
 #define ZwClose NtClose
 __asm__("NtClose: \n\

@@ -601,6 +601,7 @@ PVOID allocate_memory(
     );
     if (!NT_SUCCESS(status))
     {
+
         DPRINT_ERR(
             "Could not allocate enough memory to write the dump"
         )
@@ -630,7 +631,7 @@ void erase_dump_from_memory(
     memset(dc->BaseAddress, 0, dc->rva);
     // free the memory area where the dump was
     PVOID base_address = dc->BaseAddress;
-    SIZE_T region_size = dc->DumpMaxSize;
+    SIZE_T region_size = 0;
     NTSTATUS status = NtFreeVirtualMemory(
         NtCurrentProcess(),
         &base_address,

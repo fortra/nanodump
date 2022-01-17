@@ -5,9 +5,15 @@
 #include <stdio.h>
 #include <time.h>
 
+// 200 MiB
+#define DUMP_MAX_SIZE 0xc800000
+
 #define LSASS_PERMISSIONS PROCESS_QUERY_INFORMATION|PROCESS_VM_READ
 
 #define LSASS "LSASS"
+
+// 900 KiB
+#define CHUNK_SIZE 0xe1000
 
 #if _WIN64
  #define PROCESS_PARAMETERS_OFFSET 0x20
@@ -60,11 +66,6 @@
 #define MEM_MAPPED 0x40000
 #define PAGE_NOACCESS 0x01
 #define PAGE_GUARD 0x100
-
-// 200 MiB
-#define DUMP_MAX_SIZE 0xc800000
-// 900 KiB
-#define CHUNK_SIZE 0xe1000
 
 #ifdef _M_IX86
  // x86 has conflicting types with these functions

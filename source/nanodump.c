@@ -443,13 +443,16 @@ PMiniDumpMemoryDescriptor64 get_memory_ranges(
         if (mbi.State != MEM_COMMIT)
             continue;
         // ignore mapped pages
-        if (mbi.Type == MEM_MAPPED)
+        if (mbi.Type  == MEM_MAPPED)
             continue;
         // ignore pages with PAGE_NOACCESS
         if ((mbi.Protect & PAGE_NOACCESS) == PAGE_NOACCESS)
             continue;
         // ignore pages with PAGE_GUARD
-        if ((mbi.Protect & PAGE_GUARD) == PAGE_GUARD)
+        if ((mbi.Protect & PAGE_GUARD)    == PAGE_GUARD)
+            continue;
+        // ignore pages with PAGE_EXECUTE
+        if ((mbi.Protect & PAGE_EXECUTE)  == PAGE_EXECUTE)
             continue;
         // ignore modules that are not relevant to mimikatz
         if (mbi.Type == MEM_IMAGE &&

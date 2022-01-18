@@ -368,6 +368,12 @@ int main(int argc, char* argv[])
         }
     }
 
+    if (use_malseclogon && !is_full_path(dump_path))
+    {
+        PRINT("If MalSecLogon is being used, you need to provide the full path: %s", dump_path);
+        return -1;
+    }
+
     success = enable_debug_priv();
     if (!success)
         return -1;

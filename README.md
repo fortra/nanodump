@@ -1,6 +1,6 @@
 # NanoDump
 
-A Beacon Object File that creates a minidump of the LSASS process.
+A flexible tool that creates a minidump of the LSASS process.
 
 ![screenshot](demo.png)
 

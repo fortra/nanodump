@@ -5,14 +5,21 @@
 #include <stdio.h>
 #include <time.h>
 
-// 200 MiB
-#define DUMP_MAX_SIZE 0xc800000
+// amount of memory requested to write the dump: 200 MiB
+#define DUMP_MAX_SIZE 0x0c800000
 
-#define LSASS_PERMISSIONS PROCESS_QUERY_INFORMATION|PROCESS_VM_READ
+// fake credentials used by MalSecLogon
+#define NANODUMP_USER   L"NanoDumpUser"
+#define NANODUMP_DOMAIN L"NanoDumpDomain"
+#define NANODUMP_PASSWD L"NanoDumpPwd"
 
+// change to remove the "LSASS" string from the binaries
 #define LSASS "LSASS"
 
-// 900 KiB
+// permissions requested by NtOpenProcess
+#define LSASS_PERMISSIONS PROCESS_QUERY_INFORMATION|PROCESS_VM_READ
+
+// chunk size used in download_file: 900 KiB
 #define CHUNK_SIZE 0xe1000
 
 #if _WIN64
@@ -92,7 +99,6 @@
  WINBASEAPI void * WINAPI KERNEL32$HeapAlloc (HANDLE hHeap, DWORD dwFlags, SIZE_T dwBytes);
  WINBASEAPI BOOL   WINAPI KERNEL32$HeapFree (HANDLE, DWORD, PVOID);
  WINBASEAPI DWORD  WINAPI KERNEL32$GetLastError (VOID);
- WINBASEAPI VOID   WINAPI KERNEL32$Sleep (DWORD dwMilliseconds);
 
  WINBASEAPI wchar_t * __cdecl MSVCRT$wcsstr(const wchar_t *_Str,const wchar_t *_SubStr);
  WINBASEAPI char *    __cdecl MSVCRT$strrchr(const char *_Str,int _Ch);
@@ -116,7 +122,6 @@
  #define HeapAlloc      KERNEL32$HeapAlloc
  #define HeapFree       KERNEL32$HeapFree
  #define GetLastError   KERNEL32$GetLastError
- #define Sleep          KERNEL32$Sleep
 
  #define wcsstr   MSVCRT$wcsstr
  #define strrchr  MSVCRT$strrchr

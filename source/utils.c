@@ -8,6 +8,9 @@ BOOL is_full_path(
 {
     char c;
 
+    if (filename[0] == filename[1] && filename[1] == '\\')
+        return TRUE;
+
     c = filename[0] | 0x20;
     if (c < 97 || c > 122)
         return FALSE;

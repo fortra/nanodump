@@ -368,9 +368,9 @@ int main(int argc, char* argv[])
         }
     }
 
-    if (use_malseclogon && !is_full_path(dump_path))
+    if (use_malseclogon && !duplicate_handle && !is_full_path(dump_path))
     {
-        PRINT("If MalSecLogon is being used, you need to provide the full path: %s", dump_path);
+        PRINT("If MalSecLogon is being used locally, you need to provide the full path: %s", dump_path);
         return -1;
     }
 

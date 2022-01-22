@@ -3,9 +3,15 @@
 // Code below is adapted from @modexpblog. Read linked article for more details.
 // https://www.mdsec.co.uk/2020/12/bypassing-user-mode-hooks-and-direct-invocation-of-system-calls-for-red-teams
 
+#if defined(_MSC_VER)
+#pragma data_seg(".data")
+SW2_SYSCALL_LIST SW2_SyscallList;
+#pragma data_seg(".data")
+PVOID SyscallAddress = NULL;
+#elif defined(__GNUC__)
 SW2_SYSCALL_LIST SW2_SyscallList __attribute__ ((section(".data")));
 PVOID SyscallAddress __attribute__ ((section(".data"))) = NULL;
-
+#endif
 /*
  * If no 'syscall' instruction is found in NTDLL,
  * this function will be called.
@@ -13,26 +19,26 @@ PVOID SyscallAddress __attribute__ ((section(".data"))) = NULL;
  * The idea is to avoid having a 'syscall' instruction
  * on this program's .text section to evade static analysis
  */
-__attribute__((naked)) void DoSysenter(void)
+#if defined(_MSC_VER) && defined (_M_IX86)
+
+__declspec(naked) void SyscallNotFound(void)
 {
-    __asm__("DoSysenter: \n\
-        mov eax, 0xC0000225 \n\
-        ret \n\
-    ");
-    /*
-#ifdef _WIN64
-    __asm__("DoSysenter: \n\
-        syscall \n\
-        ret \n\
-    ");
-#else
-    __asm__("DoSysenter: \n\
-      sysenter \n\
-      ret \n\
-    ");
-#endif
-    */
+    __asm {
+        mov eax, 0xC0000225
+        ret
+    }
 }
+
+#elif defined(__GNUC__)
+
+__declspec(naked) void SyscallNotFound(void)
+{
+    asm(
+        "mov eax, 0xC0000225 \n"
+        "ret \n"
+    );
+}
+#endif
 
 /*
  * the idea here is to find a 'syscall' instruction in 'ntdll.dll'
@@ -65,7 +71,7 @@ PVOID GetSyscallAddress(void)
     }
 
     // set the fallback as the default
-    SyscallAddress = (PVOID)DoSysenter;
+    SyscallAddress = (PVOID)(ULONG_PTR)SyscallNotFound;
 
     // find the address of NTDLL
     PSW2_PEB Peb = (PSW2_PEB)READ_MEMLOC(PEB_OFFSET);
@@ -239,3 +245,1298 @@ EXTERN_C DWORD SW2_GetSyscallNumber(DWORD FunctionHash)
     )
     return -1;
 }
+
+#if defined(_MSC_VER) && defined (_M_IX86)
+
+__declspec(naked) BOOL local_is_wow64(void)
+{
+    __asm {
+        mov eax, fs:[0xc0]
+        test eax, eax
+        jne wow64
+        mov eax, 0
+        ret
+        wow64:
+        mov eax, 1
+        ret
+    }
+}
+
+__declspec(naked) NTSTATUS NtOpenProcess(
+    OUT PHANDLE ProcessHandle,
+    IN ACCESS_MASK DesiredAccess,
+    IN POBJECT_ATTRIBUTES ObjectAttributes,
+    IN PCLIENT_ID ClientId OPTIONAL)
+{
+    __asm {
+        call GetSyscallAddress
+        push eax
+        push 0xCD9B2A0F
+        call SW2_GetSyscallNumber
+        add esp, 4
+        pop ebx
+        mov edx, esp
+        sub edx, 4
+        call ebx
+        ret
+    }
+}
+
+__declspec(naked) NTSTATUS NtGetNextProcess(
+    IN HANDLE ProcessHandle,
+    IN ACCESS_MASK DesiredAccess,
+    IN ULONG HandleAttributes,
+    IN ULONG Flags,
+    OUT PHANDLE NewProcessHandle)
+{
+    __asm {
+        call GetSyscallAddress
+        push eax
+        push 0xFFBF1A2F
+        call SW2_GetSyscallNumber
+        add esp, 4
+        pop ebx
+        mov edx, esp
+        sub edx, 4
+        call ebx
+        ret
+    }
+}
+
+__declspec(naked) NTSTATUS NtReadVirtualMemory(
+    IN HANDLE ProcessHandle,
+    IN PVOID BaseAddress,
+    OUT PVOID Buffer,
+    IN SIZE_T BufferSize,
+    OUT PSIZE_T NumberOfBytesRead OPTIONAL)
+{
+    __asm {
+        call GetSyscallAddress
+        push eax
+        push 0x118B7567
+        call SW2_GetSyscallNumber
+        add esp, 4
+        pop ebx
+        mov edx, esp
+        sub edx, 4
+        call ebx
+        ret
+    }
+}
+
+__declspec(naked) NTSTATUS NtClose(
+    IN HANDLE Handle)
+{
+    __asm {
+        call GetSyscallAddress
+        push eax
+        push 0x2252D33F
+        call SW2_GetSyscallNumber
+        add esp, 4
+        pop ebx
+        mov edx, esp
+        sub edx, 4
+        call ebx
+        ret
+    }
+}
+
+__declspec(naked) NTSTATUS NtOpenProcessToken(
+    IN HANDLE ProcessHandle,
+    IN ACCESS_MASK DesiredAccess,
+    OUT PHANDLE TokenHandle)
+{
+    __asm {
+        call GetSyscallAddress
+        push eax
+        push 0x8FA915A2
+        call SW2_GetSyscallNumber
+        add esp, 4
+        pop ebx
+        mov edx, esp
+        sub edx, 4
+        call ebx
+        ret
+    }
+}
+
+__declspec(naked) NTSTATUS NtQueryInformationProcess(
+    IN HANDLE ProcessHandle,
+    IN PROCESSINFOCLASS ProcessInformationClass,
+    OUT PVOID ProcessInformation,
+    IN ULONG ProcessInformationLength,
+    OUT PULONG ReturnLength OPTIONAL)
+{
+    __asm {
+        call GetSyscallAddress
+        push eax
+        push 0xBDBCBC20
+        call SW2_GetSyscallNumber
+        add esp, 4
+        pop ebx
+        mov edx, esp
+        sub edx, 4
+        call ebx
+        ret
+    }
+}
+
+__declspec(naked) NTSTATUS NtQueryVirtualMemory(
+    IN HANDLE ProcessHandle,
+    IN PVOID BaseAddress,
+    IN MEMORY_INFORMATION_CLASS MemoryInformationClass,
+    OUT PVOID MemoryInformation,
+    IN SIZE_T MemoryInformationLength,
+    OUT PSIZE_T ReturnLength OPTIONAL)
+{
+    __asm {
+        call GetSyscallAddress
+        push eax
+        push 0x0393E980
+        call SW2_GetSyscallNumber
+        add esp, 4
+        pop ebx
+        mov edx, esp
+        sub edx, 4
+        call ebx
+        ret
+    }
+}
+
+__declspec(naked) NTSTATUS NtAdjustPrivilegesToken(
+    IN HANDLE TokenHandle,
+    IN BOOLEAN DisableAllPrivileges,
+    IN PTOKEN_PRIVILEGES NewState OPTIONAL,
+    IN ULONG BufferLength,
+    OUT PTOKEN_PRIVILEGES PreviousState OPTIONAL,
+    OUT PULONG ReturnLength OPTIONAL)
+{
+    __asm {
+        call GetSyscallAddress
+        push eax
+        push 0x17AB1B32
+        call SW2_GetSyscallNumber
+        add esp, 4
+        pop ebx
+        mov edx, esp
+        sub edx, 4
+        call ebx
+        ret
+    }
+}
+
+__declspec(naked) NTSTATUS NtAllocateVirtualMemory(
+    IN HANDLE ProcessHandle,
+    IN OUT PVOID * BaseAddress,
+    IN ULONG ZeroBits,
+    IN OUT PSIZE_T RegionSize,
+    IN ULONG AllocationType,
+    IN ULONG Protect)
+{
+    __asm {
+        call GetSyscallAddress
+        push eax
+        push 0x0595031B
+        call SW2_GetSyscallNumber
+        add esp, 4
+        pop ebx
+        mov edx, esp
+        sub edx, 4
+        call ebx
+        ret
+    }
+}
+
+__declspec(naked) NTSTATUS NtFreeVirtualMemory(
+    IN HANDLE ProcessHandle,
+    IN OUT PVOID * BaseAddress,
+    IN OUT PSIZE_T RegionSize,
+    IN ULONG FreeType)
+{
+    __asm {
+        call GetSyscallAddress
+        push eax
+        push 0x01932F05
+        call SW2_GetSyscallNumber
+        add esp, 4
+        pop ebx
+        mov edx, esp
+        sub edx, 4
+        call ebx
+        ret
+    }
+}
+
+__declspec(naked) NTSTATUS NtCreateFile(
+    OUT PHANDLE FileHandle,
+    IN ACCESS_MASK DesiredAccess,
+    IN POBJECT_ATTRIBUTES ObjectAttributes,
+    OUT PIO_STATUS_BLOCK IoStatusBlock,
+    IN PLARGE_INTEGER AllocationSize OPTIONAL,
+    IN ULONG FileAttributes,
+    IN ULONG ShareAccess,
+    IN ULONG CreateDisposition,
+    IN ULONG CreateOptions,
+    IN PVOID EaBuffer OPTIONAL,
+    IN ULONG EaLength)
+{
+    __asm {
+        call GetSyscallAddress
+        push eax
+        push 0x96018EB6
+        call SW2_GetSyscallNumber
+        add esp, 4
+        pop ebx
+        mov edx, esp
+        sub edx, 4
+        call ebx
+        ret
+    }
+}
+
+__declspec(naked) NTSTATUS NtWriteFile(
+    IN HANDLE FileHandle,
+    IN HANDLE Event OPTIONAL,
+    IN PIO_APC_ROUTINE ApcRoutine OPTIONAL,
+    IN PVOID ApcContext OPTIONAL,
+    OUT PIO_STATUS_BLOCK IoStatusBlock,
+    IN PVOID Buffer,
+    IN ULONG Length,
+    IN PLARGE_INTEGER ByteOffset OPTIONAL,
+    IN PULONG Key OPTIONAL)
+{
+    __asm {
+        call GetSyscallAddress
+        push eax
+        push 0x24B22A1A
+        call SW2_GetSyscallNumber
+        add esp, 4
+        pop ebx
+        mov edx, esp
+        sub edx, 4
+        call ebx
+        ret
+    }
+}
+
+__declspec(naked) NTSTATUS NtCreateProcess(
+    OUT PHANDLE ProcessHandle,
+    IN ACCESS_MASK DesiredAccess,
+    IN POBJECT_ATTRIBUTES ObjectAttributes OPTIONAL,
+    IN HANDLE ParentProcess,
+    IN BOOLEAN InheritObjectTable,
+    IN HANDLE SectionHandle OPTIONAL,
+    IN HANDLE DebugPort OPTIONAL,
+    IN HANDLE ExceptionPort OPTIONAL)
+{
+    __asm {
+        call GetSyscallAddress
+        push eax
+        push 0xF538D0A0
+        call SW2_GetSyscallNumber
+        add esp, 4
+        pop ebx
+        mov edx, esp
+        sub edx, 4
+        call ebx
+        ret
+    }
+}
+
+__declspec(naked) NTSTATUS NtQuerySystemInformation(
+    IN SYSTEM_INFORMATION_CLASS SystemInformationClass,
+    IN OUT PVOID SystemInformation,
+    IN ULONG SystemInformationLength,
+    OUT PULONG ReturnLength OPTIONAL)
+{
+    __asm {
+        call GetSyscallAddress
+        push eax
+        push 0x4A5B2C8F
+        call SW2_GetSyscallNumber
+        add esp, 4
+        pop ebx
+        mov edx, esp
+        sub edx, 4
+        call ebx
+        ret
+    }
+}
+
+__declspec(naked) NTSTATUS NtDuplicateObject(
+    IN HANDLE SourceProcessHandle,
+    IN HANDLE SourceHandle,
+    IN HANDLE TargetProcessHandle OPTIONAL,
+    OUT PHANDLE TargetHandle OPTIONAL,
+    IN ACCESS_MASK DesiredAccess,
+    IN ULONG HandleAttributes,
+    IN ULONG Options)
+{
+    __asm {
+        call GetSyscallAddress
+        push eax
+        push 0x9CBFA413
+        call SW2_GetSyscallNumber
+        add esp, 4
+        pop ebx
+        mov edx, esp
+        sub edx, 4
+        call ebx
+        ret
+    }
+}
+
+__declspec(naked) NTSTATUS NtQueryObject_(
+    IN HANDLE Handle,
+    IN OBJECT_INFORMATION_CLASS ObjectInformationClass,
+    OUT PVOID ObjectInformation OPTIONAL,
+    IN ULONG ObjectInformationLength,
+    OUT PULONG ReturnLength OPTIONAL)
+{
+    __asm {
+        call GetSyscallAddress
+        push eax
+        push 0x0E23F64F
+        call SW2_GetSyscallNumber
+        add esp, 4
+        pop ebx
+        mov edx, esp
+        sub edx, 4
+        call ebx
+        ret
+    }
+}
+
+__declspec(naked) NTSTATUS NtWaitForSingleObject(
+    IN HANDLE ObjectHandle,
+    IN BOOLEAN Alertable,
+    IN PLARGE_INTEGER TimeOut OPTIONAL)
+{
+    __asm {
+        call GetSyscallAddress
+        push eax
+        push 0x426376E3
+        call SW2_GetSyscallNumber
+        add esp, 4
+        pop ebx
+        mov edx, esp
+        sub edx, 4
+        call ebx
+        ret
+    }
+}
+
+__declspec(naked) NTSTATUS NtDeleteFile(
+    IN POBJECT_ATTRIBUTES ObjectAttributes)
+{
+    __asm {
+        call GetSyscallAddress
+        push eax
+        push 0x64B26A1A
+        call SW2_GetSyscallNumber
+        add esp, 4
+        pop ebx
+        mov edx, esp
+        sub edx, 4
+        call ebx
+        ret
+    }
+}
+
+__declspec(naked) NTSTATUS NtTerminateProcess(
+    IN HANDLE ProcessHandle OPTIONAL,
+    IN NTSTATUS ExitStatus)
+{
+    __asm {
+        call GetSyscallAddress
+        push eax
+        push 0x652E64A0
+        call SW2_GetSyscallNumber
+        add esp, 4
+        pop ebx
+        mov edx, esp
+        sub edx, 4
+        call ebx
+        ret
+    }
+}
+
+#elif defined(__GNUC__)
+
+__declspec(naked) BOOL local_is_wow64(void)
+{
+#if defined(_WIN64)
+    asm(
+        "mov rax, 0 \n"
+        "ret \n"
+    );
+#else
+    asm(
+        "mov eax, fs:[0xc0] \n"
+        "test eax, eax \n"
+        "jne wow64 \n"
+        "mov eax, 0 \n"
+        "ret \n"
+        "wow64: \n"
+        "mov eax, 1 \n"
+        "ret \n"
+    );
+#endif
+}
+
+__declspec(naked) NTSTATUS NtOpenProcess(
+    OUT PHANDLE ProcessHandle,
+    IN ACCESS_MASK DesiredAccess,
+    IN POBJECT_ATTRIBUTES ObjectAttributes,
+    IN PVOID ClientId OPTIONAL)
+{
+#if defined(_WIN64)
+    asm(
+        "push rcx \n"
+        "push rdx \n"
+        "push r8 \n"
+        "push r9 \n"
+        "sub rsp, 0x28 \n"
+        "call GetSyscallAddress \n"
+        "add rsp, 0x28 \n"
+        "push rax \n"
+        "sub rsp, 0x28 \n"
+        "mov ecx, 0xCD9B2A0F \n"
+        "call SW2_GetSyscallNumber \n"
+        "add rsp, 0x28 \n"
+        "pop r11 \n"
+        "pop r9 \n"
+        "pop r8 \n"
+        "pop rdx \n"
+        "pop rcx \n"
+        "mov r10, rcx \n"
+        "jmp r11 \n"
+    );
+#else
+    asm(
+        "call GetSyscallAddress \n"
+        "push eax \n"
+        "push 0xCD9B2A0F \n"
+        "call SW2_GetSyscallNumber \n"
+        "add esp, 4 \n"
+        "pop ebx \n"
+        "mov edx, esp \n"
+        "sub edx, 4 \n"
+        "call ebx \n"
+        "ret \n"
+    );
+#endif
+}
+
+__declspec(naked) NTSTATUS NtGetNextProcess(
+    IN HANDLE ProcessHandle,
+    IN ACCESS_MASK DesiredAccess,
+    IN ULONG HandleAttributes,
+    IN ULONG Flags,
+    OUT PHANDLE NewProcessHandle)
+{
+#if defined(_WIN64)
+    asm(
+        "push rcx \n"
+        "push rdx \n"
+        "push r8 \n"
+        "push r9 \n"
+        "sub rsp, 0x28 \n"
+        "call GetSyscallAddress \n"
+        "add rsp, 0x28 \n"
+        "push rax \n"
+        "sub rsp, 0x28 \n"
+        "mov ecx, 0xFFBF1A2F \n"
+        "call SW2_GetSyscallNumber \n"
+        "add rsp, 0x28 \n"
+        "pop r11 \n"
+        "pop r9 \n"
+        "pop r8 \n"
+        "pop rdx \n"
+        "pop rcx \n"
+        "mov r10, rcx \n"
+        "jmp r11 \n"
+    );
+#else
+    asm(
+        "call GetSyscallAddress \n"
+        "push eax \n"
+        "push 0xFFBF1A2F \n"
+        "call SW2_GetSyscallNumber \n"
+        "add esp, 4 \n"
+        "pop ebx \n"
+        "mov edx, esp \n"
+        "sub edx, 4 \n"
+        "call ebx \n"
+        "ret \n"
+    );
+#endif
+}
+
+__declspec(naked) NTSTATUS NtReadVirtualMemory(
+    IN HANDLE ProcessHandle,
+    IN PVOID BaseAddress,
+    OUT PVOID Buffer,
+    IN SIZE_T BufferSize,
+    OUT PSIZE_T NumberOfBytesRead OPTIONAL)
+{
+#if defined(_WIN64)
+    asm(
+        "push rcx \n"
+        "push rdx \n"
+        "push r8 \n"
+        "push r9 \n"
+        "sub rsp, 0x28 \n"
+        "call GetSyscallAddress \n"
+        "add rsp, 0x28 \n"
+        "push rax \n"
+        "sub rsp, 0x28 \n"
+        "mov ecx, 0x118B7567 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add rsp, 0x28 \n"
+        "pop r11 \n"
+        "pop r9 \n"
+        "pop r8 \n"
+        "pop rdx \n"
+        "pop rcx \n"
+        "mov r10, rcx \n"
+        "jmp r11 \n"
+    );
+#else
+    asm(
+        "call GetSyscallAddress \n"
+        "push eax \n"
+        "push 0x118B7567 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add esp, 4 \n"
+        "pop ebx \n"
+        "mov edx, esp \n"
+        "sub edx, 4 \n"
+        "call ebx \n"
+        "ret \n"
+    );
+#endif
+}
+
+__declspec(naked) NTSTATUS NtClose(
+    IN HANDLE Handle)
+{
+#if defined(_WIN64)
+    asm(
+        "push rcx \n"
+        "push rdx \n"
+        "push r8 \n"
+        "push r9 \n"
+        "sub rsp, 0x28 \n"
+        "call GetSyscallAddress \n"
+        "add rsp, 0x28 \n"
+        "push rax \n"
+        "sub rsp, 0x28 \n"
+        "mov ecx, 0x2252D33F \n"
+        "call SW2_GetSyscallNumber \n"
+        "add rsp, 0x28 \n"
+        "pop r11 \n"
+        "pop r9 \n"
+        "pop r8 \n"
+        "pop rdx \n"
+        "pop rcx \n"
+        "mov r10, rcx \n"
+        "jmp r11 \n"
+    );
+#else
+    asm(
+        "call GetSyscallAddress \n"
+        "push eax \n"
+        "push 0x2252D33F \n"
+        "call SW2_GetSyscallNumber \n"
+        "add esp, 4 \n"
+        "pop ebx \n"
+        "mov edx, esp \n"
+        "sub edx, 4 \n"
+        "call ebx \n"
+        "ret \n"
+    );
+#endif
+}
+
+__declspec(naked) NTSTATUS NtOpenProcessToken(
+    IN HANDLE ProcessHandle,
+    IN ACCESS_MASK DesiredAccess,
+    OUT PHANDLE TokenHandle)
+{
+#if defined(_WIN64)
+    asm(
+        "push rcx \n"
+        "push rdx \n"
+        "push r8 \n"
+        "push r9 \n"
+        "sub rsp, 0x28 \n"
+        "call GetSyscallAddress \n"
+        "add rsp, 0x28 \n"
+        "push rax \n"
+        "sub rsp, 0x28 \n"
+        "mov ecx, 0x8FA915A2 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add rsp, 0x28 \n"
+        "pop r11 \n"
+        "pop r9 \n"
+        "pop r8 \n"
+        "pop rdx \n"
+        "pop rcx \n"
+        "mov r10, rcx \n"
+        "jmp r11 \n"
+    );
+#else
+    asm(
+        "call GetSyscallAddress \n"
+        "push eax \n"
+        "push 0x8FA915A2 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add esp, 4 \n"
+        "pop ebx \n"
+        "mov edx, esp \n"
+        "sub edx, 4 \n"
+        "call ebx \n"
+        "ret \n"
+    );
+#endif
+}
+
+__declspec(naked) NTSTATUS NtQueryInformationProcess(
+    IN HANDLE ProcessHandle,
+    IN PROCESSINFOCLASS ProcessInformationClass,
+    OUT PVOID ProcessInformation,
+    IN ULONG ProcessInformationLength,
+    OUT PULONG ReturnLength OPTIONAL)
+{
+#if defined(_WIN64)
+    asm(
+        "push rcx \n"
+        "push rdx \n"
+        "push r8 \n"
+        "push r9 \n"
+        "sub rsp, 0x28 \n"
+        "call GetSyscallAddress \n"
+        "add rsp, 0x28 \n"
+        "push rax \n"
+        "sub rsp, 0x28 \n"
+        "mov ecx, 0xBDBCBC20 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add rsp, 0x28 \n"
+        "pop r11 \n"
+        "pop r9 \n"
+        "pop r8 \n"
+        "pop rdx \n"
+        "pop rcx \n"
+        "mov r10, rcx \n"
+        "jmp r11 \n"
+    );
+#else
+    asm(
+        "call GetSyscallAddress \n"
+        "push eax \n"
+        "push 0xBDBCBC20 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add esp, 4 \n"
+        "pop ebx \n"
+        "mov edx, esp \n"
+        "sub edx, 4 \n"
+        "call ebx \n"
+        "ret \n"
+    );
+#endif
+}
+
+__declspec(naked) NTSTATUS NtQueryVirtualMemory(
+    IN HANDLE ProcessHandle,
+    IN PVOID BaseAddress,
+    IN MEMORY_INFORMATION_CLASS MemoryInformationClass,
+    OUT PVOID MemoryInformation,
+    IN SIZE_T MemoryInformationLength,
+    OUT PSIZE_T ReturnLength OPTIONAL)
+{
+#if defined(_WIN64)
+    asm(
+        "push rcx \n"
+        "push rdx \n"
+        "push r8 \n"
+        "push r9 \n"
+        "sub rsp, 0x28 \n"
+        "call GetSyscallAddress \n"
+        "add rsp, 0x28 \n"
+        "push rax \n"
+        "sub rsp, 0x28 \n"
+        "mov ecx, 0x0393E980 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add rsp, 0x28 \n"
+        "pop r11 \n"
+        "pop r9 \n"
+        "pop r8 \n"
+        "pop rdx \n"
+        "pop rcx \n"
+        "mov r10, rcx \n"
+        "jmp r11 \n"
+    );
+#else
+    asm(
+        "call GetSyscallAddress \n"
+        "push eax \n"
+        "push 0x0393E980 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add esp, 4 \n"
+        "pop ebx \n"
+        "mov edx, esp \n"
+        "sub edx, 4 \n"
+        "call ebx \n"
+        "ret \n"
+    );
+#endif
+}
+
+__declspec(naked) NTSTATUS NtAdjustPrivilegesToken(
+    IN HANDLE TokenHandle,
+    IN BOOLEAN DisableAllPrivileges,
+    IN PTOKEN_PRIVILEGES NewState OPTIONAL,
+    IN ULONG BufferLength,
+    OUT PTOKEN_PRIVILEGES PreviousState OPTIONAL,
+    OUT PULONG ReturnLength OPTIONAL)
+{
+#if defined(_WIN64)
+    asm(
+        "push rcx \n"
+        "push rdx \n"
+        "push r8 \n"
+        "push r9 \n"
+        "sub rsp, 0x28 \n"
+        "call GetSyscallAddress \n"
+        "add rsp, 0x28 \n"
+        "push rax \n"
+        "sub rsp, 0x28 \n"
+        "mov ecx, 0x17AB1B32 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add rsp, 0x28 \n"
+        "pop r11 \n"
+        "pop r9 \n"
+        "pop r8 \n"
+        "pop rdx \n"
+        "pop rcx \n"
+        "mov r10, rcx \n"
+        "jmp r11 \n"
+    );
+#else
+    asm(
+        "call GetSyscallAddress \n"
+        "push eax \n"
+        "push 0x17AB1B32 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add esp, 4 \n"
+        "pop ebx \n"
+        "mov edx, esp \n"
+        "sub edx, 4 \n"
+        "call ebx \n"
+        "ret \n"
+    );
+#endif
+}
+
+__declspec(naked) NTSTATUS NtAllocateVirtualMemory(
+    IN HANDLE ProcessHandle,
+    IN OUT PVOID * BaseAddress,
+    IN ULONG ZeroBits,
+    IN OUT PSIZE_T RegionSize,
+    IN ULONG AllocationType,
+    IN ULONG Protect)
+{
+#if defined(_WIN64)
+    asm(
+        "push rcx \n"
+        "push rdx \n"
+        "push r8 \n"
+        "push r9 \n"
+        "sub rsp, 0x28 \n"
+        "call GetSyscallAddress \n"
+        "add rsp, 0x28 \n"
+        "push rax \n"
+        "sub rsp, 0x28 \n"
+        "mov ecx, 0x0595031B \n"
+        "call SW2_GetSyscallNumber \n"
+        "add rsp, 0x28 \n"
+        "pop r11 \n"
+        "pop r9 \n"
+        "pop r8 \n"
+        "pop rdx \n"
+        "pop rcx \n"
+        "mov r10, rcx \n"
+        "jmp r11 \n"
+    );
+#else
+    asm(
+        "call GetSyscallAddress \n"
+        "push eax \n"
+        "push 0x0595031B \n"
+        "call SW2_GetSyscallNumber \n"
+        "add esp, 4 \n"
+        "pop ebx \n"
+        "mov edx, esp \n"
+        "sub edx, 4 \n"
+        "call ebx \n"
+        "ret \n"
+    );
+#endif
+}
+
+__declspec(naked) NTSTATUS NtFreeVirtualMemory(
+    IN HANDLE ProcessHandle,
+    IN OUT PVOID * BaseAddress,
+    IN OUT PSIZE_T RegionSize,
+    IN ULONG FreeType)
+{
+#if defined(_WIN64)
+    asm(
+        "push rcx \n"
+        "push rdx \n"
+        "push r8 \n"
+        "push r9 \n"
+        "sub rsp, 0x28 \n"
+        "call GetSyscallAddress \n"
+        "add rsp, 0x28 \n"
+        "push rax \n"
+        "sub rsp, 0x28 \n"
+        "mov ecx, 0x01932F05 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add rsp, 0x28 \n"
+        "pop r11 \n"
+        "pop r9 \n"
+        "pop r8 \n"
+        "pop rdx \n"
+        "pop rcx \n"
+        "mov r10, rcx \n"
+        "jmp r11 \n"
+    );
+#else
+    asm(
+        "call GetSyscallAddress \n"
+        "push eax \n"
+        "push 0x01932F05 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add esp, 4 \n"
+        "pop ebx \n"
+        "mov edx, esp \n"
+        "sub edx, 4 \n"
+        "call ebx \n"
+        "ret \n"
+    );
+#endif
+}
+
+__declspec(naked) NTSTATUS NtCreateFile(
+    OUT PHANDLE FileHandle,
+    IN ACCESS_MASK DesiredAccess,
+    IN POBJECT_ATTRIBUTES ObjectAttributes,
+    OUT PIO_STATUS_BLOCK IoStatusBlock,
+    IN PLARGE_INTEGER AllocationSize OPTIONAL,
+    IN ULONG FileAttributes,
+    IN ULONG ShareAccess,
+    IN ULONG CreateDisposition,
+    IN ULONG CreateOptions,
+    IN PVOID EaBuffer OPTIONAL,
+    IN ULONG EaLength)
+{
+#if defined(_WIN64)
+    asm(
+        "push rcx \n"
+        "push rdx \n"
+        "push r8 \n"
+        "push r9 \n"
+        "sub rsp, 0x28 \n"
+        "call GetSyscallAddress \n"
+        "add rsp, 0x28 \n"
+        "push rax \n"
+        "sub rsp, 0x28 \n"
+        "mov ecx, 0x96018EB6 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add rsp, 0x28 \n"
+        "pop r11 \n"
+        "pop r9 \n"
+        "pop r8 \n"
+        "pop rdx \n"
+        "pop rcx \n"
+        "mov r10, rcx \n"
+        "jmp r11 \n"
+    );
+#else
+    asm(
+        "call GetSyscallAddress \n"
+        "push eax \n"
+        "push 0x96018EB6 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add esp, 4 \n"
+        "pop ebx \n"
+        "mov edx, esp \n"
+        "sub edx, 4 \n"
+        "call ebx \n"
+        "ret \n"
+    );
+#endif
+}
+
+__declspec(naked) NTSTATUS NtWriteFile(
+    IN HANDLE FileHandle,
+    IN HANDLE Event OPTIONAL,
+    IN PIO_APC_ROUTINE ApcRoutine OPTIONAL,
+    IN PVOID ApcContext OPTIONAL,
+    OUT PIO_STATUS_BLOCK IoStatusBlock,
+    IN PVOID Buffer,
+    IN ULONG Length,
+    IN PLARGE_INTEGER ByteOffset OPTIONAL,
+    IN PULONG Key OPTIONAL)
+{
+#if defined(_WIN64)
+    asm(
+        "push rcx \n"
+        "push rdx \n"
+        "push r8 \n"
+        "push r9 \n"
+        "sub rsp, 0x28 \n"
+        "call GetSyscallAddress \n"
+        "add rsp, 0x28 \n"
+        "push rax \n"
+        "sub rsp, 0x28 \n"
+        "mov ecx, 0x24B22A1A \n"
+        "call SW2_GetSyscallNumber \n"
+        "add rsp, 0x28 \n"
+        "pop r11 \n"
+        "pop r9 \n"
+        "pop r8 \n"
+        "pop rdx \n"
+        "pop rcx \n"
+        "mov r10, rcx \n"
+        "jmp r11 \n"
+    );
+#else
+    asm(
+        "call GetSyscallAddress \n"
+        "push eax \n"
+        "push 0x24B22A1A \n"
+        "call SW2_GetSyscallNumber \n"
+        "add esp, 4 \n"
+        "pop ebx \n"
+        "mov edx, esp \n"
+        "sub edx, 4 \n"
+        "call ebx \n"
+        "ret \n"
+    );
+#endif
+}
+
+__declspec(naked) NTSTATUS NtCreateProcess(
+    OUT PHANDLE ProcessHandle,
+    IN ACCESS_MASK DesiredAccess,
+    IN POBJECT_ATTRIBUTES ObjectAttributes OPTIONAL,
+    IN HANDLE ParentProcess,
+    IN BOOLEAN InheritObjectTable,
+    IN HANDLE SectionHandle OPTIONAL,
+    IN HANDLE DebugPort OPTIONAL,
+    IN HANDLE ExceptionPort OPTIONAL)
+{
+#if defined(_WIN64)
+    asm(
+        "push rcx \n"
+        "push rdx \n"
+        "push r8 \n"
+        "push r9 \n"
+        "sub rsp, 0x28 \n"
+        "call GetSyscallAddress \n"
+        "add rsp, 0x28 \n"
+        "push rax \n"
+        "sub rsp, 0x28 \n"
+        "mov ecx, 0xF538D0A0 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add rsp, 0x28 \n"
+        "pop r11 \n"
+        "pop r9 \n"
+        "pop r8 \n"
+        "pop rdx \n"
+        "pop rcx \n"
+        "mov r10, rcx \n"
+        "jmp r11 \n"
+    );
+#else
+    asm(
+        "call GetSyscallAddress \n"
+        "push eax \n"
+        "push 0xF538D0A0 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add esp, 4 \n"
+        "pop ebx \n"
+        "mov edx, esp \n"
+        "sub edx, 4 \n"
+        "call ebx \n"
+        "ret \n"
+    );
+#endif
+}
+
+__declspec(naked) NTSTATUS NtQuerySystemInformation(
+    IN SYSTEM_INFORMATION_CLASS SystemInformationClass,
+    IN OUT PVOID SystemInformation,
+    IN ULONG SystemInformationLength,
+    OUT PULONG ReturnLength OPTIONAL)
+{
+#if defined(_WIN64)
+    asm(
+        "push rcx \n"
+        "push rdx \n"
+        "push r8 \n"
+        "push r9 \n"
+        "sub rsp, 0x28 \n"
+        "call GetSyscallAddress \n"
+        "add rsp, 0x28 \n"
+        "push rax \n"
+        "sub rsp, 0x28 \n"
+        "mov ecx, 0x4A5B2C8F \n"
+        "call SW2_GetSyscallNumber \n"
+        "add rsp, 0x28 \n"
+        "pop r11 \n"
+        "pop r9 \n"
+        "pop r8 \n"
+        "pop rdx \n"
+        "pop rcx \n"
+        "mov r10, rcx \n"
+        "jmp r11 \n"
+    );
+#else
+    asm(
+        "call GetSyscallAddress \n"
+        "push eax \n"
+        "push 0x4A5B2C8F \n"
+        "call SW2_GetSyscallNumber \n"
+        "add esp, 4 \n"
+        "pop ebx \n"
+        "mov edx, esp \n"
+        "sub edx, 4 \n"
+        "call ebx \n"
+        "ret \n"
+    );
+#endif
+}
+
+__declspec(naked) NTSTATUS NtDuplicateObject(
+    IN HANDLE SourceProcessHandle,
+    IN HANDLE SourceHandle,
+    IN HANDLE TargetProcessHandle OPTIONAL,
+    OUT PHANDLE TargetHandle OPTIONAL,
+    IN ACCESS_MASK DesiredAccess,
+    IN ULONG HandleAttributes,
+    IN ULONG Options)
+{
+#if defined(_WIN64)
+    asm(
+        "push rcx \n"
+        "push rdx \n"
+        "push r8 \n"
+        "push r9 \n"
+        "sub rsp, 0x28 \n"
+        "call GetSyscallAddress \n"
+        "add rsp, 0x28 \n"
+        "push rax \n"
+        "sub rsp, 0x28 \n"
+        "mov ecx, 0x9CBFA413 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add rsp, 0x28 \n"
+        "pop r11 \n"
+        "pop r9 \n"
+        "pop r8 \n"
+        "pop rdx \n"
+        "pop rcx \n"
+        "mov r10, rcx \n"
+        "jmp r11 \n"
+    );
+#else
+    asm(
+        "call GetSyscallAddress \n"
+        "push eax \n"
+        "push 0x9CBFA413 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add esp, 4 \n"
+        "pop ebx \n"
+        "mov edx, esp \n"
+        "sub edx, 4 \n"
+        "call ebx \n"
+        "ret \n"
+    );
+#endif
+}
+
+__declspec(naked) NTSTATUS NtQueryObject_(
+    IN HANDLE Handle,
+    IN OBJECT_INFORMATION_CLASS ObjectInformationClass,
+    OUT PVOID ObjectInformation OPTIONAL,
+    IN ULONG ObjectInformationLength,
+    OUT PULONG ReturnLength OPTIONAL)
+{
+#if defined(_WIN64)
+    asm(
+        "push rcx \n"
+        "push rdx \n"
+        "push r8 \n"
+        "push r9 \n"
+        "sub rsp, 0x28 \n"
+        "call GetSyscallAddress \n"
+        "add rsp, 0x28 \n"
+        "push rax \n"
+        "sub rsp, 0x28 \n"
+        "mov ecx, 0x0E23F64F \n"
+        "call SW2_GetSyscallNumber \n"
+        "add rsp, 0x28 \n"
+        "pop r11 \n"
+        "pop r9 \n"
+        "pop r8 \n"
+        "pop rdx \n"
+        "pop rcx \n"
+        "mov r10, rcx \n"
+        "jmp r11 \n"
+    );
+#else
+    asm(
+        "call GetSyscallAddress \n"
+        "push eax \n"
+        "push 0x0E23F64F \n"
+        "call SW2_GetSyscallNumber \n"
+        "add esp, 4 \n"
+        "pop ebx \n"
+        "mov edx, esp \n"
+        "sub edx, 4 \n"
+        "call ebx \n"
+        "ret \n"
+    );
+#endif
+}
+
+__declspec(naked) NTSTATUS NtWaitForSingleObject(
+    IN HANDLE ObjectHandle,
+    IN BOOLEAN Alertable,
+    IN PLARGE_INTEGER TimeOut OPTIONAL)
+{
+#if defined(_WIN64)
+    asm(
+        "push rcx \n"
+        "push rdx \n"
+        "push r8 \n"
+        "push r9 \n"
+        "sub rsp, 0x28 \n"
+        "call GetSyscallAddress \n"
+        "add rsp, 0x28 \n"
+        "push rax \n"
+        "sub rsp, 0x28 \n"
+        "mov ecx, 0x426376E3 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add rsp, 0x28 \n"
+        "pop r11 \n"
+        "pop r9 \n"
+        "pop r8 \n"
+        "pop rdx \n"
+        "pop rcx \n"
+        "mov r10, rcx \n"
+        "jmp r11 \n"
+    );
+#else
+    asm(
+        "call GetSyscallAddress \n"
+        "push eax \n"
+        "push 0x426376E3 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add esp, 4 \n"
+        "pop ebx \n"
+        "mov edx, esp \n"
+        "sub edx, 4 \n"
+        "call ebx \n"
+        "ret \n"
+    );
+#endif
+}
+
+__declspec(naked) NTSTATUS NtDeleteFile(
+    IN POBJECT_ATTRIBUTES ObjectAttributes)
+{
+#if defined(_WIN64)
+    asm(
+        "push rcx \n"
+        "push rdx \n"
+        "push r8 \n"
+        "push r9 \n"
+        "sub rsp, 0x28 \n"
+        "call GetSyscallAddress \n"
+        "add rsp, 0x28 \n"
+        "push rax \n"
+        "sub rsp, 0x28 \n"
+        "mov ecx, 0x64B26A1A \n"
+        "call SW2_GetSyscallNumber \n"
+        "add rsp, 0x28 \n"
+        "pop r11 \n"
+        "pop r9 \n"
+        "pop r8 \n"
+        "pop rdx \n"
+        "pop rcx \n"
+        "mov r10, rcx \n"
+        "jmp r11 \n"
+    );
+#else
+    asm(
+        "call GetSyscallAddress \n"
+        "push eax \n"
+        "push 0x64B26A1A \n"
+        "call SW2_GetSyscallNumber \n"
+        "add esp, 4 \n"
+        "pop ebx \n"
+        "mov edx, esp \n"
+        "sub edx, 4 \n"
+        "call ebx \n"
+        "ret \n"
+    );
+#endif
+}
+
+__declspec(naked) NTSTATUS NtTerminateProcess(
+    IN HANDLE ProcessHandle OPTIONAL,
+    IN NTSTATUS ExitStatus)
+{
+#if defined(_WIN64)
+    asm(
+        "push rcx \n"
+        "push rdx \n"
+        "push r8 \n"
+        "push r9 \n"
+        "sub rsp, 0x28 \n"
+        "call GetSyscallAddress \n"
+        "add rsp, 0x28 \n"
+        "push rax \n"
+        "sub rsp, 0x28 \n"
+        "mov ecx, 0x652E64A0 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add rsp, 0x28 \n"
+        "pop r11 \n"
+        "pop r9 \n"
+        "pop r8 \n"
+        "pop rdx \n"
+        "pop rcx \n"
+        "mov r10, rcx \n"
+        "jmp r11 \n"
+    );
+#else
+    asm(
+        "call GetSyscallAddress \n"
+        "push eax \n"
+        "push 0x652E64A0 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add esp, 4 \n"
+        "pop ebx \n"
+        "mov edx, esp \n"
+        "sub edx, 4 \n"
+        "call ebx \n"
+        "ret \n"
+    );
+#endif
+}
+
+#endif

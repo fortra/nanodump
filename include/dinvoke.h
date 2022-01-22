@@ -1,14 +1,17 @@
 #pragma once
 
+#include <windows.h>
+#include <winternl.h>
+
+#include "utils.h"
+
 typedef HMODULE(WINAPI* LOADLIBRARYA)(LPCSTR);
 
-#define NTDLL_DLL L"ntdll.dll"
-#define ADVAPI32_DLL L"Advapi32.dll"
 #define LdrLoadDll_SW2_HASH 0xA301ECDA
 
 #define MZ 0x5A4D
 
-HANDLE get_function_address(HMODULE hLibrary, DWORD FunctionHash, WORD Ordinal);
+PVOID get_function_address(HMODULE hLibrary, DWORD fhash, WORD ordinal);
 HANDLE get_library_address(LPWSTR LibName, BOOL DoLoad);
 
 typedef NTSTATUS(WINAPI* LdrLoadDll_t)(PWCHAR, ULONG, PUNICODE_STRING, PHANDLE);

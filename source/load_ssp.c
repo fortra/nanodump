@@ -1,10 +1,10 @@
-
-#include "nanodump.h"
-#include "beacon.h"
-#include "utils.c"
-#include "syscalls.c"
-#include "dinvoke.c"
 #include "load_ssp.h"
+
+#ifdef BOF
+ #include "utils.c"
+ #include "syscalls.c"
+ #include "dinvoke.c"
+#endif
 
 void load_ssp(LPSTR ssp_path)
 {
@@ -17,7 +17,7 @@ void load_ssp(LPSTR ssp_path)
         return;
     }
     // find the address of AddSecurityPackageW dynamically
-    AddSecurityPackageW = (AddSecurityPackageW_t)get_function_address(
+    AddSecurityPackageW = (AddSecurityPackageW_t)(ULONG_PTR)get_function_address(
         get_library_address(SSPICLI_DLL, TRUE),
         AddSecurityPackageW_SW2_HASH,
         0

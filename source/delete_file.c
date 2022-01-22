@@ -1,9 +1,9 @@
 
-#include "nanodump.h"
-#include "beacon.h"
-#include "utils.c"
-#include "syscalls.c"
 #include "delete_file.h"
+#ifdef BOF
+ #include "utils.c"
+ #include "syscalls.c"
+#endif
 
 // this is used to delete the nanodump DLL
 void do_delete(LPSTR file_path)

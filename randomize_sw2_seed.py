@@ -40,26 +40,45 @@ def get_function_hash(seed, function_name):
 
 
 def replace_syscall_hashes(seed):
-    with open('include/syscalls-asm.h') as f:
+    with open('source/syscalls.c') as f:
         code = f.read()
-    regex = re.compile(r'__asm__\("(Nt\w+):')
+    regex = re.compile(r'__declspec\(naked\) NTSTATUS (Nt\w+)')
     syscall_names = re.findall(regex, code)
-    # every syscall is included twice (x86 and x64)
-    syscall_names = syscall_names[:len(syscall_names)//2]
+    syscall_names = set(syscall_names)
+    syscall_definitions = code.split('#elif defined(__GNUC__)')[3]
 
     for syscall_name in syscall_names:
-        regex = re.compile(r'__asm__\("' + syscall_name + ': .*?mov ecx, (0x[A-Fa-f0-9]{8})', re.DOTALL)
+        regex = re.compile('NTSTATUS ' + syscall_name + '\\(.*?"mov ecx, (0x[A-Fa-f0-9]{8})', re.DOTALL)
+        match = re.search(regex, syscall_definitions)
+        assert match is not None, f'hash of syscall {syscall_name} not found!'
+        old_hash = match.group(1)
+        new_hash = get_function_hash(seed, syscall_name)
+        print(f'{syscall_name} -> {old_hash} - 0x{new_hash:08X}')
+        code = code.replace(
+            old_hash,
+            f'0x{new_hash:08X}',
+            1
+        )
+
+    with open('source/syscalls.c', 'w') as f:
+        f.write(code)
+
+    with open('source/syscalls-asm.asm') as f:
+        code = f.read()
+
+    for syscall_name in syscall_names:
+        regex = re.compile(syscall_name + ' PROC.*?mov ecx, 0([A-Fa-f0-9]{8})h', re.DOTALL)
         match = re.search(regex, code)
         assert match is not None, f'hash of syscall {syscall_name} not found!'
         old_hash = match.group(1)
         new_hash = get_function_hash(seed, syscall_name)
         code = code.replace(
-            old_hash,
-            f'0x{new_hash:08X}',
-            2
+            f'0{old_hash}h',
+            f'0{new_hash:08X}h',
+            1
         )
 
-    with open('include/syscalls-asm.h', 'w') as f:
+    with open('source/syscalls-asm.asm', 'w') as f:
         f.write(code)
 
 

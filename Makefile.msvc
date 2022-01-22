@@ -1,0 +1,44 @@
+
+OPTIONS = -Zp8 -c -nologo -Gy -Os -O1 -GR- -EHa -Oi -GS- -I include
+LIBS = libvcruntime.lib libcmt.lib ucrt.lib kernel32.lib
+
+nanodump:
+	@echo ###### RELEASE ######
+	ML64 /c source/syscalls-asm.asm /link /NODEFAULTLIB /RELEASE /MACHINE:X64
+
+	cl.exe -DNANO -DEXE $(OPTIONS) source/dinvoke.c source/utils.c source/handle.c source/modules.c source/syscalls.c source/debugpriv.c source/malseclogon.c source/nanodump.c source/entry.c
+	link.exe /OUT:compiled\nanodump.x64.exe -nologo $(LIBS) /MACHINE:X64 -subsystem:console -nodefaultlib entry.obj nanodump.obj utils.obj dinvoke.obj debugpriv.obj handle.obj malseclogon.obj modules.obj syscalls-asm.obj syscalls.obj
+
+#	cl.exe -DNANO -DBOF /Fo:compiled\nanodump.x64.o $(OPTIONS) source/entry.c
+
+	cl.exe -DNANO -DSSP $(OPTIONS) source/utils.c source/modules.c source/syscalls.c source/nanodump.c source/entry.c
+	link.exe -DLL /OUT:compiled\nanodump_ssp.x64.dll -nologo $(LIBS) /MACHINE:X64 -subsystem:console -nodefaultlib entry.obj nanodump.obj utils.obj modules.obj syscalls-asm.obj syscalls.obj
+
+#	cl.exe -DBOF /Fo:compiled\load_ssp.x64.o $(OPTIONS) source/load_ssp.c
+
+	cl.exe -DEXE $(OPTIONS) source/utils.c source/syscalls.c source/dinvoke.c source/load_ssp.c
+	link.exe /OUT:compiled\load_ssp.x64.exe -nologo $(LIBS) /MACHINE:X64 -subsystem:console -nodefaultlib load_ssp.obj utils.obj dinvoke.obj syscalls-asm.obj syscalls.obj
+
+#	cl.exe -DBOF /Fo:compiled\delete_file.x64.o $(OPTIONS) source/delete_file.c
+
+debug:
+	@echo ###### DEBUG ######
+	ML64 /c source/syscalls-asm.asm /link /NODEFAULTLIB /RELEASE /MACHINE:X64
+
+	cl.exe -DNANO -DEXE -DDEBUG $(OPTIONS) source/dinvoke.c source/utils.c source/handle.c source/modules.c source/syscalls.c source/debugpriv.c source/malseclogon.c source/nanodump.c source/entry.c
+	link.exe /OUT:compiled\nanodump.x64.exe -nologo $(LIBS) /MACHINE:X64 -subsystem:console -nodefaultlib entry.obj nanodump.obj utils.obj dinvoke.obj debugpriv.obj handle.obj malseclogon.obj modules.obj syscalls-asm.obj syscalls.obj
+
+#	cl.exe -DNANO -DBOF -DDEBUG /Fo:compiled\nanodump.x64.o $(OPTIONS) source/entry.c
+
+	cl.exe -DNANO -DSSP -DDEBUG $(OPTIONS) source/utils.c source/modules.c source/syscalls.c source/nanodump.c source/entry.c
+	link.exe -DLL /OUT:compiled\nanodump_ssp.x64.dll -nologo $(LIBS) /MACHINE:X64 -subsystem:console -nodefaultlib entry.obj nanodump.obj utils.obj modules.obj syscalls-asm.obj syscalls.obj
+
+#	cl.exe -DBOF -DDEBUG /Fo:compiled\load_ssp.x64.o $(OPTIONS) source/load_ssp.c
+
+	cl.exe -DEXE -DDEBUG $(OPTIONS) source/utils.c source/syscalls.c source/dinvoke.c source/load_ssp.c
+	link.exe /OUT:compiled\load_ssp.x64.exe -nologo $(LIBS) /MACHINE:X64 -subsystem:console -nodefaultlib load_ssp.obj utils.obj dinvoke.obj syscalls-asm.obj syscalls.obj
+
+#	cl.exe -DBOF -DDEBUG /Fo:compiled\delete_file.x64.o $(OPTIONS) source/delete_file.c
+
+clean:
+	@del /Q debugpriv.obj dinvoke.obj entry.obj handle.obj load_ssp.obj malseclogon.obj modules.obj nanodump.obj syscalls-asm.obj syscalls.obj utils.obj compiled\delete_file.x64.o compiled\load_ssp.x64.exe compiled\load_ssp.x64.o compiled\nanodump.x64.exe compiled\nanodump.x64.o compiled\nanodump_ssp.x64.dll compiled\nanodump_ssp.x64.exp compiled\nanodump_ssp.x64.lib

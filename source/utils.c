@@ -64,7 +64,7 @@ BOOL write_file(
     ULONG32 fileLength
 )
 {
-    HANDLE hFile;
+    HANDLE hFile = NULL;
     OBJECT_ATTRIBUTES objAttr;
     IO_STATUS_BLOCK IoStatusBlock;
     LARGE_INTEGER largeInteger;
@@ -134,7 +134,7 @@ BOOL create_file(
     PUNICODE_STRING full_dump_path
 )
 {
-    HANDLE hFile;
+    HANDLE hFile = NULL;
     OBJECT_ATTRIBUTES objAttr;
     IO_STATUS_BLOCK IoStatusBlock;
 
@@ -324,7 +324,7 @@ BOOL file_exists(
     LPCSTR filepath
 )
 {
-    HANDLE hFile;
+    HANDLE hFile = NULL;
     OBJECT_ATTRIBUTES objAttr;
     IO_STATUS_BLOCK IoStatusBlock;
     LARGE_INTEGER largeInteger;
@@ -451,6 +451,7 @@ DWORD get_pid(
 )
 {
     PROCESS_BASIC_INFORMATION basic_info;
+    basic_info.UniqueProcessId = 0;
     PROCESSINFOCLASS ProcessInformationClass = 0;
     NTSTATUS status = NtQueryInformationProcess(
         hProcess,
@@ -619,7 +620,8 @@ PVOID allocate_memory(
 }
 
 void encrypt_dump(
-    Pdump_context dc
+    PVOID base_address,
+    SIZE_T region_size
 )
 {
     // add your code here
@@ -627,14 +629,14 @@ void encrypt_dump(
 }
 
 void erase_dump_from_memory(
-    Pdump_context dc
+    PVOID base_address,
+    SIZE_T region_size
 )
 {
     // delete all trace of the dump from memory
-    memset(dc->BaseAddress, 0, dc->rva);
+    memset(base_address, 0, region_size);
     // free the memory area where the dump was
-    PVOID base_address = dc->BaseAddress;
-    SIZE_T region_size = 0;
+    region_size = 0;
     NTSTATUS status = NtFreeVirtualMemory(
         NtCurrentProcess(),
         &base_address,
@@ -654,30 +656,31 @@ void erase_dump_from_memory(
 
 void generate_invalid_sig(
     PULONG32 Signature,
-    PSHORT Version,
-    PSHORT ImplementationVersion
+    PUSHORT Version,
+    PUSHORT ImplementationVersion
 )
 {
     time_t t;
     srand((unsigned) time(&t));
 
-    *Signature = MINIDUMP_SIGNATURE;
-    *Version = MINIDUMP_VERSION;
+    *Signature             = MINIDUMP_SIGNATURE;
+    *Version               = MINIDUMP_VERSION;
     *ImplementationVersion = MINIDUMP_IMPL_VERSION;
-    while (*Signature == MINIDUMP_SIGNATURE ||
-           *Version == MINIDUMP_VERSION ||
+
+    while (*Signature             == MINIDUMP_SIGNATURE ||
+           *Version               == MINIDUMP_VERSION ||
            *ImplementationVersion == MINIDUMP_IMPL_VERSION)
     {
-        *Signature = 0;
+        *Signature  = 0;
         *Signature |= (rand() & 0x7FFF) << 0x11;
         *Signature |= (rand() & 0x7FFF) << 0x02;
         *Signature |= (rand() & 0x0003) << 0x00;
 
-        *Version = 0;
+        *Version  = 0;
         *Version |= (rand() & 0xFF) << 0x08;
         *Version |= (rand() & 0xFF) << 0x00;
 
-        *ImplementationVersion = 0;
+        *ImplementationVersion  = 0;
         *ImplementationVersion |= (rand() & 0xFF) << 0x08;
         *ImplementationVersion |= (rand() & 0xFF) << 0x00;
     }

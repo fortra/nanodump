@@ -300,7 +300,7 @@ BOOL malseclogon_stage_1(
 
     // find the address of CreateProcessWithLogonW dynamically
     CreateProcessWithLogonW_t CreateProcessWithLogonW;
-    CreateProcessWithLogonW = (CreateProcessWithLogonW_t)get_function_address(
+    CreateProcessWithLogonW = (CreateProcessWithLogonW_t)(ULONG_PTR)get_function_address(
         get_library_address(ADVAPI32_DLL, TRUE),
         CreateProcessWithLogonW_SW2_HASH,
         0

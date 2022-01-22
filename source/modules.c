@@ -10,6 +10,7 @@ PVOID get_peb_address(
     return (PVOID)READ_MEMLOC(PEB_OFFSET);
 #else
     PROCESS_BASIC_INFORMATION basic_info;
+    basic_info.PebBaseAddress = 0;
     PROCESSINFOCLASS ProcessInformationClass = 0;
     NTSTATUS status = NtQueryInformationProcess(
         hProcess,
@@ -40,8 +41,9 @@ PVOID get_module_list_address(
     if (!peb_address)
         return NULL;
 
-    ldr_pointer = peb_address + LDR_POINTER_OFFSET;
+    ldr_pointer = RVA(PVOID, peb_address, LDR_POINTER_OFFSET);
 
+    ldr_address = 0;
     NTSTATUS status = NtReadVirtualMemory(
         hProcess,
         (PVOID)ldr_pointer,
@@ -61,8 +63,9 @@ PVOID get_module_list_address(
         return NULL;
     }
 
-    module_list_pointer = ldr_address + MODULE_LIST_POINTER_OFFSET;
+    module_list_pointer = RVA(PVOID, ldr_address, MODULE_LIST_POINTER_OFFSET);
 
+    ldr_entry_address = NULL;
     status = NtReadVirtualMemory(
         hProcess,
         (PVOID)module_list_pointer,

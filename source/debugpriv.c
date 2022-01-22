@@ -1,5 +1,7 @@
 #include "debugpriv.h"
+#if defined(BOF)
 #include "dinvoke.c"
+#endif
 
 #if defined(NANO) && !defined(SSP)
 
@@ -7,13 +9,13 @@ BOOL enable_debug_priv(void)
 {
     // you can remove this function by providing the compiler flag: -DNODPRIV
 #ifndef NODPRIV
-    HANDLE hToken;
+    HANDLE hToken = NULL;
     TOKEN_PRIVILEGES tkp;
     LookupPrivilegeValueW_t LookupPrivilegeValueW;
     BOOL ok;
 
     // find the address of LookupPrivilegeValueW dynamically
-    LookupPrivilegeValueW = (LookupPrivilegeValueW_t)get_function_address(
+    LookupPrivilegeValueW = (LookupPrivilegeValueW_t)(ULONG_PTR)get_function_address(
         get_library_address(ADVAPI32_DLL, TRUE),
         LookupPrivilegeValueW_SW2_HASH,
         0

@@ -7,7 +7,8 @@
 #define SW2_HEADER_H_
 
 #include <windows.h>
-#include "syscalls-asm.h"
+
+#include "utils.h"
 
 #define SW2_SEED 0x1337C0DE
 #define SW2_ROL8(v) (v << 8 | v >> 24)
@@ -16,6 +17,14 @@
 #define SW2_MAX_ENTRIES 500
 #define SW2_RVA2VA(Type, DllBase, Rva) (Type)((ULONG_PTR) DllBase + Rva)
 
+#ifdef _M_IX86
+ // x86 has conflicting types with these functions
+ #define NtClose _NtClose
+ #define NtQueryInformationProcess _NtQueryInformationProcess
+ #define NtCreateFile _NtCreateFile
+ #define NtQuerySystemInformation _NtQuerySystemInformation
+ #define NtWaitForSingleObject _NtWaitForSingleObject
+#endif
 // Typedefs are prefixed to avoid pollution.
 
 typedef struct _SW2_SYSCALL_ENTRY
@@ -53,9 +62,15 @@ typedef struct _SW2_PEB {
 
 DWORD SW2_HashSyscall(PCSTR FunctionName);
 BOOL SW2_PopulateSyscallList(void);
-EXTERN_C DWORD SW2_GetSyscallNumber(DWORD FunctionHash) asm ("SW2_GetSyscallNumber");
-EXTERN_C BOOL local_is_wow64(void) asm ("local_is_wow64");
-EXTERN_C PVOID GetSyscallAddress(void) asm ("GetSyscallAddress");
+BOOL local_is_wow64(void);
+void SyscallNotFound(void);
+#if defined(__GNUC__)
+DWORD SW2_GetSyscallNumber(DWORD FunctionHash) asm ("SW2_GetSyscallNumber");
+PVOID GetSyscallAddress(void) asm ("GetSyscallAddress");
+#else
+DWORD SW2_GetSyscallNumber(DWORD FunctionHash);
+PVOID GetSyscallAddress(void);
+#endif
 
 //typedef struct _IO_STATUS_BLOCK
 //{
@@ -130,72 +145,72 @@ typedef VOID(NTAPI* PIO_APC_ROUTINE) (
 	IN PIO_STATUS_BLOCK IoStatusBlock,
 	IN ULONG            Reserved);
 
-EXTERN_C NTSTATUS NtOpenProcess(
+NTSTATUS NtOpenProcess(
 	OUT PHANDLE ProcessHandle,
 	IN ACCESS_MASK DesiredAccess,
 	IN POBJECT_ATTRIBUTES ObjectAttributes,
-	IN PCLIENT_ID ClientId OPTIONAL) asm ("NtOpenProcess");
+	IN PVOID ClientId OPTIONAL);
 
-EXTERN_C NTSTATUS NtGetNextProcess(
+NTSTATUS NtGetNextProcess(
 	IN HANDLE ProcessHandle,
 	IN ACCESS_MASK DesiredAccess,
 	IN ULONG HandleAttributes,
 	IN ULONG Flags,
-	OUT PHANDLE NewProcessHandle) asm ("NtGetNextProcess");
+	OUT PHANDLE NewProcessHandle);
 
-EXTERN_C NTSTATUS NtReadVirtualMemory(
+NTSTATUS NtReadVirtualMemory(
 	IN HANDLE ProcessHandle,
 	IN PVOID BaseAddress,
 	OUT PVOID Buffer,
 	IN SIZE_T BufferSize,
-	OUT PSIZE_T NumberOfBytesRead OPTIONAL) asm ("NtReadVirtualMemory");
+	OUT PSIZE_T NumberOfBytesRead OPTIONAL);
 
-EXTERN_C NTSTATUS NtClose(
-	IN HANDLE Handle) asm ("NtClose");
+NTSTATUS NtClose(
+	IN HANDLE Handle);
 
-EXTERN_C NTSTATUS NtOpenProcessToken(
+NTSTATUS NtOpenProcessToken(
 	IN HANDLE ProcessHandle,
 	IN ACCESS_MASK DesiredAccess,
-	OUT PHANDLE TokenHandle) asm ("NtOpenProcessToken");
+	OUT PHANDLE TokenHandle);
 
-EXTERN_C NTSTATUS NtQueryInformationProcess(
+NTSTATUS NtQueryInformationProcess(
 	IN HANDLE ProcessHandle,
 	IN PROCESSINFOCLASS ProcessInformationClass,
 	OUT PVOID ProcessInformation,
 	IN ULONG ProcessInformationLength,
-	OUT PULONG ReturnLength OPTIONAL) asm ("NtQueryInformationProcess");
+	OUT PULONG ReturnLength OPTIONAL);
 
-EXTERN_C NTSTATUS NtQueryVirtualMemory(
+NTSTATUS NtQueryVirtualMemory(
 	IN HANDLE ProcessHandle,
 	IN PVOID BaseAddress,
 	IN MEMORY_INFORMATION_CLASS MemoryInformationClass,
 	OUT PVOID MemoryInformation,
 	IN SIZE_T MemoryInformationLength,
-	OUT PSIZE_T ReturnLength OPTIONAL) asm ("NtQueryVirtualMemory");
+	OUT PSIZE_T ReturnLength OPTIONAL);
 
-EXTERN_C NTSTATUS NtAdjustPrivilegesToken(
+NTSTATUS NtAdjustPrivilegesToken(
 	IN HANDLE TokenHandle,
 	IN BOOLEAN DisableAllPrivileges,
 	IN PTOKEN_PRIVILEGES NewState OPTIONAL,
 	IN ULONG BufferLength,
 	OUT PTOKEN_PRIVILEGES PreviousState OPTIONAL,
-	OUT PULONG ReturnLength OPTIONAL) asm ("NtAdjustPrivilegesToken");
+	OUT PULONG ReturnLength OPTIONAL);
 
-EXTERN_C NTSTATUS NtAllocateVirtualMemory(
+NTSTATUS NtAllocateVirtualMemory(
 	IN HANDLE ProcessHandle,
 	IN OUT PVOID * BaseAddress,
 	IN ULONG ZeroBits,
 	IN OUT PSIZE_T RegionSize,
 	IN ULONG AllocationType,
-	IN ULONG Protect) asm ("NtAllocateVirtualMemory");
+	IN ULONG Protect);
 
-EXTERN_C NTSTATUS NtFreeVirtualMemory(
+NTSTATUS NtFreeVirtualMemory(
 	IN HANDLE ProcessHandle,
 	IN OUT PVOID * BaseAddress,
 	IN OUT PSIZE_T RegionSize,
-	IN ULONG FreeType) asm ("NtFreeVirtualMemory");
+	IN ULONG FreeType);
 
-EXTERN_C NTSTATUS NtCreateFile(
+NTSTATUS NtCreateFile(
 	OUT PHANDLE FileHandle,
 	IN ACCESS_MASK DesiredAccess,
 	IN POBJECT_ATTRIBUTES ObjectAttributes,
@@ -206,9 +221,9 @@ EXTERN_C NTSTATUS NtCreateFile(
 	IN ULONG CreateDisposition,
 	IN ULONG CreateOptions,
 	IN PVOID EaBuffer OPTIONAL,
-	IN ULONG EaLength) asm ("NtCreateFile");
+	IN ULONG EaLength);
 
-EXTERN_C NTSTATUS NtWriteFile(
+NTSTATUS NtWriteFile(
 	IN HANDLE FileHandle,
 	IN HANDLE Event OPTIONAL,
 	IN PIO_APC_ROUTINE ApcRoutine OPTIONAL,
@@ -217,9 +232,9 @@ EXTERN_C NTSTATUS NtWriteFile(
 	IN PVOID Buffer,
 	IN ULONG Length,
 	IN PLARGE_INTEGER ByteOffset OPTIONAL,
-	IN PULONG Key OPTIONAL) asm ("NtWriteFile");
+	IN PULONG Key OPTIONAL);
 
-EXTERN_C NTSTATUS NtCreateProcess(
+NTSTATUS NtCreateProcess(
 	OUT PHANDLE ProcessHandle,
 	IN ACCESS_MASK DesiredAccess,
 	IN POBJECT_ATTRIBUTES ObjectAttributes OPTIONAL,
@@ -227,40 +242,40 @@ EXTERN_C NTSTATUS NtCreateProcess(
 	IN BOOLEAN InheritObjectTable,
 	IN HANDLE SectionHandle OPTIONAL,
 	IN HANDLE DebugPort OPTIONAL,
-	IN HANDLE ExceptionPort OPTIONAL) asm ("NtCreateProcess");
+	IN HANDLE ExceptionPort OPTIONAL);
 
-EXTERN_C NTSTATUS NtQuerySystemInformation(
+NTSTATUS NtQuerySystemInformation(
 	IN SYSTEM_INFORMATION_CLASS SystemInformationClass,
 	IN OUT PVOID SystemInformation,
 	IN ULONG SystemInformationLength,
-	OUT PULONG ReturnLength OPTIONAL) asm ("NtQuerySystemInformation");
+	OUT PULONG ReturnLength OPTIONAL);
 
-EXTERN_C NTSTATUS NtDuplicateObject(
+NTSTATUS NtDuplicateObject(
 	IN HANDLE SourceProcessHandle,
 	IN HANDLE SourceHandle,
 	IN HANDLE TargetProcessHandle OPTIONAL,
 	OUT PHANDLE TargetHandle OPTIONAL,
 	IN ACCESS_MASK DesiredAccess,
 	IN ULONG HandleAttributes,
-	IN ULONG Options) asm ("NtDuplicateObject");
+	IN ULONG Options);
 
-EXTERN_C NTSTATUS NtQueryObject(
+NTSTATUS NtQueryObject_(
 	IN HANDLE Handle,
 	IN OBJECT_INFORMATION_CLASS ObjectInformationClass,
 	OUT PVOID ObjectInformation OPTIONAL,
 	IN ULONG ObjectInformationLength,
-	OUT PULONG ReturnLength OPTIONAL) asm ("NtQueryObject");
+	OUT PULONG ReturnLength OPTIONAL);
 
-EXTERN_C NTSTATUS NtWaitForSingleObject(
+NTSTATUS NtWaitForSingleObject(
 	IN HANDLE ObjectHandle,
 	IN BOOLEAN Alertable,
-	IN PLARGE_INTEGER TimeOut OPTIONAL) asm ("NtWaitForSingleObject");
+	IN PLARGE_INTEGER TimeOut OPTIONAL);
 
-EXTERN_C NTSTATUS NtDeleteFile(
-	IN POBJECT_ATTRIBUTES ObjectAttributes) asm ("NtDeleteFile");
+NTSTATUS NtDeleteFile(
+	IN POBJECT_ATTRIBUTES ObjectAttributes);
 
-EXTERN_C NTSTATUS NtTerminateProcess(
+NTSTATUS NtTerminateProcess(
 	IN HANDLE ProcessHandle OPTIONAL,
-	IN NTSTATUS ExitStatus) asm ("NtTerminateProcess");
+	IN NTSTATUS ExitStatus);
 
 #endif

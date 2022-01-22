@@ -1,5 +1,13 @@
 #pragma once
 
+#include <windows.h>
+#include <winternl.h>
+
+#include "output.h"
+#include "syscalls.h"
+#include "ntdefs.h"
+#include "utils.h"
+
 #define LSASRV_DLL L"lsasrv.dll"
 #ifdef _WIN64
 #define LDR_POINTER_OFFSET 0x18

@@ -1,11 +1,13 @@
 #include "nanodump.h"
 #include "beacon.h"
+#ifdef BOF
 #include "utils.c"
 #include "handle.c"
 #include "modules.c"
 #include "syscalls.c"
 #include "debugpriv.c"
 #include "malseclogon.c"
+#endif
 
 void writeat(
     Pdump_context dc,
@@ -67,15 +69,18 @@ BOOL write_header(
     header.Flags = MiniDumpNormal;
 
     char header_bytes[SIZE_OF_HEADER];
-    memcpy(header_bytes + offsetof(MiniDumpHeader, Signature), &header.Signature, sizeof(header.Signature));
-    memcpy(header_bytes + offsetof(MiniDumpHeader, Version), &header.Version, sizeof(header.Version));
-    memcpy(header_bytes + offsetof(MiniDumpHeader, ImplementationVersion), &header.ImplementationVersion, sizeof(header.ImplementationVersion));
-    memcpy(header_bytes + offsetof(MiniDumpHeader, NumberOfStreams), &header.NumberOfStreams, sizeof(header.NumberOfStreams));
-    memcpy(header_bytes + offsetof(MiniDumpHeader, StreamDirectoryRva), &header.StreamDirectoryRva, sizeof(header.StreamDirectoryRva));
-    memcpy(header_bytes + offsetof(MiniDumpHeader, CheckSum), &header.CheckSum, sizeof(header.CheckSum));
-    memcpy(header_bytes + offsetof(MiniDumpHeader, Reserved), &header.Reserved, sizeof(header.Reserved));
-    memcpy(header_bytes + offsetof(MiniDumpHeader, TimeDateStamp), &header.TimeDateStamp, sizeof(header.TimeDateStamp));
-    memcpy(header_bytes + offsetof(MiniDumpHeader, Flags), &header.Flags, sizeof(header.Flags));
+
+    DWORD offset = 0;
+    memcpy(header_bytes + offset, &header.Signature, 4); offset += 4;
+    memcpy(header_bytes + offset, &header.Version, 2); offset += 2;
+    memcpy(header_bytes + offset, &header.ImplementationVersion, 2); offset += 2;
+    memcpy(header_bytes + offset, &header.NumberOfStreams, 4); offset += 4;
+    memcpy(header_bytes + offset, &header.StreamDirectoryRva, 4); offset += 4;
+    memcpy(header_bytes + offset, &header.CheckSum, 4); offset += 4;
+    memcpy(header_bytes + offset, &header.Reserved, 4); offset += 4;
+    memcpy(header_bytes + offset, &header.TimeDateStamp, 4); offset += 4;
+    memcpy(header_bytes + offset, &header.Flags, 4);
+
     if (!append(dc, header_bytes, SIZE_OF_HEADER))
     {
         DPRINT_ERR("Failed to write header");
@@ -91,9 +96,10 @@ BOOL write_directory(
 )
 {
     BYTE directory_bytes[SIZE_OF_DIRECTORY];
-    memcpy(directory_bytes + offsetof(MiniDumpDirectory, StreamType), &directory.StreamType, sizeof(directory.StreamType));
-    memcpy(directory_bytes + offsetof(MiniDumpDirectory, DataSize), &directory.DataSize, sizeof(directory.DataSize));
-    memcpy(directory_bytes + offsetof(MiniDumpDirectory, Rva), &directory.Rva, sizeof(directory.Rva));
+    DWORD offset = 0;
+    memcpy(directory_bytes + offset, &directory.StreamType, 4); offset += 4;
+    memcpy(directory_bytes + offset, &directory.DataSize, 4); offset += 4;
+    memcpy(directory_bytes + offset, &directory.Rva, 4);
     if (!append(dc, directory_bytes, sizeof(directory_bytes)))
         return FALSE;
 
@@ -196,28 +202,29 @@ BOOL write_system_info_stream(
     ULONG32 stream_size = SIZE_OF_SYSTEM_INFO_STREAM;
     char system_info_bytes[SIZE_OF_SYSTEM_INFO_STREAM];
 
-    memcpy(system_info_bytes + offsetof(MiniDumpSystemInfo, ProcessorArchitecture), &system_info.ProcessorArchitecture, sizeof(system_info.ProcessorArchitecture));
-    memcpy(system_info_bytes + offsetof(MiniDumpSystemInfo, ProcessorLevel), &system_info.ProcessorLevel, sizeof(system_info.ProcessorLevel));
-    memcpy(system_info_bytes + offsetof(MiniDumpSystemInfo, ProcessorRevision), &system_info.ProcessorRevision, sizeof(system_info.ProcessorRevision));
-    memcpy(system_info_bytes + offsetof(MiniDumpSystemInfo, NumberOfProcessors), &system_info.NumberOfProcessors, sizeof(system_info.NumberOfProcessors));
-    memcpy(system_info_bytes + offsetof(MiniDumpSystemInfo, ProductType), &system_info.ProductType, sizeof(system_info.ProductType));
-    memcpy(system_info_bytes + offsetof(MiniDumpSystemInfo, MajorVersion), &system_info.MajorVersion, sizeof(system_info.MajorVersion));
-    memcpy(system_info_bytes + offsetof(MiniDumpSystemInfo, MinorVersion), &system_info.MinorVersion, sizeof(system_info.MinorVersion));
-    memcpy(system_info_bytes + offsetof(MiniDumpSystemInfo, BuildNumber), &system_info.BuildNumber, sizeof(system_info.BuildNumber));
-    memcpy(system_info_bytes + offsetof(MiniDumpSystemInfo, PlatformId), &system_info.PlatformId, sizeof(system_info.PlatformId));
-    memcpy(system_info_bytes + offsetof(MiniDumpSystemInfo, CSDVersionRva), &system_info.CSDVersionRva, sizeof(system_info.CSDVersionRva));
-    memcpy(system_info_bytes + offsetof(MiniDumpSystemInfo, SuiteMask), &system_info.SuiteMask, sizeof(system_info.SuiteMask));
-    memcpy(system_info_bytes + offsetof(MiniDumpSystemInfo, Reserved2), &system_info.Reserved2, sizeof(system_info.Reserved2));
+    DWORD offset = 0;
+    memcpy(system_info_bytes + offset, &system_info.ProcessorArchitecture, 2); offset += 2;
+    memcpy(system_info_bytes + offset, &system_info.ProcessorLevel, 2); offset += 2;
+    memcpy(system_info_bytes + offset, &system_info.ProcessorRevision, 2); offset += 2;
+    memcpy(system_info_bytes + offset, &system_info.NumberOfProcessors, 1); offset += 1;
+    memcpy(system_info_bytes + offset, &system_info.ProductType, 1); offset += 1;
+    memcpy(system_info_bytes + offset, &system_info.MajorVersion, 4); offset += 4;
+    memcpy(system_info_bytes + offset, &system_info.MinorVersion, 4); offset += 4;
+    memcpy(system_info_bytes + offset, &system_info.BuildNumber, 4); offset += 4;
+    memcpy(system_info_bytes + offset, &system_info.PlatformId, 4); offset += 4;
+    memcpy(system_info_bytes + offset, &system_info.CSDVersionRva, 4); offset += 4;
+    memcpy(system_info_bytes + offset, &system_info.SuiteMask, 2); offset += 2;
+    memcpy(system_info_bytes + offset, &system_info.Reserved2, 2); offset += 2;
 #if _WIN64
-    memcpy(system_info_bytes + offsetof(MiniDumpSystemInfo, ProcessorFeatures1), &system_info.ProcessorFeatures1, sizeof(system_info.ProcessorFeatures1));
-    memcpy(system_info_bytes + offsetof(MiniDumpSystemInfo, ProcessorFeatures2), &system_info.ProcessorFeatures2, sizeof(system_info.ProcessorFeatures2));
+    memcpy(system_info_bytes + offset, &system_info.ProcessorFeatures1, 8); offset += 8;
+    memcpy(system_info_bytes + offset, &system_info.ProcessorFeatures2, 8);
 #else
-    memcpy(system_info_bytes + offsetof(MiniDumpSystemInfo, VendorId1), &system_info.VendorId1, sizeof(system_info.VendorId1));
-    memcpy(system_info_bytes + offsetof(MiniDumpSystemInfo, VendorId2), &system_info.VendorId2, sizeof(system_info.VendorId2));
-    memcpy(system_info_bytes + offsetof(MiniDumpSystemInfo, VendorId3), &system_info.VendorId3, sizeof(system_info.VendorId3));
-    memcpy(system_info_bytes + offsetof(MiniDumpSystemInfo, VersionInformation), &system_info.VersionInformation, sizeof(system_info.VersionInformation));
-    memcpy(system_info_bytes + offsetof(MiniDumpSystemInfo, FeatureInformation), &system_info.FeatureInformation, sizeof(system_info.FeatureInformation));
-    memcpy(system_info_bytes + offsetof(MiniDumpSystemInfo, AMDExtendedCpuFeatures), &system_info.AMDExtendedCpuFeatures, sizeof(system_info.AMDExtendedCpuFeatures));
+    memcpy(system_info_bytes + offset, &system_info.VendorId1, 4); offset += 4;
+    memcpy(system_info_bytes + offset, &system_info.VendorId2, 4); offset += 4;
+    memcpy(system_info_bytes + offset, &system_info.VendorId3, 4); offset += 4;
+    memcpy(system_info_bytes + offset, &system_info.VersionInformation, 4); offset += 4;
+    memcpy(system_info_bytes + offset, &system_info.FeatureInformation, 4); offset += 4;
+    memcpy(system_info_bytes + offset, &system_info.AMDExtendedCpuFeatures, 4);
 #endif
 
     ULONG32 stream_rva = dc->rva;
@@ -342,32 +349,33 @@ Pmodule_info write_module_list_stream(
         module.MiscRecord.DataSize = 0;
         module.MiscRecord.rva = 0;
         module.Reserved0 = 0;
-        module.Reserved0 = 0;
+        module.Reserved1 = 0;
 
-        memcpy(module_bytes + offsetof(MiniDumpModule, BaseOfImage), &module.BaseOfImage, sizeof(module.BaseOfImage));
-        memcpy(module_bytes + offsetof(MiniDumpModule, SizeOfImage), &module.SizeOfImage, sizeof(module.SizeOfImage));
-        memcpy(module_bytes + offsetof(MiniDumpModule, CheckSum), &module.CheckSum, sizeof(module.CheckSum));
-        memcpy(module_bytes + offsetof(MiniDumpModule, TimeDateStamp), &module.TimeDateStamp, sizeof(module.TimeDateStamp));
-        memcpy(module_bytes + offsetof(MiniDumpModule, ModuleNameRva), &module.ModuleNameRva, sizeof(module.ModuleNameRva));
-        memcpy(module_bytes + offsetof(MiniDumpModule, VersionInfo), &module.VersionInfo.dwSignature, sizeof(module.VersionInfo.dwSignature));
-        memcpy(module_bytes + offsetof(MiniDumpModule, VersionInfo), &module.VersionInfo.dwStrucVersion, sizeof(module.VersionInfo.dwStrucVersion));
-        memcpy(module_bytes + offsetof(MiniDumpModule, VersionInfo), &module.VersionInfo.dwFileVersionMS, sizeof(module.VersionInfo.dwFileVersionMS));
-        memcpy(module_bytes + offsetof(MiniDumpModule, VersionInfo), &module.VersionInfo.dwFileVersionLS, sizeof(module.VersionInfo.dwFileVersionLS));
-        memcpy(module_bytes + offsetof(MiniDumpModule, VersionInfo), &module.VersionInfo.dwProductVersionMS, sizeof(module.VersionInfo.dwProductVersionMS));
-        memcpy(module_bytes + offsetof(MiniDumpModule, VersionInfo), &module.VersionInfo.dwProductVersionLS, sizeof(module.VersionInfo.dwProductVersionLS));
-        memcpy(module_bytes + offsetof(MiniDumpModule, VersionInfo), &module.VersionInfo.dwFileFlagsMask, sizeof(module.VersionInfo.dwFileFlagsMask));
-        memcpy(module_bytes + offsetof(MiniDumpModule, VersionInfo), &module.VersionInfo.dwFileFlags, sizeof(module.VersionInfo.dwFileFlags));
-        memcpy(module_bytes + offsetof(MiniDumpModule, VersionInfo), &module.VersionInfo.dwFileOS, sizeof(module.VersionInfo.dwFileOS));
-        memcpy(module_bytes + offsetof(MiniDumpModule, VersionInfo), &module.VersionInfo.dwFileType, sizeof(module.VersionInfo.dwFileType));
-        memcpy(module_bytes + offsetof(MiniDumpModule, VersionInfo), &module.VersionInfo.dwFileSubtype, sizeof(module.VersionInfo.dwFileSubtype));
-        memcpy(module_bytes + offsetof(MiniDumpModule, VersionInfo), &module.VersionInfo.dwFileDateMS, sizeof(module.VersionInfo.dwFileDateMS));
-        memcpy(module_bytes + offsetof(MiniDumpModule, VersionInfo), &module.VersionInfo.dwFileDateLS, sizeof(module.VersionInfo.dwFileDateLS));
-        memcpy(module_bytes + offsetof(MiniDumpModule, CvRecord), &module.CvRecord.DataSize, sizeof(module.CvRecord.DataSize));
-        memcpy(module_bytes + offsetof(MiniDumpModule, CvRecord), &module.CvRecord.rva, sizeof(module.CvRecord.rva));
-        memcpy(module_bytes + offsetof(MiniDumpModule, MiscRecord), &module.MiscRecord.DataSize, sizeof(module.MiscRecord.DataSize));
-        memcpy(module_bytes + offsetof(MiniDumpModule, MiscRecord), &module.MiscRecord.rva, sizeof(module.MiscRecord.rva));
-        memcpy(module_bytes + offsetof(MiniDumpModule, Reserved0), &module.Reserved0, sizeof(module.Reserved0));
-        memcpy(module_bytes + offsetof(MiniDumpModule, Reserved1), &module.Reserved1, sizeof(module.Reserved1));
+        DWORD offset = 0;
+        memcpy(module_bytes + offset, &module.BaseOfImage, 8); offset += 8;
+        memcpy(module_bytes + offset, &module.SizeOfImage, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.CheckSum, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.TimeDateStamp, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.ModuleNameRva, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.VersionInfo.dwSignature, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.VersionInfo.dwStrucVersion, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.VersionInfo.dwFileVersionMS, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.VersionInfo.dwFileVersionLS, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.VersionInfo.dwProductVersionMS, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.VersionInfo.dwProductVersionLS, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.VersionInfo.dwFileFlagsMask, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.VersionInfo.dwFileFlags, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.VersionInfo.dwFileOS, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.VersionInfo.dwFileType, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.VersionInfo.dwFileSubtype, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.VersionInfo.dwFileDateMS, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.VersionInfo.dwFileDateLS, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.CvRecord.DataSize, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.CvRecord.rva, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.MiscRecord.DataSize, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.MiscRecord.rva, 4); offset += 4;
+        memcpy(module_bytes + offset, &module.Reserved0, 8); offset += 8;
+        memcpy(module_bytes + offset, &module.Reserved1, 8);
 
         if (!append(dc, module_bytes, sizeof(module_bytes)))
         {
@@ -415,7 +423,7 @@ PMiniDumpMemoryDescriptor64 get_memory_ranges(
     ULONG64 region_size;
     current_address = 0;
     MEMORY_INFORMATION_CLASS mic = 0;
-    MEMORY_BASIC_INFORMATION mbi;
+    MEMORY_BASIC_INFORMATION mbi = {0};
     DWORD number_of_ranges = 0;
     NTSTATUS status;
 
@@ -437,7 +445,7 @@ PMiniDumpMemoryDescriptor64 get_memory_ranges(
         base_address = mbi.BaseAddress;
         region_size = mbi.RegionSize;
         // next memory range
-        current_address = base_address + region_size;
+        current_address = RVA(PVOID, base_address, region_size);
 
         // ignore non-commited pages
         if (mbi.State != MEM_COMMIT)

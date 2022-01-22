@@ -27,10 +27,18 @@ A flexible tool that creates a minidump of the LSASS process.
 git clone https://github.com/helpsystems/nanodump.git
 ```
 
-### Compile with MinGW (optional)
+### Compile (optional)
+
+###### On Linux with MinGW
 
 ```bash
-make
+make -f Makefile.mingw
+```
+
+###### On Windows with MSVC
+
+```bash
+nmake -f Makefile.msvc
 ```
 
 ### Import

@@ -7,6 +7,8 @@
  * Cobalt Strike 4.1.
  */
 
+#pragma once
+
  /* data API */
 typedef struct {
 	char* original; /* the original buffer [so we can free it] */

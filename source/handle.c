@@ -302,7 +302,7 @@ POBJECT_TYPES_INFORMATION QueryObjectTypesInfo(void)
             return NULL;
         }
 
-        status = NtQueryObject(
+        status = NtQueryObject_(
             NULL,
             ObjectTypesInformation,
             obj_type_information,

@@ -1,5 +1,8 @@
 #pragma once
 
+#include <windows.h>
+#include <winternl.h>
+
 #if defined(NANO) && !defined(SSP)
 
 #define LSASS_EXE L"lsass.exe"
@@ -56,6 +59,63 @@ typedef struct _OBJECT_TYPE_INFORMATION_V2 {
     ULONG DefaultNonPagedPoolCharge;
 } OBJECT_TYPE_INFORMATION_V2, * POBJECT_TYPE_INFORMATION_V2;
 
+#if defined(_MSC_VER)
+
+typedef enum _POOL_TYPE
+{
+    NonPagedPool,
+    PagedPool,
+    NonPagedPoolMustSucceed,
+    DontUseThisType,
+    NonPagedPoolCacheAligned,
+    PagedPoolCacheAligned,
+    NonPagedPoolCacheAlignedMustS
+} POOL_TYPE, *PPOOL_TYPE;
+
+typedef struct _OBJECT_TYPE_INFORMATION
+{
+    UNICODE_STRING Name;
+    ULONG TotalNumberOfObjects;
+    ULONG TotalNumberOfHandles;
+    ULONG TotalPagedPoolUsage;
+    ULONG TotalNonPagedPoolUsage;
+    ULONG TotalNamePoolUsage;
+    ULONG TotalHandleTableUsage;
+    ULONG HighWaterNumberOfObjects;
+    ULONG HighWaterNumberOfHandles;
+    ULONG HighWaterPagedPoolUsage;
+    ULONG HighWaterNonPagedPoolUsage;
+    ULONG HighWaterNamePoolUsage;
+    ULONG HighWaterHandleTableUsage;
+    ULONG InvalidAttributes;
+    GENERIC_MAPPING GenericMapping;
+    ULONG ValidAccess;
+    BOOLEAN SecurityRequired;
+    BOOLEAN MaintainHandleCount;
+    USHORT MaintainTypeList;
+    POOL_TYPE PoolType;
+    ULONG PagedPoolUsage;
+    ULONG NonPagedPoolUsage;
+} OBJECT_TYPE_INFORMATION, *POBJECT_TYPE_INFORMATION;
+
+typedef struct _SYSTEM_HANDLE
+{
+    ULONG ProcessId;
+    BYTE ObjectTypeNumber;
+    BYTE Flags;
+    USHORT Handle;
+    PVOID Object;
+    ACCESS_MASK GrantedAccess;
+} SYSTEM_HANDLE, *PSYSTEM_HANDLE;
+
+typedef struct _SYSTEM_HANDLE_INFORMATION
+{
+    ULONG Count;
+    SYSTEM_HANDLE Handle[1];
+} SYSTEM_HANDLE_INFORMATION, *PSYSTEM_HANDLE_INFORMATION;
+
+#endif
+
 typedef struct _PROCESS_LIST
 {
     ULONG Count;
@@ -73,6 +133,9 @@ typedef struct _SYSTEM_HANDLE_TABLE_ENTRY_INFO
     ULONG GrantedAccess;
 } SYSTEM_HANDLE_TABLE_ENTRY_INFO, * PSYSTEM_HANDLE_TABLE_ENTRY_INFO;
 
+HANDLE make_handle_full_access(HANDLE hProcess);
+PSYSTEM_HANDLE_INFORMATION get_all_handles(void);
+BOOL GetTypeIndexByName(PULONG ProcesTypeIndex);
 HANDLE obtain_lsass_handle(DWORD pid, DWORD permissions, BOOL dup, BOOL fork, BOOL is_malseclogon_stage_2, LPCSTR dump_path);
 HANDLE duplicate_lsass_handle(DWORD lsass_pid, DWORD permissions);
 HANDLE get_process_handle(DWORD dwPid, DWORD dwFlags, BOOL quiet);

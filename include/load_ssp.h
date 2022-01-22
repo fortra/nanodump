@@ -3,9 +3,11 @@
 #define WIN32_NO_STATUS
 #define SECURITY_WIN32
 #include <windows.h>
+#include <winternl.h>
 #include <sspi.h>
-#include <ntsecpkg.h>
-#include <ntsecpkg.h>
+
+#include "nanodump.h"
+#include "output.h"
 
 typedef NTSTATUS(WINAPI* AddSecurityPackageW_t) (LPWSTR pszPackageName, PSECURITY_PACKAGE_OPTIONS pOptions);
 

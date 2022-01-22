@@ -172,7 +172,7 @@ PVOID get_function_address(
 
     // check if addr is a pointer to another function in another DLL
     if (addr >= (PVOID)exp &&
-        addr <  (PVOID)exp + exp_size)
+        addr <  RVA(PVOID, exp, exp_size))
     {
         // the function seems to be defined somewhere else
         addr = resolve_reference(
@@ -209,7 +209,7 @@ HANDLE get_library_address(
 
     // the library is not currently loaded
     // get the address of LdrLoadDll
-    LdrLoadDll_t LdrLoadDll = (LdrLoadDll_t)get_function_address(
+    LdrLoadDll_t LdrLoadDll = (LdrLoadDll_t)(ULONG_PTR)get_function_address(
         get_library_address(NTDLL_DLL, FALSE),
         LdrLoadDll_SW2_HASH,
         0

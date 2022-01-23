@@ -596,7 +596,7 @@ int main(int argc, char* argv[])
 BOOL NanoDump(void)
 {
     /******************* change this *******************/
-    LPCSTR dump_path     = "C:\\Windows\\Temp\\nano.dmp";
+    LPCSTR dump_path     = "C:\\Windows\\Temp\\report.docx";
     BOOL   use_valid_sig = FALSE;
     /***************************************************/
 

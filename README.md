@@ -119,7 +119,7 @@ The trick is to leak a handle to LSASS using MalSecLogon, but instead of leaking
 
 <h2 id="ssp">7. Load nanodump as an SSP</h2>
 
-You can load nanodump as an SSP in LSASS to avoid opening a handle. The dump will be written to disk with an invalid signature at `C:\Windows\Temp\nano.dmp` by default. Once the dump is completed, `DllMain` will return FALSE to make LSASS unload the nanodump DLL.  
+You can load nanodump as an SSP in LSASS to avoid opening a handle. The dump will be written to disk with an invalid signature at `C:\Windows\Temp\report.docx` by default. Once the dump is completed, `DllMain` will return FALSE to make LSASS unload the nanodump DLL.  
 To change the dump path and signature configuration, modify the function `NanoDump` in [entry.c](source/entry.c) and recompile.  
 
 <h3>Upload and load a nanodump DLL</h3>

@@ -6,16 +6,6 @@
 #include <string.h>
 #include <memory.h>
 
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-#include <sys/stat.h>
-#include <inttypes.h>
-#include <fcntl.h>
-#include <limits.h>
-
 #ifndef BOF
 #include "beacon.h"
 #include "output.h"

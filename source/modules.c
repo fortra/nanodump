@@ -51,15 +51,14 @@ PVOID get_module_list_address(
         sizeof(PVOID),
         NULL
     );
-    if (status == STATUS_PARTIAL_COPY && !is_lsass)
+    if (!NT_SUCCESS(status) && !is_lsass)
     {
         // failed to read the memory of some process, simply continue
         return NULL;
     }
-    if (!NT_SUCCESS(status))
+    if (!NT_SUCCESS(status) && is_lsass)
     {
-        syscall_failed("NtReadVirtualMemory", status);
-        DPRINT_ERR("Could not get the address of the module list");
+        PRINT_ERR("Failed to read " LSASS ", status: %lx", status);
         return NULL;
     }
 

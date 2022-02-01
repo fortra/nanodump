@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import os
 import re
 import glob
 import random
@@ -29,6 +30,7 @@ def replace_seed(old_seed, new_seed):
 
 def get_function_hash(seed, function_name):
     function_hash = seed
+    function_name = function_name.replace('_', '')
     name = function_name.replace('Nt', 'Zw', 1) + '\0'
     ror8 = lambda v: ((v >> 8) & (2 ** 32 - 1)) | ((v << 24) & (2 ** 32 - 1))
 
@@ -42,7 +44,7 @@ def get_function_hash(seed, function_name):
 def replace_syscall_hashes(seed):
     with open('source/syscalls.c') as f:
         code = f.read()
-    regex = re.compile(r'__declspec\(naked\) NTSTATUS (Nt\w+)')
+    regex = re.compile(r'__declspec\(naked\) NTSTATUS (Nt[^(]+)')
     syscall_names = re.findall(regex, code)
     syscall_names = set(syscall_names)
     syscall_definitions = code.split('#elif defined(__GNUC__)')[3]
@@ -56,8 +58,7 @@ def replace_syscall_hashes(seed):
         print(f'{syscall_name} -> {old_hash} - 0x{new_hash:08X}')
         code = code.replace(
             old_hash,
-            f'0x{new_hash:08X}',
-            1
+            f'0x{new_hash:08X}'
         )
 
     with open('source/syscalls.c', 'w') as f:
@@ -106,8 +107,10 @@ def main():
     replace_seed(old_seed, new_seed)
     replace_syscall_hashes(new_seed)
     replace_dinvoke_hashes(new_seed)
-    print('done! recompile with: \'make\'')
-
+    if os.name == 'nt':
+        print('done! recompile with:\nnmake -f Makefile.msvc')
+    else:
+        print('done! recompile with:\nmake -f Makefile.mingw')
 
 if __name__ == '__main__':
     main()

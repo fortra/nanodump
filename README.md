@@ -34,7 +34,7 @@ A flexible tool that creates a minidump of the LSASS process.
   <li>Supports handle duplication.</li> 
   <li>Supports MalSecLogon.</li> 
   <li>You can load nanodump in LSASS as a Security Support Provider (SSP).</li> 
-  <li>You can use the .exe version to run *nanodump* outside of Cobalt Strike :smile:.</li> 
+  <li>You can use the .exe version to run <b>nanodump</b> outside of Cobalt Strike :smile:.</li> 
 </ul>
 
 <h2 id="usage">2. Usage</h2>

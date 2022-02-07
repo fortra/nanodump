@@ -665,5 +665,7 @@ BOOL NanoDumpWriteDump(
 
     free_linked_list(memory_ranges); memory_ranges = NULL;
 
+    DPRINT("The nanodump was created succesfully");
+
     return TRUE;
 }

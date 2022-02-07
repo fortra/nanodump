@@ -58,7 +58,7 @@ PVOID get_module_list_address(
     }
     if (!NT_SUCCESS(status) && is_lsass)
     {
-        PRINT_ERR("Failed to read " LSASS ", status: %lx", status);
+        PRINT_ERR("Failed to read " LSASS ", status: 0x%lx", status);
         return NULL;
     }
 

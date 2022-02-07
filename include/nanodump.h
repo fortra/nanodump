@@ -30,8 +30,11 @@
 #define LSASS "LSASS"
 
 // permissions requested by NtOpenProcess
-#define LSASS_DEFAULT_PERMISSIONS PROCESS_QUERY_INFORMATION|PROCESS_VM_READ
-#define LSASS_FORK_PERMISSIONS PROCESS_QUERY_INFORMATION|PROCESS_CREATE_PROCESS
+#define LSASS_DEFAULT_PERMISSIONS (PROCESS_QUERY_INFORMATION|PROCESS_VM_READ)
+#define LSASS_CLONE_PERMISSIONS (PROCESS_QUERY_INFORMATION|PROCESS_CREATE_PROCESS)
+// permissions requested by PssNtCaptureSnapshot
+#define PROCESS_PPSCAPTURESNAPSHOT_PERMISSIONS PSS_CAPTURE_VA_CLONE
+#define THREAD_PPSCAPTURESNAPSHOT_PERMISSIONS 0
 
 // chunk size used in download_file: 900 KiB
 #define CHUNK_SIZE 0xe1000
@@ -181,8 +184,8 @@ typedef struct _dump_context
     ULONG32 rva;
     SIZE_T  DumpMaxSize;
     ULONG32 Signature;
-    SHORT   Version;
-    SHORT   ImplementationVersion;
+    USHORT  Version;
+    USHORT  ImplementationVersion;
 } dump_context, *Pdump_context;
 
 typedef struct _MiniDumpSystemInfo

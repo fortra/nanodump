@@ -28,10 +28,12 @@ def replace_seed(old_seed, new_seed):
         f.write(code)
 
 
-def get_function_hash(seed, function_name):
+def get_function_hash(seed, function_name, is_syscall=True):
     function_hash = seed
     function_name = function_name.replace('_', '')
-    name = function_name.replace('Nt', 'Zw', 1) + '\0'
+    if is_syscall and function_name[:2] == 'Nt':
+        function_name = 'Zw' + function_name[2:]
+    name = function_name + '\0'
     ror8 = lambda v: ((v >> 8) & (2 ** 32 - 1)) | ((v << 24) & (2 ** 32 - 1))
 
     for segment in [s for s in [name[i:i + 2] for i in range(len(name))] if len(s) == 2]:
@@ -90,7 +92,7 @@ def replace_dinvoke_hashes(seed):
         regex = re.compile(r'#define (\w+)_SW2_HASH (0x[a-fA-F0-9]{8})')
         matches = re.findall(regex, code)
         for function_name, old_hash in matches:
-            new_hash = get_function_hash(seed, function_name)
+            new_hash = get_function_hash(seed, function_name, is_syscall=False)
             code = code.replace(
                 f'#define {function_name}_SW2_HASH {old_hash}',
                 f'#define {function_name}_SW2_HASH 0x{new_hash:08X}',

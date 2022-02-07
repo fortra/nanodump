@@ -86,6 +86,7 @@ void set_command_line(
     LPCSTR program_name,
     LPCSTR dump_path,
     BOOL fork_lsass,
+    BOOL snapshot_lsass,
     BOOL use_valid_sig
 )
 {
@@ -105,7 +106,10 @@ void set_command_line(
     // --fork
     if (fork_lsass)
         wcsncat(command_line, L" -f", MAX_PATH);
-    // valid
+    // --snapshot
+    if (snapshot_lsass)
+        wcsncat(command_line, L" -s", MAX_PATH);
+    // --valid
     if (use_valid_sig)
         wcsncat(command_line, L" -v", MAX_PATH);
     // malseclogon
@@ -167,7 +171,10 @@ void kill_created_processes(
     );
     for (DWORD i = 0; i < created_processes->Count; i++)
     {
-        kill_process(created_processes->ProcessId[i]);
+        kill_process(
+            created_processes->ProcessId[i],
+            NULL
+        );
     }
     intFree(created_processes); created_processes = NULL;
     DPRINT("The created processes have been killed");
@@ -182,6 +189,7 @@ BOOL MalSecLogon(
     LPCSTR binary_path,
     LPCSTR dump_path,
     BOOL fork_lsass,
+    BOOL snapshot_lsass,
     BOOL use_valid_sig,
     BOOL use_malseclogon_locally,
     DWORD lsass_pid,
@@ -211,6 +219,7 @@ BOOL MalSecLogon(
         binary_path,
         dump_path,
         fork_lsass,
+        snapshot_lsass,
         use_valid_sig,
         use_malseclogon_locally,
         lsass_pid,
@@ -242,6 +251,7 @@ BOOL malseclogon_stage_1(
     LPCSTR program_name,
     LPCSTR dump_path,
     BOOL fork_lsass,
+    BOOL snapshot_lsass,
     BOOL use_valid_sig,
     BOOL use_malseclogon_locally,
     DWORD lsass_pid,
@@ -267,6 +277,7 @@ BOOL malseclogon_stage_1(
         program_name,
         dump_path,
         fork_lsass,
+        snapshot_lsass,
         use_valid_sig
     );
 

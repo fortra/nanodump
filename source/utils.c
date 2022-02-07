@@ -356,6 +356,11 @@ BOOL file_exists(
         NULL,
         0
     );
+    if (status == STATUS_SHARING_VIOLATION)
+    {
+        DPRINT_ERR("The file is being used by another process");
+        return FALSE;
+    }
     if (status == STATUS_OBJECT_NAME_NOT_FOUND)
         return FALSE;
     if (!NT_SUCCESS(status))
@@ -474,21 +479,26 @@ DWORD get_pid(
  * used to kill processes created by MalSecLogon
  */
 BOOL kill_process(
-    DWORD pid
+    DWORD pid,
+    HANDLE hProcess
 )
 {
-    if (!pid)
-        return FALSE;
-    // open a handle with PROCESS_TERMINATE
-    HANDLE hProcess = get_process_handle(
-        pid,
-        PROCESS_TERMINATE,
-        FALSE
-    );
-    if (!hProcess)
+    if (!pid && !hProcess)
+        return TRUE;
+
+    if (pid)
     {
-        DPRINT_ERR("Failed to kill process with PID: %ld", pid);
-        return FALSE;
+        // open a handle with PROCESS_TERMINATE
+        hProcess = get_process_handle(
+            pid,
+            PROCESS_TERMINATE,
+            FALSE
+        );
+        if (!hProcess)
+        {
+            DPRINT_ERR("Failed to kill process with PID: %ld", pid);
+            return FALSE;
+        }
     }
 
     NTSTATUS status = NtTerminateProcess(
@@ -498,10 +508,25 @@ BOOL kill_process(
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtTerminateProcess", status);
-        DPRINT_ERR("Failed to kill process with PID: %ld", pid);
+        if (pid)
+        {
+            DPRINT_ERR("Failed to kill process with PID: %ld", pid);
+        }
+        else
+        {
+            DPRINT_ERR("Failed to kill process with handle: 0x%lx", (DWORD)(ULONG_PTR)hProcess);
+        }
         return FALSE;
     }
-    DPRINT("Killed process with PID: %ld", pid);
+    if (pid)
+    {
+        DPRINT("Killed process with PID: %ld", pid);
+    }
+    else
+    {
+        DPRINT("Killed process with handle: 0x%lx", (DWORD)(ULONG_PTR)hProcess);
+    }
+
     return TRUE;
 }
 

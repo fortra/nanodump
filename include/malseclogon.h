@@ -33,8 +33,8 @@ struct TEB
 typedef BOOL(WINAPI* CreateProcessWithLogonW_t) (LPCWSTR lpUsername, LPCWSTR lpDomain, LPCWSTR lpPassword, DWORD dwLogonFlags, LPCWSTR lpApplicationName, LPWSTR lpCommandLine, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
 
 void kill_created_processes(PPROCESS_LIST created_processes);
-BOOL MalSecLogon(LPCSTR binary_path, LPCSTR dump_path, BOOL fork, BOOL use_valid_sig, BOOL use_malseclogon_locally, DWORD lsass_pid, PPROCESS_LIST* Pcreated_processes);
-BOOL malseclogon_stage_1(LPCSTR program_name, LPCSTR dump_path, BOOL fork_lsass, BOOL valid, BOOL use_malseclogon_locally, DWORD lsass_pid, PPROCESS_LIST process_list);
+BOOL MalSecLogon(LPCSTR binary_path, LPCSTR dump_path, BOOL fork, BOOL snapshot_lsass, BOOL use_valid_sig, BOOL use_malseclogon_locally, DWORD lsass_pid, PPROCESS_LIST* Pcreated_processes);
+BOOL malseclogon_stage_1(LPCSTR program_name, LPCSTR dump_path, BOOL fork_lsass, BOOL snapshot_lsass, BOOL valid, BOOL use_malseclogon_locally, DWORD lsass_pid, PPROCESS_LIST process_list);
 #ifdef EXE
 HANDLE malseclogon_stage_2(LPCSTR dump_path);
 #endif

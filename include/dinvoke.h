@@ -5,8 +5,6 @@
 
 #include "utils.h"
 
-typedef HMODULE(WINAPI* LOADLIBRARYA)(LPCSTR);
-
 #define LdrLoadDll_SW2_HASH 0xA301ECDA
 
 #define MZ 0x5A4D

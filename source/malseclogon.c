@@ -43,7 +43,7 @@ PHANDLE_LIST find_process_handles_in_lsass(
             continue;
 
         // make sure the handle has the permissions we need
-        if ((handleInfo->GrantedAccess & (LSASS_PERMISSIONS)) != (LSASS_PERMISSIONS))
+        if ((handleInfo->GrantedAccess & (LSASS_DEFAULT_PERMISSIONS)) != (LSASS_DEFAULT_PERMISSIONS))
             continue;
 
         // make sure the handle is of type 'Process'

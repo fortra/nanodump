@@ -103,6 +103,7 @@ def replace_dinvoke_hashes(seed):
 
 def main():
     new_seed = random.randint(2 ** 28, 2 ** 32 - 1)
+    #new_seed = 0x1337c0de
     old_seed = get_old_seed()
     replace_seed(old_seed, new_seed)
     replace_syscall_hashes(new_seed)

@@ -136,7 +136,7 @@ typedef struct _SYSTEM_HANDLE_TABLE_ENTRY_INFO
 HANDLE make_handle_full_access(HANDLE hProcess);
 PSYSTEM_HANDLE_INFORMATION get_all_handles(void);
 BOOL GetTypeIndexByName(PULONG ProcesTypeIndex);
-HANDLE obtain_lsass_handle(DWORD pid, DWORD permissions, BOOL dup, BOOL fork, BOOL is_malseclogon_stage_2, LPCSTR dump_path);
+HANDLE obtain_lsass_handle(DWORD pid, DWORD permissions, BOOL dup, BOOL is_malseclogon_stage_2, LPCSTR dump_path);
 HANDLE duplicate_lsass_handle(DWORD lsass_pid, DWORD permissions);
 HANDLE get_process_handle(DWORD dwPid, DWORD dwFlags, BOOL quiet);
 HANDLE fork_process(DWORD dwPid, HANDLE hProcess);

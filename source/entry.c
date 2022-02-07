@@ -110,18 +110,17 @@ void go(char* args, int length)
     }
 
     // by default, PROCESS_QUERY_INFORMATION|PROCESS_VM_READ
-    DWORD permissions = LSASS_PERMISSIONS;
+    DWORD permissions = LSASS_DEFAULT_PERMISSIONS;
     // if we used MalSecLogon remotely, the handle won't have PROCESS_CREATE_PROCESS;
     if (fork_lsass && !use_malseclogon_remotely)
     {
-        permissions = PROCESS_QUERY_INFORMATION|PROCESS_CREATE_PROCESS;
+        permissions = LSASS_FORK_PERMISSIONS;
     }
 
     HANDLE hProcess = obtain_lsass_handle(
         lsass_pid,
         permissions,
         duplicate_handle,
-        fork_lsass,
         FALSE,
         dump_path
     );
@@ -261,8 +260,8 @@ int main(int argc, char* argv[])
     BOOL    duplicate_handle = FALSE;
     LPCSTR  dump_path = NULL;
     ULONG32 Signature;
-    USHORT   Version;
-    USHORT   ImplementationVersion;
+    USHORT  Version;
+    USHORT  ImplementationVersion;
     BOOL    success;
     BOOL    use_valid_sig = FALSE;
     BOOL    get_pid_and_leave = FALSE;
@@ -478,17 +477,16 @@ int main(int argc, char* argv[])
     }
 
     // by default, PROCESS_QUERY_INFORMATION|PROCESS_VM_READ
-    DWORD permissions = LSASS_PERMISSIONS;
+    DWORD permissions = LSASS_DEFAULT_PERMISSIONS;
     if (fork_lsass && !use_malseclogon_remotely)
     {
-        permissions = PROCESS_QUERY_INFORMATION|PROCESS_CREATE_PROCESS;
+        permissions = LSASS_FORK_PERMISSIONS;
     }
 
     HANDLE hProcess = obtain_lsass_handle(
         lsass_pid,
         permissions,
         duplicate_handle,
-        fork_lsass,
         is_malseclogon_stage_2,
         dump_path
     );

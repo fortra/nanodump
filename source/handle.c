@@ -45,7 +45,6 @@ HANDLE obtain_lsass_handle(
     DWORD lsass_pid,
     DWORD permissions,
     BOOL dup,
-    BOOL fork,
     BOOL is_malseclogon_stage_2,
     LPCSTR dump_path
 )
@@ -481,7 +480,7 @@ HANDLE fork_process(
         // called with a PID, open handle to LSASS with PROCESS_CREATE_PROCESS
         hProcess = get_process_handle(
             dwPid,
-            PROCESS_CREATE_PROCESS,
+            LSASS_FORK_PERMISSIONS,
             FALSE
         );
         if (!hProcess)

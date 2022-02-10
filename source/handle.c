@@ -112,7 +112,7 @@ HANDLE find_lsass(DWORD dwFlags)
         );
         if (status == STATUS_NO_MORE_ENTRIES)
         {
-            PRINT_ERR("The " LSASS " process was not found. Are you elevated?");
+            PRINT_ERR("The " LSASS " process was not found. Try providing the PID with -p or --pid");
             return NULL;
         }
         if (!NT_SUCCESS(status))

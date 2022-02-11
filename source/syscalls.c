@@ -661,6 +661,26 @@ __declspec(naked) NTSTATUS NtTerminateProcess(
     }
 }
 
+__declspec(naked) NTSTATUS NtSetInformationProcess_(
+    IN HANDLE DeviceHandle,
+    IN PROCESSINFOCLASS ProcessInformationClass,
+    IN PVOID ProcessInformation,
+    IN ULONG Length)
+{
+    __asm {
+        call GetSyscallAddress
+        push eax
+        push 0x1D9F320C
+        call SW2_GetSyscallNumber
+        add esp, 4
+        pop ebx
+        mov edx, esp
+        sub edx, 4
+        call ebx
+        ret
+    }
+}
+
 #elif defined(__GNUC__)
 
 __declspec(naked) BOOL local_is_wow64(void)
@@ -1528,6 +1548,50 @@ __declspec(naked) NTSTATUS NtTerminateProcess(
         "call GetSyscallAddress \n"
         "push eax \n"
         "push 0x652E64A0 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add esp, 4 \n"
+        "pop ebx \n"
+        "mov edx, esp \n"
+        "sub edx, 4 \n"
+        "call ebx \n"
+        "ret \n"
+    );
+#endif
+}
+
+__declspec(naked) NTSTATUS NtSetInformationProcess_(
+    IN HANDLE DeviceHandle,
+    IN PROCESSINFOCLASS ProcessInformationClass,
+    IN PVOID ProcessInformation,
+    IN ULONG Length)
+{
+#if defined(_WIN64)
+    asm(
+        "push rcx \n"
+        "push rdx \n"
+        "push r8 \n"
+        "push r9 \n"
+        "sub rsp, 0x28 \n"
+        "call GetSyscallAddress \n"
+        "add rsp, 0x28 \n"
+        "push rax \n"
+        "sub rsp, 0x28 \n"
+        "mov ecx, 0x1D9F320C \n"
+        "call SW2_GetSyscallNumber \n"
+        "add rsp, 0x28 \n"
+        "pop r11 \n"
+        "pop r9 \n"
+        "pop r8 \n"
+        "pop rdx \n"
+        "pop rcx \n"
+        "mov r10, rcx \n"
+        "jmp r11 \n"
+    );
+#else
+    asm(
+        "call GetSyscallAddress \n"
+        "push eax \n"
+        "push 0x1D9F320C \n"
         "call SW2_GetSyscallNumber \n"
         "add esp, 4 \n"
         "pop ebx \n"

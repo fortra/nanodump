@@ -278,4 +278,10 @@ NTSTATUS NtTerminateProcess(
 	IN HANDLE ProcessHandle OPTIONAL,
 	IN NTSTATUS ExitStatus);
 
+EXTERN_C NTSTATUS NtSetInformationProcess_(
+	IN HANDLE DeviceHandle,
+	IN PROCESSINFOCLASS ProcessInformationClass,
+	IN PVOID ProcessInformation,
+	IN ULONG Length);
+
 #endif

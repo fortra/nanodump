@@ -426,6 +426,28 @@ NtTerminateProcess PROC
 	jmp r11
 NtTerminateProcess ENDP
 
+NtSetInformationProcess_ PROC
+	push rcx
+	push rdx
+	push r8
+	push r9
+	sub rsp, 028h
+	call GetSyscallAddress
+	add rsp, 028h
+	push rax
+	sub rsp, 028h
+	mov ecx, 01D9F320Ch
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	pop r9
+	pop r8
+	pop rdx
+	pop rcx
+	mov r10, rcx
+	jmp r11
+NtSetInformationProcess_ ENDP
+
 local_is_wow64 PROC
 	mov rax, 0
 	ret

@@ -25,6 +25,7 @@ A flexible tool that creates a minidump of the LSASS process.
 <ul>
   <li>It uses syscalls (with <a href="https://github.com/jthuraisamy/SysWhispers2">SysWhispers2</a>) for most operations.</li> 
   <li>Syscalls are called from an <b>ntdll</b> address to bypass some syscall detections.</li> 
+  <li>It sets the syscall callback hook to NULL.</li> 
   <li>Windows APIs are called using dynamic invoke.</li> 
   <li>You can choose to download the dump without touching disk or write it to a file.</li> 
   <li>The minidump by default has an invalid signature to avoid detection.</li> 

@@ -19,7 +19,7 @@ if [ $? -ne 0  ]; then
 fi
 
 # restore the Version -> 42899
-printf '\xa7\x93' | dd of=$1 bs=1 seek=4 count=2 conv=notrunc &>/dev/null
+printf '\x93\xa7' | dd of=$1 bs=1 seek=4 count=2 conv=notrunc &>/dev/null
 
 if [ $? -ne 0  ]; then
     echo "could not write to the file '$1'"

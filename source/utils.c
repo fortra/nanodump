@@ -441,7 +441,7 @@ BOOL is_lsass(
         return FALSE;
     }
 
-    if (wcsstr(image->Buffer, L"\\Windows\\System32\\lsass.exe"))
+    if (wcsstr(image->Buffer, L"\\lsass.exe"))
     {
         intFree(image); image = NULL;
         return TRUE;

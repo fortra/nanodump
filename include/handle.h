@@ -144,15 +144,50 @@ typedef struct _SYSTEM_HANDLE_TABLE_ENTRY_INFO
     ULONG GrantedAccess;
 } SYSTEM_HANDLE_TABLE_ENTRY_INFO, * PSYSTEM_HANDLE_TABLE_ENTRY_INFO;
 
-HANDLE make_handle_full_access(HANDLE hProcess);
-PSYSTEM_HANDLE_INFORMATION get_all_handles(void);
-BOOL   GetTypeIndexByName(PULONG ProcesTypeIndex);
-HANDLE obtain_lsass_handle(DWORD pid, DWORD permissions, BOOL dup, BOOL is_malseclogon_stage_2, LPCSTR dump_path);
-HANDLE duplicate_lsass_handle(DWORD lsass_pid, DWORD permissions);
-HANDLE get_process_handle(DWORD dwPid, DWORD dwFlags, BOOL quiet);
-HANDLE fork_process(HANDLE hProcess);
-HANDLE snapshot_process(HANDLE hProcess, PHANDLE hSnapshot);
-BOOL   free_snapshot(HANDLE hSnapshot);
-HANDLE find_lsass(DWORD dwFlags);
+HANDLE make_handle_full_access(
+    IN HANDLE hProcess);
+
+HANDLE obtain_lsass_handle(
+    IN DWORD lsass_pid,
+    IN DWORD permissions,
+    IN BOOL dup,
+    IN BOOL is_malseclogon_stage_2,
+    IN LPCSTR dump_path);
+
+HANDLE find_lsass(
+    IN DWORD dwFlags);
+
+HANDLE get_process_handle(
+    IN DWORD dwPid,
+    IN DWORD dwFlags,
+    IN BOOL quiet);
+
+PSYSTEM_HANDLE_INFORMATION get_all_handles(VOID);
+
+BOOL process_is_included(
+    IN PPROCESS_LIST process_list,
+    IN ULONG ProcessId);
+
+PPROCESS_LIST get_processes_from_handle_table(
+    IN PSYSTEM_HANDLE_INFORMATION handleTableInformation);
+
+POBJECT_TYPES_INFORMATION QueryObjectTypesInfo(VOID);
+
+BOOL GetTypeIndexByName(
+    OUT PULONG ProcesTypeIndex);
+
+HANDLE duplicate_lsass_handle(
+    IN DWORD lsass_pid,
+    IN DWORD permissions);
+
+HANDLE fork_process(
+    IN HANDLE hProcess);
+
+HANDLE snapshot_process(
+    IN HANDLE hProcess,
+    OUT PHANDLE hSnapshot);
+
+BOOL free_snapshot(
+    IN HANDLE hSnapshot);
 
 #endif

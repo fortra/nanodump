@@ -24,6 +24,7 @@
  #define NtCreateFile _NtCreateFile
  #define NtQuerySystemInformation _NtQuerySystemInformation
  #define NtWaitForSingleObject _NtWaitForSingleObject
+ #define NtQueryInformationFile _NtQueryInformationFile
 #endif
 // Typedefs are prefixed to avoid pollution.
 
@@ -63,6 +64,7 @@ typedef struct _SW2_PEB {
 DWORD SW2_HashSyscall(PCSTR FunctionName);
 BOOL SW2_PopulateSyscallList(void);
 BOOL local_is_wow64(void);
+PVOID getIP(void);
 void SyscallNotFound(void);
 #if defined(__GNUC__)
 DWORD SW2_GetSyscallNumber(DWORD FunctionHash) asm ("SW2_GetSyscallNumber");
@@ -124,6 +126,30 @@ typedef enum _MEMORY_INFORMATION_CLASS
 	MemoryEnclaveImageInformation,
 	MemoryBasicInformationCapped
 } MEMORY_INFORMATION_CLASS, *PMEMORY_INFORMATION_CLASS;
+
+//typedef enum _THREADINFOCLASS
+//{
+//	ThreadBasicInformation,
+//	ThreadTimes,
+//	ThreadPriority,
+//	ThreadBasePriority,
+//	ThreadAffinityMask,
+//	ThreadImpersonationToken,
+//	ThreadDescriptorTableEntry,
+//	ThreadEnableAlignmentFaultFixup,
+//	ThreadEventPair_Reusable,
+//	ThreadQuerySetWin32StartAddress,
+//	ThreadZeroTlsCell,
+//	ThreadPerformanceCount,
+//	ThreadAmILastThread,
+//	ThreadIdealProcessor,
+//	ThreadPriorityBoost,
+//	ThreadSetTlsArrayAddress,
+//	ThreadIsIoPending,
+//	ThreadHideFromDebugger,
+//	ThreadBreakOnTermination,
+//	MaxThreadInfoClass
+//} THREADINFOCLASS, *PTHREADINFOCLASS;
 
 //typedef struct _CLIENT_ID
 //{
@@ -283,5 +309,114 @@ EXTERN_C NTSTATUS NtSetInformationProcess_(
 	IN PROCESSINFOCLASS ProcessInformationClass,
 	IN PVOID ProcessInformation,
 	IN ULONG Length);
+
+EXTERN_C NTSTATUS NtQueryInformationToken(
+	IN HANDLE TokenHandle,
+	IN TOKEN_INFORMATION_CLASS TokenInformationClass,
+	OUT PVOID TokenInformation,
+	IN ULONG TokenInformationLength,
+	OUT PULONG ReturnLength);
+
+EXTERN_C NTSTATUS NtDuplicateToken(
+	IN HANDLE ExistingTokenHandle,
+	IN ACCESS_MASK DesiredAccess,
+	IN POBJECT_ATTRIBUTES ObjectAttributes,
+	IN BOOLEAN EffectiveOnly,
+	IN TOKEN_TYPE TokenType,
+	OUT PHANDLE NewTokenHandle);
+
+EXTERN_C NTSTATUS NtSetInformationThread(
+	IN HANDLE ThreadHandle,
+	IN THREADINFOCLASS ThreadInformationClass,
+	IN PVOID ThreadInformation,
+	IN ULONG ThreadInformationLength);
+
+EXTERN_C NTSTATUS NtCreateDirectoryObjectEx(
+	OUT PHANDLE DirectoryHandle,
+	IN ACCESS_MASK DesiredAccess,
+	IN POBJECT_ATTRIBUTES ObjectAttributes,
+	IN HANDLE ShadowDirectoryHandle,
+	IN ULONG Flags);
+
+EXTERN_C NTSTATUS NtCreateSymbolicLinkObject(
+	OUT PHANDLE LinkHandle,
+	IN ACCESS_MASK DesiredAccess,
+	IN POBJECT_ATTRIBUTES ObjectAttributes,
+	IN PUNICODE_STRING LinkTarget);
+
+EXTERN_C NTSTATUS NtOpenSymbolicLinkObject(
+	OUT PHANDLE LinkHandle,
+	IN ACCESS_MASK DesiredAccess,
+	IN POBJECT_ATTRIBUTES ObjectAttributes);
+
+EXTERN_C NTSTATUS NtQuerySymbolicLinkObject(
+	IN HANDLE LinkHandle,
+	IN OUT PUNICODE_STRING LinkTarget,
+	OUT PULONG ReturnedLength OPTIONAL);
+
+EXTERN_C NTSTATUS NtCreateSection(
+	OUT PHANDLE SectionHandle,
+	IN ACCESS_MASK DesiredAccess,
+	IN POBJECT_ATTRIBUTES ObjectAttributes OPTIONAL,
+	IN PLARGE_INTEGER MaximumSize OPTIONAL,
+	IN ULONG SectionPageProtection,
+	IN ULONG AllocationAttributes,
+	IN HANDLE FileHandle OPTIONAL);
+
+EXTERN_C NTSTATUS NtMapViewOfSection(
+	IN HANDLE SectionHandle,
+	IN HANDLE ProcessHandle,
+	IN OUT PVOID BaseAddress,
+	IN ULONG ZeroBits,
+	IN SIZE_T CommitSize,
+	IN OUT PLARGE_INTEGER SectionOffset OPTIONAL,
+	IN OUT PSIZE_T ViewSize,
+	IN ULONG InheritDisposition,
+	IN ULONG AllocationType,
+	IN ULONG Win32Protect);
+
+EXTERN_C NTSTATUS NtProtectVirtualMemory(
+	IN HANDLE ProcessHandle,
+	IN OUT PVOID * BaseAddress,
+	IN OUT PSIZE_T RegionSize,
+	IN ULONG NewProtect,
+	OUT PULONG OldProtect);
+
+EXTERN_C NTSTATUS NtUnmapViewOfSection(
+	IN HANDLE ProcessHandle,
+	IN PVOID BaseAddress);
+
+EXTERN_C NTSTATUS NtFlushInstructionCache(
+	IN HANDLE ProcessHandle,
+	IN PVOID BaseAddress OPTIONAL,
+	IN ULONG Length);
+
+EXTERN_C NTSTATUS NtOpenThreadToken(
+	IN HANDLE ThreadHandle,
+	IN ACCESS_MASK DesiredAccess,
+	IN BOOLEAN OpenAsSelf,
+	OUT PHANDLE TokenHandle);
+
+EXTERN_C NTSTATUS NtCreateTransaction(
+	OUT PHANDLE TransactionHandle,
+	IN ACCESS_MASK DesiredAccess,
+	IN POBJECT_ATTRIBUTES ObjectAttributes OPTIONAL,
+	IN LPGUID Uow OPTIONAL,
+	IN HANDLE TmHandle OPTIONAL,
+	IN ULONG CreateOptions OPTIONAL,
+	IN ULONG IsolationLevel OPTIONAL,
+	IN ULONG IsolationFlags OPTIONAL,
+	IN PLARGE_INTEGER Timeout OPTIONAL,
+	IN PUNICODE_STRING Description OPTIONAL);
+
+EXTERN_C NTSTATUS NtQueryInformationFile(
+	IN HANDLE FileHandle,
+	OUT PIO_STATUS_BLOCK IoStatusBlock,
+	OUT PVOID FileInformation,
+	IN ULONG Length,
+	IN FILE_INFORMATION_CLASS FileInformationClass);
+
+EXTERN_C NTSTATUS NtMakeTemporaryObject(
+	IN HANDLE Handle);
 
 #endif

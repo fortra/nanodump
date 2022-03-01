@@ -6,7 +6,8 @@
 #endif
 
 // this is used to delete the nanodump DLL
-void do_delete(LPSTR file_path)
+VOID do_delete(
+    IN LPSTR file_path)
 {
     if (!file_exists(file_path))
     {

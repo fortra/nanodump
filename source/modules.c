@@ -1,8 +1,7 @@
 #include "modules.h"
 
 PVOID get_peb_address(
-    HANDLE hProcess
-)
+    IN HANDLE hProcess)
 {
 #ifdef SSP
     // if nanodump is running as an SSP,
@@ -17,8 +16,7 @@ PVOID get_peb_address(
         ProcessInformationClass,
         &basic_info,
         sizeof(PROCESS_BASIC_INFORMATION),
-        NULL
-    );
+        NULL);
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtQueryInformationProcess", status);
@@ -31,9 +29,8 @@ PVOID get_peb_address(
 }
 
 PVOID get_module_list_address(
-    HANDLE hProcess,
-    BOOL is_lsass
-)
+    IN HANDLE hProcess,
+    IN BOOL is_lsass)
 {
     PVOID peb_address, ldr_pointer, ldr_address, module_list_pointer, ldr_entry_address;
 
@@ -49,8 +46,7 @@ PVOID get_module_list_address(
         (PVOID)ldr_pointer,
         &ldr_address,
         sizeof(PVOID),
-        NULL
-    );
+        NULL);
     if (!NT_SUCCESS(status) && !is_lsass)
     {
         // failed to read the memory of some process, simply continue
@@ -77,8 +73,7 @@ PVOID get_module_list_address(
         (PVOID)module_list_pointer,
         &ldr_entry_address,
         sizeof(PVOID),
-        NULL
-    );
+        NULL);
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtReadVirtualMemory", status);
@@ -87,15 +82,13 @@ PVOID get_module_list_address(
     }
     DPRINT(
         "Got the address of the module list: 0x%p",
-        ldr_entry_address
-    );
+        ldr_entry_address);
     return ldr_entry_address;
 }
 
 Pmodule_info add_new_module(
-    HANDLE hProcess,
-    struct LDR_DATA_TABLE_ENTRY* ldr_entry
-)
+    IN HANDLE hProcess,
+    IN struct LDR_DATA_TABLE_ENTRY* ldr_entry)
 {
     Pmodule_info new_module = intAlloc(sizeof(module_info));
     if (!new_module)
@@ -116,8 +109,7 @@ Pmodule_info add_new_module(
         (PVOID)ldr_entry->FullDllName.Buffer,
         new_module->dll_name,
         ldr_entry->FullDllName.Length,
-        NULL
-    );
+        NULL);
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtReadVirtualMemory", status);
@@ -128,11 +120,10 @@ Pmodule_info add_new_module(
 }
 
 BOOL read_ldr_entry(
-    HANDLE hProcess,
-    PVOID ldr_entry_address,
-    struct LDR_DATA_TABLE_ENTRY* ldr_entry,
-    wchar_t* base_dll_name
-)
+    IN HANDLE hProcess,
+    IN PVOID ldr_entry_address,
+    OUT struct LDR_DATA_TABLE_ENTRY* ldr_entry,
+    OUT wchar_t* base_dll_name)
 {
     // read the entry
     NTSTATUS status = NtReadVirtualMemory(
@@ -140,15 +131,13 @@ BOOL read_ldr_entry(
         ldr_entry_address,
         ldr_entry,
         sizeof(struct LDR_DATA_TABLE_ENTRY),
-        NULL
-    );
+        NULL);
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtReadVirtualMemory", status);
         DPRINT_ERR(
             "Could not read module information at: 0x%p",
-            ldr_entry_address
-        );
+            ldr_entry_address);
         return FALSE;
     }
     // initialize base_dll_name with all null-bytes
@@ -159,26 +148,23 @@ BOOL read_ldr_entry(
         (PVOID)ldr_entry->BaseDllName.Buffer,
         base_dll_name,
         ldr_entry->BaseDllName.Length,
-        NULL
-    );
+        NULL);
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtReadVirtualMemory", status);
         DPRINT_ERR(
             "Could not read module information at: 0x%p",
-            ldr_entry->BaseDllName.Buffer
-        );
+            ldr_entry->BaseDllName.Buffer);
         return FALSE;
     }
     return TRUE;
 }
 
 Pmodule_info find_modules(
-    HANDLE hProcess,
-    wchar_t* important_modules[],
-    int number_of_important_modules,
-    BOOL is_lsass
-)
+    IN HANDLE hProcess,
+    IN wchar_t* important_modules[],
+    IN int number_of_important_modules,
+    IN BOOL is_lsass)
 {
     // module list
     Pmodule_info module_list = NULL;
@@ -186,8 +172,7 @@ Pmodule_info find_modules(
     // find the address of LDR_DATA_TABLE_ENTRY
     PVOID ldr_entry_address = get_module_list_address(
         hProcess,
-        is_lsass
-    );
+        is_lsass);
     if (!ldr_entry_address)
         return NULL;
 
@@ -204,8 +189,7 @@ Pmodule_info find_modules(
             hProcess,
             ldr_entry_address,
             &ldr_entry,
-            base_dll_name
-        );
+            base_dll_name);
         if (!success)
             return NULL;
 
@@ -221,8 +205,7 @@ Pmodule_info find_modules(
                 DPRINT(
                     "Found %ls at 0x%p",
                     base_dll_name,
-                    ldr_entry_address
-                );
+                    ldr_entry_address);
                 // check if the DLL is 'lsasrv.dll' so that we know the process is indeed LSASS
                 if (!_wcsicmp(important_modules[i], LSASRV_DLL))
                     lsasrv_found = TRUE;
@@ -230,8 +213,7 @@ Pmodule_info find_modules(
                 // add the new module to the linked list
                 Pmodule_info new_module = add_new_module(
                     hProcess,
-                    &ldr_entry
-                );
+                    &ldr_entry);
                 if (!new_module)
                     return NULL;
 

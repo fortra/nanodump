@@ -8,6 +8,16 @@ SyscallNotFound PROC
 	ret
 SyscallNotFound ENDP
 
+local_is_wow64 PROC
+	mov rax, 0
+	ret
+local_is_wow64 ENDP
+
+getIP PROC
+	mov rax, [rsp]
+	ret
+getIP ENDP
+
 NtOpenProcess PROC
 	push rcx
 	push rdx
@@ -448,9 +458,356 @@ NtSetInformationProcess_ PROC
 	jmp r11
 NtSetInformationProcess_ ENDP
 
-local_is_wow64 PROC
-	mov rax, 0
-	ret
-local_is_wow64 ENDP
+NtQueryInformationToken PROC
+	push rcx
+	push rdx
+	push r8
+	push r9
+	sub rsp, 028h
+	call GetSyscallAddress
+	add rsp, 028h
+	push rax
+	sub rsp, 028h
+	mov ecx, 027917136h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	pop r9
+	pop r8
+	pop rdx
+	pop rcx
+	mov r10, rcx
+	jmp r11
+NtQueryInformationToken ENDP
+
+NtDuplicateToken PROC
+	push rcx
+	push rdx
+	push r8
+	push r9
+	sub rsp, 028h
+	call GetSyscallAddress
+	add rsp, 028h
+	push rax
+	sub rsp, 028h
+	mov ecx, 0099C8384h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	pop r9
+	pop r8
+	pop rdx
+	pop rcx
+	mov r10, rcx
+	jmp r11
+NtDuplicateToken ENDP
+
+NtSetInformationThread PROC
+	push rcx
+	push rdx
+	push r8
+	push r9
+	sub rsp, 028h
+	call GetSyscallAddress
+	add rsp, 028h
+	push rax
+	sub rsp, 028h
+	mov ecx, 01ABE5F87h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	pop r9
+	pop r8
+	pop rdx
+	pop rcx
+	mov r10, rcx
+	jmp r11
+NtSetInformationThread ENDP
+
+NtCreateDirectoryObjectEx PROC
+	push rcx
+	push rdx
+	push r8
+	push r9
+	sub rsp, 028h
+	call GetSyscallAddress
+	add rsp, 028h
+	push rax
+	sub rsp, 028h
+	mov ecx, 0BCBD62EAh
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	pop r9
+	pop r8
+	pop rdx
+	pop rcx
+	mov r10, rcx
+	jmp r11
+NtCreateDirectoryObjectEx ENDP
+
+NtCreateSymbolicLinkObject PROC
+	push rcx
+	push rdx
+	push r8
+	push r9
+	sub rsp, 028h
+	call GetSyscallAddress
+	add rsp, 028h
+	push rax
+	sub rsp, 028h
+	mov ecx, 08AD1BA6Dh
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	pop r9
+	pop r8
+	pop rdx
+	pop rcx
+	mov r10, rcx
+	jmp r11
+NtCreateSymbolicLinkObject ENDP
+
+NtOpenSymbolicLinkObject PROC
+	push rcx
+	push rdx
+	push r8
+	push r9
+	sub rsp, 028h
+	call GetSyscallAddress
+	add rsp, 028h
+	push rax
+	sub rsp, 028h
+	mov ecx, 08C97980Fh
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	pop r9
+	pop r8
+	pop rdx
+	pop rcx
+	mov r10, rcx
+	jmp r11
+NtOpenSymbolicLinkObject ENDP
+
+NtQuerySymbolicLinkObject PROC
+	push rcx
+	push rdx
+	push r8
+	push r9
+	sub rsp, 028h
+	call GetSyscallAddress
+	add rsp, 028h
+	push rax
+	sub rsp, 028h
+	mov ecx, 0A63A8CA7h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	pop r9
+	pop r8
+	pop rdx
+	pop rcx
+	mov r10, rcx
+	jmp r11
+NtQuerySymbolicLinkObject ENDP
+
+NtCreateSection PROC
+	push rcx
+	push rdx
+	push r8
+	push r9
+	sub rsp, 028h
+	call GetSyscallAddress
+	add rsp, 028h
+	push rax
+	sub rsp, 028h
+	mov ecx, 0F06912F9h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	pop r9
+	pop r8
+	pop rdx
+	pop rcx
+	mov r10, rcx
+	jmp r11
+NtCreateSection ENDP
+
+NtMapViewOfSection PROC
+	push rcx
+	push rdx
+	push r8
+	push r9
+	sub rsp, 028h
+	call GetSyscallAddress
+	add rsp, 028h
+	push rax
+	sub rsp, 028h
+	mov ecx, 07A2D5C79h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	pop r9
+	pop r8
+	pop rdx
+	pop rcx
+	mov r10, rcx
+	jmp r11
+NtMapViewOfSection ENDP
+
+NtProtectVirtualMemory PROC
+	push rcx
+	push rdx
+	push r8
+	push r9
+	sub rsp, 028h
+	call GetSyscallAddress
+	add rsp, 028h
+	push rax
+	sub rsp, 028h
+	mov ecx, 03D5335D3h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	pop r9
+	pop r8
+	pop rdx
+	pop rcx
+	mov r10, rcx
+	jmp r11
+NtProtectVirtualMemory ENDP
+
+NtUnmapViewOfSection PROC
+	push rcx
+	push rdx
+	push r8
+	push r9
+	sub rsp, 028h
+	call GetSyscallAddress
+	add rsp, 028h
+	push rax
+	sub rsp, 028h
+	mov ecx, 0CA1ACC8Fh
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	pop r9
+	pop r8
+	pop rdx
+	pop rcx
+	mov r10, rcx
+	jmp r11
+NtUnmapViewOfSection ENDP
+
+NtFlushInstructionCache PROC
+	push rcx
+	push rdx
+	push r8
+	push r9
+	sub rsp, 028h
+	call GetSyscallAddress
+	add rsp, 028h
+	push rax
+	sub rsp, 028h
+	mov ecx, 0B22DB496h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	pop r9
+	pop r8
+	pop rdx
+	pop rcx
+	mov r10, rcx
+	jmp r11
+NtFlushInstructionCache ENDP
+
+NtOpenThreadToken PROC
+	push rcx
+	push rdx
+	push r8
+	push r9
+	sub rsp, 028h
+	call GetSyscallAddress
+	add rsp, 028h
+	push rax
+	sub rsp, 028h
+	mov ecx, 073A33918h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	pop r9
+	pop r8
+	pop rdx
+	pop rcx
+	mov r10, rcx
+	jmp r11
+NtOpenThreadToken ENDP
+
+NtCreateTransaction PROC
+	push rcx
+	push rdx
+	push r8
+	push r9
+	sub rsp, 028h
+	call GetSyscallAddress
+	add rsp, 028h
+	push rax
+	sub rsp, 028h
+	mov ecx, 07CAB5EFBh
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	pop r9
+	pop r8
+	pop rdx
+	pop rcx
+	mov r10, rcx
+	jmp r11
+NtCreateTransaction ENDP
+
+NtQueryInformationFile PROC
+	push rcx
+	push rdx
+	push r8
+	push r9
+	sub rsp, 028h
+	call GetSyscallAddress
+	add rsp, 028h
+	push rax
+	sub rsp, 028h
+	mov ecx, 038985C1Eh
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	pop r9
+	pop r8
+	pop rdx
+	pop rcx
+	mov r10, rcx
+	jmp r11
+NtQueryInformationFile ENDP
+
+NtMakeTemporaryObject PROC
+	push rcx
+	push rdx
+	push r8
+	push r9
+	sub rsp, 028h
+	call GetSyscallAddress
+	add rsp, 028h
+	push rax
+	sub rsp, 028h
+	mov ecx, 084DF4D82h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	pop r9
+	pop r8
+	pop rdx
+	pop rcx
+	mov r10, rcx
+	jmp r11
+NtMakeTemporaryObject ENDP
 
 end

@@ -6,6 +6,10 @@
 #include <string.h>
 #include <memory.h>
 
+#if defined(EXE) || defined(DLL)
+ #define PE
+#endif
+
 #ifndef BOF
 #include "beacon.h"
 #include "output.h"
@@ -14,7 +18,7 @@
 #include "handle.h"
 #include "modules.h"
 #include "syscalls.h"
-#include "debugpriv.h"
+#include "token_priv.h"
 #include "malseclogon.h"
 #endif
 
@@ -83,6 +87,12 @@
  WINBASEAPI void * WINAPI KERNEL32$HeapAlloc (HANDLE hHeap, DWORD dwFlags, SIZE_T dwBytes);
  WINBASEAPI BOOL   WINAPI KERNEL32$HeapFree (HANDLE, DWORD, PVOID);
  WINBASEAPI DWORD  WINAPI KERNEL32$GetLastError (VOID);
+ WINBASEAPI VOID   WINAPI KERNEL32$SetLastError (DWORD dwErrCode);
+ WINBASEAPI VOID   WINAPI KERNEL32$StringCchPrintfW(LPWSTR pszDest,size_t cchDest,LPCWSTR pszFormat,...);
+ WINBASEAPI HLOCAL WINAPI KERNEL32$LocalAlloc(UINT uFlags, SIZE_T uBytes);
+ WINBASEAPI HLOCAL WINAPI KERNEL32$LocalFree(HLOCAL hMem);
+
+ WINBASEAPI ULONG WINAPI NTDLL$RtlNtStatusToDosError(NTSTATUS Status);
 
  WINBASEAPI wchar_t * __cdecl MSVCRT$wcsstr(const wchar_t *_Str,const wchar_t *_SubStr);
  WINBASEAPI char *    __cdecl MSVCRT$strrchr(const char *_Str,int _Ch);
@@ -90,6 +100,8 @@
  WINBASEAPI size_t    __cdecl MSVCRT$strnlen(const char *s, size_t maxlen);
  WINBASEAPI size_t    __cdecl MSVCRT$wcsnlen(const wchar_t *_Src,size_t _MaxCount);
  WINBASEAPI wchar_t * __cdecl MSVCRT$wcscpy(wchar_t * __dst, const wchar_t * __src);
+ WINBASEAPI wchar_t * __cdecl MSVCRT$wcsncpy(wchar_t * ,const wchar_t * ,size_t);
+ WINBASEAPI size_t    __cdecl MSVCRT$wcstombs(char * _Dest,const wchar_t * _Source,size_t _MaxCount);
  WINBASEAPI size_t    __cdecl MSVCRT$mbstowcs(wchar_t * _Dest,const char * _Source,size_t _MaxCount);
  WINBASEAPI wchar_t * __cdecl MSVCRT$wcsncat(wchar_t * _Dest,const wchar_t * _Source,size_t _Count);
  WINBASEAPI int       __cdecl MSVCRT$strncmp(const char *s1, const char *s2, size_t n);
@@ -102,10 +114,16 @@
  WINBASEAPI char *    __cdecl MSVCRT$strncpy(char * __dst, const char * __src, size_t __n);
  WINBASEAPI char *    __cdecl MSVCRT$strcat(char * _Dest,const char * _Source);
 
- #define GetProcessHeap KERNEL32$GetProcessHeap
- #define HeapAlloc      KERNEL32$HeapAlloc
- #define HeapFree       KERNEL32$HeapFree
- #define GetLastError   KERNEL32$GetLastError
+ #define GetProcessHeap   KERNEL32$GetProcessHeap
+ #define HeapAlloc        KERNEL32$HeapAlloc
+ #define HeapFree         KERNEL32$HeapFree
+ #define GetLastError     KERNEL32$GetLastError
+ #define SetLastError     KERNEL32$SetLastError
+ #define StringCchPrintfW KERNEL32$StringCchPrintfW
+ #define LocalAlloc       KERNEL32$LocalAlloc
+ #define LocalFree        KERNEL32$LocalFree
+
+ #define RtlNtStatusToDosError NTDLL$RtlNtStatusToDosError
 
  #define wcsstr   MSVCRT$wcsstr
  #define strrchr  MSVCRT$strrchr
@@ -113,6 +131,8 @@
  #define strnlen  MSVCRT$strnlen
  #define wcsnlen  MSVCRT$wcsnlen
  #define wcscpy   MSVCRT$wcscpy
+ #define wcsncpy  MSVCRT$wcsncpy
+ #define wcstombs MSVCRT$wcstombs
  #define mbstowcs MSVCRT$mbstowcs
  #define wcsncat  MSVCRT$wcsncat
  #define strncmp  MSVCRT$strncmp
@@ -262,4 +282,44 @@ typedef struct _MiniDumpMemoryDescriptor64
     DWORD   Type;
 } MiniDumpMemoryDescriptor64, *PMiniDumpMemoryDescriptor64;
 
-BOOL NanoDumpWriteDump(Pdump_context dc);
+VOID writeat(
+    IN Pdump_context dc,
+    IN ULONG32 rva,
+    IN const PVOID data,
+    IN unsigned size);
+
+BOOL append(
+    IN Pdump_context dc,
+    IN const PVOID data,
+    IN unsigned size);
+
+BOOL write_header(
+    IN Pdump_context dc);
+
+BOOL write_directory(
+    IN Pdump_context dc,
+    IN MiniDumpDirectory directory);
+
+BOOL write_directories(
+    IN Pdump_context dc);
+
+BOOL write_system_info_stream(
+    IN Pdump_context dc);
+
+//Pmodule_info write_module_list_stream(
+//    IN Pdump_context dc);
+//
+//BOOL is_important_module(
+//    IN PVOID address,
+//    IN Pmodule_info module_list);
+//
+//PMiniDumpMemoryDescriptor64 get_memory_ranges(
+//    IN Pdump_context dc,
+//    IN Pmodule_info module_list);
+//
+//PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
+//    IN Pdump_context dc,
+//    IN Pmodule_info module_list);
+
+BOOL NanoDumpWriteDump(
+    IN Pdump_context dc);

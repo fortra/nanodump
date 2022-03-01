@@ -5,8 +5,11 @@
 
 #define NTDLL_DLL L"ntdll.dll"
 #define ADVAPI32_DLL L"Advapi32.dll"
+#define KERNELBASE_DLL L"KernelBase.dll"
+#define KERNEL32_DLL L"Kernel32.dll"
 
 #define NtCurrentProcess() ( (HANDLE)(LONG_PTR) -1 )
+#define NtCurrentThread() ( (HANDLE)(LONG_PTR) -2 )
 
 #ifndef NT_SUCCESS
  #define NT_SUCCESS(Status) ((NTSTATUS)(Status) >= 0)
@@ -22,6 +25,8 @@
 #define STATUS_INVALID_CID 0xC000000B
 #define STATUS_INFO_LENGTH_MISMATCH 0xC0000004
 #define STATUS_OBJECT_PATH_SYNTAX_BAD 0xC000003B
+#define STATUS_BUFFER_TOO_SMALL 0xC0000023
+#define STATUS_OBJECT_NAME_COLLISION 0xC0000035
 
 struct _RTL_BALANCED_NODE
 {

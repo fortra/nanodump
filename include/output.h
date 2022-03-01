@@ -71,7 +71,7 @@
 
 #define function_failed(function) \
     DPRINT_ERR( \
-        "Failed to call '%s', error: %ld", \
+        "Call to '%s' failed, error: %ld", \
         function, \
         GetLastError() \
     )

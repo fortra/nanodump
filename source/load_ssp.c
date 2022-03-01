@@ -6,7 +6,8 @@
  #include "dinvoke.c"
 #endif
 
-void load_ssp(LPSTR ssp_path)
+VOID load_ssp(
+    IN LPSTR ssp_path)
 {
     AddSecurityPackageW_t AddSecurityPackageW;
     wchar_t ssp_path_w[MAX_PATH];
@@ -20,8 +21,7 @@ void load_ssp(LPSTR ssp_path)
     AddSecurityPackageW = (AddSecurityPackageW_t)(ULONG_PTR)get_function_address(
         get_library_address(SSPICLI_DLL, TRUE),
         AddSecurityPackageW_SW2_HASH,
-        0
-    );
+        0);
     if (!AddSecurityPackageW)
     {
         DPRINT_ERR("Address of 'AddSecurityPackageW' not found");

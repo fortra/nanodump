@@ -4,8 +4,7 @@
  * Check that hLibrary is indeed a DLL and not something else
  */
 BOOL is_dll(
-    HMODULE hLibrary
-)
+    IN HMODULE hLibrary)
 {
     PIMAGE_DOS_HEADER dos;
     PIMAGE_NT_HEADERS nt;
@@ -37,9 +36,8 @@ BOOL is_dll(
  * Look among all loaded DLLs for an export with certain function hash
  */
 PVOID find_legacy_export(
-    HMODULE hOriginalLibrary,
-    DWORD fhash
-)
+    IN HMODULE hOriginalLibrary,
+    IN DWORD fhash)
 {
     PVOID addr;
     PND_PEB Peb = (PND_PEB)READ_MEMLOC(PEB_OFFSET);
@@ -57,8 +55,7 @@ PVOID find_legacy_export(
         addr = get_function_address(
             Entry->DllBase,
             fhash,
-            0
-        );
+            0);
         if (!addr)
             continue;
 
@@ -72,9 +69,8 @@ PVOID find_legacy_export(
  * Follow the reference and return the real address of the function
  */
 PVOID resolve_reference(
-    HMODULE hOriginalLibrary,
-    PVOID addr
-)
+    IN HMODULE hOriginalLibrary,
+    IN PVOID addr)
 {
     HANDLE hLibrary;
     PVOID new_addr;
@@ -96,8 +92,7 @@ PVOID resolve_reference(
         // the library is not loaded, meaning it is a legacy DLL
         new_addr = find_legacy_export(
             hOriginalLibrary,
-            SW2_HashSyscall(api)
-        );
+            SW2_HashSyscall(api));
 
         return new_addr;
     }
@@ -106,8 +101,7 @@ PVOID resolve_reference(
     new_addr = get_function_address(
         hLibrary,
         SW2_HashSyscall(api),
-        0
-    );
+        0);
 
     return new_addr;
 }
@@ -116,10 +110,9 @@ PVOID resolve_reference(
  * Find an export in a DLL
  */
 PVOID get_function_address(
-    HMODULE hLibrary,
-    DWORD fhash,
-    WORD ordinal
-)
+    IN HMODULE hLibrary,
+    IN DWORD fhash,
+    IN WORD ordinal)
 {
     PIMAGE_DOS_HEADER       dos;
     PIMAGE_NT_HEADERS       nt;
@@ -177,8 +170,7 @@ PVOID get_function_address(
         // the function seems to be defined somewhere else
         addr = resolve_reference(
             hLibrary,
-            addr
-        );
+            addr);
     }
     return addr;
 }
@@ -187,9 +179,8 @@ PVOID get_function_address(
  * Get the base address of a DLL
  */
 HANDLE get_library_address(
-    LPWSTR LibName,
-    BOOL DoLoad
-)
+    IN LPWSTR LibName,
+    IN BOOL DoLoad)
 {
     PND_PEB Peb = (PND_PEB)READ_MEMLOC(PEB_OFFSET);
     PND_PEB_LDR_DATA Ldr = Peb->Ldr;
@@ -212,8 +203,7 @@ HANDLE get_library_address(
     LdrLoadDll_t LdrLoadDll = (LdrLoadDll_t)(ULONG_PTR)get_function_address(
         get_library_address(NTDLL_DLL, FALSE),
         LdrLoadDll_SW2_HASH,
-        0
-    );
+        0);
     if (!LdrLoadDll)
     {
         DPRINT_ERR("Address of 'LdrLoadDll' not found");
@@ -233,15 +223,13 @@ HANDLE get_library_address(
         NULL,
         0,
         &ModuleFileName,
-        &hLibrary
-    );
+        &hLibrary);
     if (!NT_SUCCESS(status))
     {
         DPRINT_ERR(
             "Failed to load %ls, status: 0x%lx\n",
             LibName,
-            status
-        );
+            status);
         return NULL;
     }
     DPRINT("Loaded %ls at 0x%p", LibName, hLibrary);

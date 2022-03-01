@@ -28,4 +28,25 @@ typedef struct _module_info
     ULONG32 CheckSum;
 } module_info, *Pmodule_info;
 
-Pmodule_info find_modules(HANDLE hProcess, wchar_t* important_modules[], int number_of_important_modules, BOOL is_lsass);
+PVOID get_peb_address(
+    IN HANDLE hProcess);
+
+PVOID get_module_list_address(
+    IN HANDLE hProcess,
+    IN BOOL is_lsass);
+
+Pmodule_info add_new_module(
+    IN HANDLE hProcess,
+    IN struct LDR_DATA_TABLE_ENTRY* ldr_entry);
+
+BOOL read_ldr_entry(
+    IN HANDLE hProcess,
+    IN PVOID ldr_entry_address,
+    OUT struct LDR_DATA_TABLE_ENTRY* ldr_entry,
+    OUT wchar_t* base_dll_name);
+
+Pmodule_info find_modules(
+    IN HANDLE hProcess,
+    IN wchar_t* important_modules[],
+    IN int number_of_important_modules,
+    IN BOOL is_lsass);

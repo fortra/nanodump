@@ -3,12 +3,8 @@
 #ifdef EXE
  #ifdef _WIN64
   #include "nanodump_ppl_dll.x64.h"
-  #define nanodump_ppl_dll     dist_nanodump_ppl_x64_dll
-  #define nanodump_ppl_dll_len dist_nanodump_ppl_x64_dll_len
  #else
   #include "nanodump_ppl_dll.x86.h"
-  #define nanodump_ppl_dll     dist_nanodump_ppl_x86_dll
-  #define nanodump_ppl_dll_len dist_nanodump_ppl_x86_dll_len
  #endif
 #endif
 

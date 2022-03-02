@@ -7,6 +7,7 @@
 #define ADVAPI32_DLL L"Advapi32.dll"
 #define KERNELBASE_DLL L"KernelBase.dll"
 #define KERNEL32_DLL L"Kernel32.dll"
+#define SHELL32_DLL L"Shell32.dll"
 
 #define NtCurrentProcess() ( (HANDLE)(LONG_PTR) -1 )
 #define NtCurrentThread() ( (HANDLE)(LONG_PTR) -2 )

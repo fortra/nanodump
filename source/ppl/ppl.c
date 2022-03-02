@@ -9,7 +9,7 @@
 #endif
 
 #ifdef BOF
-#include "utils.c"
+#include "ppl_utils.c"
 #include "../utils.c"
 #include "../dinvoke.c"
 #include "../syscalls.c"
@@ -1488,21 +1488,13 @@ void go(char* args, int length)
 
 void usage(char* procname)
 {
-    PRINT("usage: %s --write C:\\Windows\\Temp\\doc.docx [--valid] [--fork] [--snapshot] [--dup] [--malseclogon] [--binary C:\\Windows\\notepad.exe] [--help]", procname);
+    PRINT("usage: %s --write C:\\Windows\\Temp\\doc.docx [--valid] [--dup] [--help]", procname);
     PRINT("    --write DUMP_PATH, -w DUMP_PATH");
     PRINT("            filename of the dump");
     PRINT("    --valid, -v");
     PRINT("            create a dump with a valid signature");
-    PRINT("    --fork, -f");
-    PRINT("            fork the target process before dumping");
-    PRINT("    --snapshot, -s");
-    PRINT("            snapshot the target process before dumping");
     PRINT("    --dup, -d");
     PRINT("            duplicate an existing " LSASS " handle");
-    PRINT("    --malseclogon, -m");
-    PRINT("            obtain a handle to " LSASS " by (ab)using seclogon");
-    PRINT("    --binary BIN_PATH, -b BIN_PATH");
-    PRINT("            full path to the decoy binary used with --dup and --malseclogon");
     PRINT("    --help, -h");
     PRINT("            print this help message and leave");
 }

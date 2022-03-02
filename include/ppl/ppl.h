@@ -11,7 +11,7 @@
 #include "dinvoke.h"
 #include "syscalls.h"
 #include "token_priv.h"
-#include "ppl/utils.h"
+#include "ppl/ppl_utils.h"
 
 #define PPL_BINARY L"services.exe"
 #define DLL_TO_HIJACK_WIN81 L"SspiCli.dll"

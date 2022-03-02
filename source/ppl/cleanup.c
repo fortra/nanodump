@@ -64,6 +64,16 @@ BOOL delete_known_dll_entry(VOID)
         DPRINT_ERR("Address of 'InitializeSecurityDescriptor' not found");
         goto end;
     }
+    SetSecurityDescriptorDacl_t SetSecurityDescriptorDacl;
+    SetSecurityDescriptorDacl = (SetSecurityDescriptorDacl_t)(ULONG_PTR)get_function_address(
+        get_library_address(ADVAPI32_DLL, TRUE),
+        SetSecurityDescriptorDacl_SW2_HASH,
+        0);
+    if (!SetSecurityDescriptorDacl)
+    {
+        DPRINT_ERR("Address of 'SetSecurityDescriptorDacl' not found");
+        goto end;
+    }
 
     success = get_current_dll_filename(&pwszDllName);
     if (!success)

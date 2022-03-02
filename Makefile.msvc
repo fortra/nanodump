@@ -21,6 +21,15 @@ nanodump:
 
 #	cl.exe -DBOF /Fo:dist\delete_file.x64.o $(OPTIONS) source/delete_file.c
 
+	cl.exe source/bin2c.c /Fe:dist\bin2c.exe
+
+	cl.exe -DNANO -DPPL -DDLL $(OPTIONS) source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/entry.c
+	link.exe -DLL /OUT:dist\nanodump_ppl.x64.dll -nologo $(LIBS) /MACHINE:X64 -subsystem:console -nodefaultlib entry.obj nanodump.obj utils.obj modules.obj syscalls-asm.obj syscalls.obj output.obj cleanup.obj dinvoke.obj handle.obj token_priv.obj malseclogon.obj
+	.\dist\bin2c.exe dist\nanodump_ppl.x64.dll nanodump_ppl_dll > include\nanodump_ppl_dll.x64.h
+
+	cl.exe -DEXE -DPPL $(OPTIONS) source/utils.c source/syscalls.c source/dinvoke.c source/token_priv.c source/ppl/ppl_utils.c source/ppl/ppl.c
+	link.exe /OUT:dist\nanodump_ppl.x64.exe utils.obj syscalls-asm.obj syscalls.obj dinvoke.obj token_priv.obj ppl_utils.obj ppl.obj
+
 debug:
 	@echo ###### DEBUG ######
 	ML64 /c source/syscalls-asm.asm /link /NODEFAULTLIB /RELEASE /MACHINE:X64
@@ -40,5 +49,14 @@ debug:
 
 #	cl.exe -DBOF -DDEBUG /Fo:dist\delete_file.x64.o $(OPTIONS) source/delete_file.c
 
+	cl.exe source/bin2c.c /Fe:dist\bin2c.exe
+
+	cl.exe -DNANO -DPPL -DDLL -DDEBUG $(OPTIONS) source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/entry.c
+	link.exe -DLL /OUT:dist\nanodump_ppl.x64.dll -nologo $(LIBS) /MACHINE:X64 -subsystem:console -nodefaultlib entry.obj nanodump.obj utils.obj modules.obj syscalls-asm.obj syscalls.obj output.obj cleanup.obj dinvoke.obj handle.obj token_priv.obj malseclogon.obj
+	.\dist\bin2c.exe dist\nanodump_ppl.x64.dll nanodump_ppl_dll > include\nanodump_ppl_dll.x64.h
+
+	cl.exe -DEXE -DPPL -DDEBUG $(OPTIONS) source/utils.c source/syscalls.c source/dinvoke.c source/token_priv.c source/ppl/ppl_utils.c source/ppl/ppl.c
+	link.exe /OUT:dist\nanodump_ppl.x64.exe utils.obj syscalls-asm.obj syscalls.obj dinvoke.obj token_priv.obj ppl_utils.obj ppl.obj
+
 clean:
-	@del /Q token_priv.obj dinvoke.obj entry.obj handle.obj load_ssp.obj malseclogon.obj modules.obj nanodump.obj syscalls-asm.obj syscalls.obj utils.obj dist\delete_file.x64.o dist\load_ssp.x64.exe dist\load_ssp.x64.o dist\nanodump.x64.exe dist\nanodump.x64.o dist\nanodump_ssp.x64.dll dist\nanodump_ssp.x64.exp dist\nanodump_ssp.x64.lib
+	@del /Q token_priv.obj dinvoke.obj entry.obj handle.obj load_ssp.obj malseclogon.obj modules.obj nanodump.obj syscalls-asm.obj syscalls.obj utils.obj dist\delete_file.x64.o dist\load_ssp.x64.exe dist\load_ssp.x64.o dist\nanodump.x64.exe dist\nanodump.x64.o dist\nanodump_ssp.x64.dll dist\nanodump_ssp.x64.exp dist\nanodump_ssp.x64.lib dist\nanodump_ppl.x64.lib dist\nanodump_ppl.x64.dll

@@ -6,7 +6,7 @@
 #include "utils.h"
 #include "dinvoke.h"
 #include "syscalls.h"
-#include "ppl/utils.h"
+#include "ppl/ppl_utils.h"
 #include "ppl/ppl.h"
 
 #define DIRECTORY_QUERY 0x0001
@@ -17,6 +17,21 @@
 #define SYMBOLIC_LINK_ALL_ACCESS (STANDARD_RIGHTS_REQUIRED | 0x1)
 
 #define SYMBOLIC_LINK_QUERY 0x0001
+
+#if defined(_MSC_VER)
+
+#define FileStandardInformation 5
+#define ThreadImpersonationToken 5
+
+typedef struct _FILE_STANDARD_INFORMATION {
+  LARGE_INTEGER AllocationSize;
+  LARGE_INTEGER EndOfFile;
+  ULONG         NumberOfLinks;
+  BOOLEAN       DeletePending;
+  BOOLEAN       Directory;
+} FILE_STANDARD_INFORMATION, *PFILE_STANDARD_INFORMATION;
+
+#endif
 
 BOOL token_get_sid(
     IN HANDLE hToken,

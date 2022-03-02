@@ -1,3 +1,4 @@
+#include "entry.h"
 
 #ifdef BOF
  #include "nanodump.c"
@@ -784,6 +785,27 @@ BOOL NanoDumpPPL(VOID)
     if (!success)
         goto end;
 
+    CommandLineToArgvW_t CommandLineToArgvW;
+    CommandLineToArgvW = (CommandLineToArgvW_t)(ULONG_PTR)get_function_address(
+        get_library_address(SHELL32_DLL, TRUE),
+        CommandLineToArgvW_SW2_HASH,
+        0);
+    if (!CommandLineToArgvW)
+    {
+        DPRINT_ERR("Address of 'CommandLineToArgvW' not found");
+        goto end;
+    }
+    GetCommandLineW_t GetCommandLineW;
+    GetCommandLineW = (GetCommandLineW_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        GetCommandLineW_SW2_HASH,
+        0);
+    if (!GetCommandLineW)
+    {
+        DPRINT_ERR("Address of 'GetCommandLineW' not found");
+        goto end;
+    }
+
     LPWSTR* argv = NULL;
     int argc = 0;
     argv = CommandLineToArgvW(GetCommandLineW(), &argc);
@@ -1087,7 +1109,7 @@ __declspec(dllexport) BOOL APIENTRY DllMain(
 //
 //   000000014005B1C8  LogonUserExExW SspiCli
 //
-__declspec(dllexport) void APIENTRY LogonUserExExW();
+void APIENTRY LogonUserExExW() {};
 
 //
 // Windows 10 -> EventAggregation.dll
@@ -1101,33 +1123,14 @@ __declspec(dllexport) void APIENTRY LogonUserExExW();
 //   0000000140083758  EaFreeAggregatedEventParameters EventAggregation
 //   0000000140083760  EADeleteAggregateEvent EventAggregation
 //   0000000140083768  EAQueryAggregateEventData EventAggregation
-
-//
-// SspiCli.dll
-//
-void APIENTRY LogonUserExExW() { }
-
-//
-// EventAggregation.dll
-//
-void APIENTRY BriCreateBrokeredEvent() { }
-void APIENTRY BriDeleteBrokeredEvent() { }
-void APIENTRY EaCreateAggregatedEvent() { }
-void APIENTRY EACreateAggregateEvent() { }
-void APIENTRY EaQueryAggregatedEventParameters() { }
-void APIENTRY EAQueryAggregateEventData() { }
-void APIENTRY EaFreeAggregatedEventParameters() { }
-void APIENTRY EaDeleteAggregatedEvent() { }
-void APIENTRY EADeleteAggregateEvent() { }
-
-__declspec(dllexport) void APIENTRY BriCreateBrokeredEvent();
-__declspec(dllexport) void APIENTRY BriDeleteBrokeredEvent();
-__declspec(dllexport) void APIENTRY EaCreateAggregatedEvent();
-__declspec(dllexport) void APIENTRY EACreateAggregateEvent();
-__declspec(dllexport) void APIENTRY EaQueryAggregatedEventParameters();
-__declspec(dllexport) void APIENTRY EAQueryAggregateEventData();
-__declspec(dllexport) void APIENTRY EaFreeAggregatedEventParameters();
-__declspec(dllexport) void APIENTRY EaDeleteAggregatedEvent();
-__declspec(dllexport) void APIENTRY EADeleteAggregateEvent();
+void APIENTRY BriCreateBrokeredEvent() {};
+void APIENTRY BriDeleteBrokeredEvent() {};
+void APIENTRY EaCreateAggregatedEvent() {};
+void APIENTRY EACreateAggregateEvent() {};
+void APIENTRY EaQueryAggregatedEventParameters() {};
+void APIENTRY EAQueryAggregateEventData() {};
+void APIENTRY EaFreeAggregatedEventParameters() {};
+void APIENTRY EaDeleteAggregatedEvent() {};
+void APIENTRY EADeleteAggregateEvent() {};
 
 #endif

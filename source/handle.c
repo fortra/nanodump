@@ -393,12 +393,12 @@ HANDLE duplicate_lsass_handle(
             if (handleInfo->UniqueProcessId != ProcessId)
                 continue;
 
-            // make sure the handle has the permissions we need
-            if ((handleInfo->GrantedAccess & (permissions)) != (permissions))
-                continue;
-
             // make sure the handle is of type 'Process'
             if (handleInfo->ObjectTypeIndex != ProcesTypeIndex)
+                continue;
+
+            // make sure the handle has the permissions we need
+            if ((handleInfo->GrantedAccess & (permissions)) != (permissions))
                 continue;
 
             if (!hProcess)

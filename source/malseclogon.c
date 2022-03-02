@@ -93,7 +93,7 @@ VOID set_command_line(
     // program path
     wchar_t program_name_w[MAX_PATH];
     mbstowcs(program_name_w, program_name, MAX_PATH);
-    wcscpy(command_line, L"\"");
+    wcsncpy(command_line, L"\"", MAX_PATH);
     wcsncat(command_line, program_name_w, MAX_PATH);
     wcsncat(command_line, L"\"", MAX_PATH);
     if (!use_malseclogon_locally)
@@ -173,7 +173,6 @@ VOID kill_created_processes(
             created_processes->ProcessId[i],
             NULL);
     }
-    intFree(created_processes); created_processes = NULL;
     DPRINT("The created processes have been killed");
 }
 

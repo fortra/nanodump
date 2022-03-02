@@ -228,7 +228,7 @@ EXTERN_C DWORD SW2_GetSyscallNumber(DWORD FunctionHash)
 {
     if (!SW2_PopulateSyscallList())
     {
-        DPRINT_ERR("SW2_PopulateSyscallList failed")
+        DPRINT_ERR("SW2_PopulateSyscallList failed");
         return -1;
     }
 
@@ -241,8 +241,7 @@ EXTERN_C DWORD SW2_GetSyscallNumber(DWORD FunctionHash)
     }
     DPRINT_ERR(
         "syscall with hash 0x%lx not found",
-        FunctionHash
-    )
+        FunctionHash);
     return -1;
 }
 

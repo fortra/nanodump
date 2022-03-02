@@ -3,12 +3,21 @@
 #ifdef BOF
  #include "beacon.h"
 #else
+#include <windows.h>
  #include <stdio.h>
+ #include <strsafe.h>
 #endif
+
+VOID LogToConsole(LPCSTR pwszFormat, ...);
 
 #if defined(BOF)
  #define PRINT(...) { \
      BeaconPrintf(CALLBACK_OUTPUT, __VA_ARGS__); \
+ }
+#elif defined(DDL) && defined(PPL)
+ #define PRINT(...) { \
+     LogToConsole(__VA_ARGS__); \
+     LogToConsole("\n"); \
  }
 #elif defined(EXE)
  #define PRINT(...) { \
@@ -22,6 +31,11 @@
 #if defined(BOF)
  #define PRINT_ERR(...) { \
      BeaconPrintf(CALLBACK_ERROR, __VA_ARGS__); \
+ }
+#elif defined(DDL) && defined(PPL)
+ #define PRINT_ERR(...) { \
+     LogToConsole(__VA_ARGS__); \
+     LogToConsole("\n"); \
  }
 #elif defined(EXE)
  #define PRINT_ERR(...) { \
@@ -37,6 +51,12 @@
      BeaconPrintf(CALLBACK_OUTPUT, "DEBUG: %s:%d:%s(): ", __FILE__, __LINE__, __FUNCTION__); \
      BeaconPrintf(CALLBACK_OUTPUT, __VA_ARGS__); \
  }
+#elif defined(DEBUG) && defined(DDL) && defined(PPL)
+ #define DPRINT(...) { \
+     LogToConsole("DEBUG: %s:%d:%s(): ", __FILE__, __LINE__, __FUNCTION__); \
+     LogToConsole(__VA_ARGS__); \
+     LogToConsole("\n"); \
+ }
 #elif defined(DEBUG) && defined(EXE)
  #define DPRINT(...) { \
      fprintf(stderr, "DEBUG: %s:%d:%s(): ", __FILE__, __LINE__, __FUNCTION__); \
@@ -51,6 +71,12 @@
  #define DPRINT_ERR(...) { \
      BeaconPrintf(CALLBACK_ERROR, "ERROR: %s:%d:%s(): ", __FILE__, __LINE__, __FUNCTION__); \
      BeaconPrintf(CALLBACK_ERROR, __VA_ARGS__); \
+ }
+#elif defined(DEBUG) && defined(DDL) && defined(PPL)
+ #define DPRINT_ERR(...) { \
+     LogToConsole("ERROR: %s:%d:%s(): ", __FILE__, __LINE__, __FUNCTION__); \
+     LogToConsole(__VA_ARGS__); \
+     LogToConsole("\n"); \
  }
 #elif defined(DEBUG) && defined(EXE)
  #define DPRINT_ERR(...) { \

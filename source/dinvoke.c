@@ -79,9 +79,9 @@ PVOID resolve_reference(
     // addr points to a string like: NewLibrary.NewFunctionName
     api = &strrchr(addr, '.')[1];
     DWORD dll_length = (ULONG_PTR)api - (ULONG_PTR)addr;
-    char dll[MAX_PATH] = {0};
+    char dll[MAX_PATH + 1] = {0};
     strncpy(dll, (LPCSTR)addr, dll_length);
-    strcat(dll, "dll");
+    strncat(dll, "dll", MAX_PATH);
     wchar_t wc_dll[MAX_PATH] = {0};
     mbstowcs(wc_dll, dll, MAX_PATH);
 

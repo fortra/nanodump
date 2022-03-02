@@ -60,7 +60,9 @@ BOOL run_ppl_bypass_exploit(
     IN BOOL use_valid_sig,
     IN BOOL fork_lsass,
     IN BOOL snapshot_lsass,
-    IN BOOL duplicate_handle);
+    IN BOOL duplicate_handle,
+    IN BOOL use_malseclogon,
+    IN LPCSTR malseclogon_target_binary);
 
 BOOL create_protected_process_as_user(
     IN HANDLE hToken,
@@ -73,6 +75,8 @@ BOOL prepare_ppl_command_line(
     IN BOOL fork_lsass,
     IN BOOL snapshot_lsass,
     IN BOOL duplicate_handle,
+    IN BOOL use_malseclogon,
+    IN LPCSTR malseclogon_target_binary,
     OUT LPWSTR* command_line);
 
 BOOL find_file_for_transaction(
@@ -117,4 +121,3 @@ BOOL impersonate_system(
 
 BOOL impersonate_local_service(
     OUT PHANDLE phLocalServiceToken);
-

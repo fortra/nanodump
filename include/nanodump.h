@@ -113,6 +113,7 @@
  WINBASEAPI size_t    __cdecl MSVCRT$strlen(const char *s);
  WINBASEAPI char *    __cdecl MSVCRT$strncpy(char * __dst, const char * __src, size_t __n);
  WINBASEAPI char *    __cdecl MSVCRT$strcat(char * _Dest,const char * _Source);
+ WINBASEAPI char *    __cdecl MSVCRT$strncat(char * _Dest,const char * _Source, size_t __n);
 
  #define GetProcessHeap   KERNEL32$GetProcessHeap
  #define HeapAlloc        KERNEL32$HeapAlloc
@@ -144,6 +145,7 @@
  #define strlen   MSVCRT$strlen
  #define strncpy  MSVCRT$strncpy
  #define strcat   MSVCRT$strcat
+ #define strncat   MSVCRT$strncat
 #endif
 
 #define MINIDUMP_SIGNATURE 0x504d444d

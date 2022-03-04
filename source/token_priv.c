@@ -1,4 +1,7 @@
 #include "token_priv.h"
+#if defined(NANO) && defined(BOF)
+#include "dinvoke.c"
+#endif
 
 #if !defined(SSP)
 

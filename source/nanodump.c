@@ -433,6 +433,10 @@ PMiniDumpMemoryDescriptor64 get_memory_ranges(
 
         base_address = mbi.BaseAddress;
         region_size = mbi.RegionSize;
+
+        if ((base_address + region_size) < base_address)
+            break;
+
         // next memory range
         current_address = RVA(PVOID, base_address, region_size);
 

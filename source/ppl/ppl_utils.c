@@ -4,6 +4,7 @@ BOOL token_get_sid(
     IN HANDLE hToken,
     OUT PSID* ppSid)
 {
+    BOOL bReturnValue = FALSE;
     DWORD dwSize = 8;
     PTOKEN_USER pTokenUser = NULL;
     NTSTATUS status;
@@ -17,7 +18,7 @@ BOOL token_get_sid(
     if (!CopySid)
     {
         DPRINT_ERR("Address of 'CopySid' not found");
-        return FALSE;
+        goto end;
     }
 
     do
@@ -26,7 +27,7 @@ BOOL token_get_sid(
         if (!pTokenUser)
         {
             malloc_failed();
-            return FALSE;
+            goto end;
         }
 
         status = NtQueryInformationToken(
@@ -44,14 +45,14 @@ BOOL token_get_sid(
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtQueryInformationToken", status);
-        return FALSE;
+        goto end;
     }
 
     *ppSid = (PSID)LocalAlloc(LPTR, SECURITY_MAX_SID_SIZE);
     if (!*ppSid)
     {
         function_failed("LocalAlloc");
-        return FALSE;
+        goto end;
     }
 
     success = CopySid(
@@ -61,11 +62,20 @@ BOOL token_get_sid(
     if (!success)
     {
         function_failed("CopySid");
-        LocalFree(*ppSid); *ppSid = NULL;
-        return FALSE;
+        goto end;
     }
 
-    return TRUE;
+    bReturnValue = TRUE;
+
+end:
+    if (pTokenUser)
+        intFree(pTokenUser);
+    if (!bReturnValue && *ppSid)
+    {
+        LocalFree(*ppSid); *ppSid = NULL;
+    }
+
+    return bReturnValue;
 }
 
 BOOL token_get_sid_as_string(
@@ -91,10 +101,12 @@ BOOL token_get_sid_as_string(
         return FALSE;
 
     success = ConvertSidToStringSidW(pSid, ppwszStringSid);
+
+    LocalFree(pSid); pSid = NULL;
+
     if (!success)
     {
         function_failed("ConvertSidToStringSidW");
-        LocalFree(pSid); pSid = NULL;
         return FALSE;
     }
 

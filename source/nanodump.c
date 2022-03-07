@@ -434,7 +434,7 @@ PMiniDumpMemoryDescriptor64 get_memory_ranges(
         base_address = mbi.BaseAddress;
         region_size = mbi.RegionSize;
 
-        if ((base_address + region_size) < base_address)
+        if (((ULONG_PTR)base_address + region_size) < (ULONG_PTR)base_address)
             break;
 
         // next memory range

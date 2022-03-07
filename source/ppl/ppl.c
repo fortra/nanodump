@@ -557,11 +557,11 @@ end:
     if (hNewProcessToken)
         NtClose(hNewProcessToken);
     if (pwszCommandLine)
-        LocalFree(pwszCommandLine);
+        intFree(pwszCommandLine);
     if (pwszDosDeviceName)
-        LocalFree(pwszDosDeviceName);
+        intFree(pwszDosDeviceName);
     if (pwszDosDeviceTargetPath)
-        LocalFree(pwszDosDeviceTargetPath);
+        intFree(pwszDosDeviceTargetPath);
     if (hDllLink)
         NtClose(hDllLink);
     if (pwszDllLinkName)
@@ -1104,7 +1104,7 @@ BOOL get_hijackeable_dllname(
     *ppwszDllName = intAlloc(64 * sizeof(WCHAR));
     if (!*ppwszDllName)
     {
-        malloc_failed()
+        malloc_failed();
         return FALSE;
     }
 

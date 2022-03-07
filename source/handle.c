@@ -333,11 +333,13 @@ BOOL GetTypeIndexByName(
         {
             *ProcesTypeIndex = i + 2;
             DPRINT("Found the index of type 'Process': %ld", i+2);
+            intFree(ObjectTypes); ObjectTypes = NULL;
             return TRUE;
         }
         CurrentType = (POBJECT_TYPE_INFORMATION_V2)OBJECT_TYPES_NEXT_ENTRY(CurrentType);
     }
     DPRINT_ERR("Index of type 'Process' not found");
+    intFree(ObjectTypes); ObjectTypes = NULL;
     return FALSE;
 }
 

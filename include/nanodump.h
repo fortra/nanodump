@@ -97,6 +97,7 @@
  WINBASEAPI wchar_t * __cdecl MSVCRT$wcsstr(const wchar_t *_Str,const wchar_t *_SubStr);
  WINBASEAPI char *    __cdecl MSVCRT$strrchr(const char *_Str,int _Ch);
  WINBASEAPI void *    __cdecl MSVCRT$memcpy(void * _Dst,const void * _Src,size_t _MaxCount);
+ WINBASEAPI int       __cdecl MSVCRT$memcmp(const void *_Buf1,const void *_Buf2,size_t _Size);
  WINBASEAPI size_t    __cdecl MSVCRT$strnlen(const char *s, size_t maxlen);
  WINBASEAPI size_t    __cdecl MSVCRT$wcsnlen(const wchar_t *_Src,size_t _MaxCount);
  WINBASEAPI wchar_t * __cdecl MSVCRT$wcscpy(wchar_t * __dst, const wchar_t * __src);
@@ -129,6 +130,7 @@
  #define wcsstr   MSVCRT$wcsstr
  #define strrchr  MSVCRT$strrchr
  #define memcpy   MSVCRT$memcpy
+ #define memcmp   MSVCRT$memcmp
  #define strnlen  MSVCRT$strnlen
  #define wcsnlen  MSVCRT$wcsnlen
  #define wcscpy   MSVCRT$wcscpy

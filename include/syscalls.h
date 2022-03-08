@@ -32,6 +32,7 @@ typedef struct _SW2_SYSCALL_ENTRY
 {
     DWORD Hash;
     DWORD Address;
+    PVOID SyscallAddress;
 } SW2_SYSCALL_ENTRY, *PSW2_SYSCALL_ENTRY;
 
 typedef struct _SW2_SYSCALL_LIST
@@ -61,17 +62,26 @@ typedef struct _SW2_PEB {
 	PSW2_PEB_LDR_DATA Ldr;
 } SW2_PEB, *PSW2_PEB;
 
-DWORD SW2_HashSyscall(PCSTR FunctionName);
-BOOL SW2_PopulateSyscallList(void);
-BOOL local_is_wow64(void);
-PVOID getIP(void);
-void SyscallNotFound(void);
+DWORD SW2_HashSyscall(
+    IN PCSTR FunctionName);
+
+PVOID GetSyscallAddress(
+    IN PVOID NtApiAddress);
+
+BOOL SW2_PopulateSyscallList(VOID);
+
+BOOL local_is_wow64(VOID);
+
+PVOID getIP(VOID);
+
+void SyscallNotFound(VOID);
+
 #if defined(__GNUC__)
-DWORD SW2_GetSyscallNumber(DWORD FunctionHash) asm ("SW2_GetSyscallNumber");
-PVOID GetSyscallAddress(void) asm ("GetSyscallAddress");
+DWORD SW2_GetSyscallNumber(IN DWORD FunctionHash) asm ("SW2_GetSyscallNumber");
+PVOID SW3_GetSyscallAddress(IN DWORD FunctionHash) asm ("SW3_GetSyscallAddress");
 #else
-DWORD SW2_GetSyscallNumber(DWORD FunctionHash);
-PVOID GetSyscallAddress(void);
+DWORD SW2_GetSyscallNumber(IN DWORD FunctionHash);
+PVOID SW3_GetSyscallAddress(IN DWORD FunctionHash);
 #endif
 
 //typedef struct _IO_STATUS_BLOCK
@@ -362,34 +372,6 @@ EXTERN_C NTSTATUS NtCreateSection(
 	IN ULONG SectionPageProtection,
 	IN ULONG AllocationAttributes,
 	IN HANDLE FileHandle OPTIONAL);
-
-EXTERN_C NTSTATUS NtMapViewOfSection(
-	IN HANDLE SectionHandle,
-	IN HANDLE ProcessHandle,
-	IN OUT PVOID BaseAddress,
-	IN ULONG ZeroBits,
-	IN SIZE_T CommitSize,
-	IN OUT PLARGE_INTEGER SectionOffset OPTIONAL,
-	IN OUT PSIZE_T ViewSize,
-	IN ULONG InheritDisposition,
-	IN ULONG AllocationType,
-	IN ULONG Win32Protect);
-
-EXTERN_C NTSTATUS NtProtectVirtualMemory(
-	IN HANDLE ProcessHandle,
-	IN OUT PVOID * BaseAddress,
-	IN OUT PSIZE_T RegionSize,
-	IN ULONG NewProtect,
-	OUT PULONG OldProtect);
-
-EXTERN_C NTSTATUS NtUnmapViewOfSection(
-	IN HANDLE ProcessHandle,
-	IN PVOID BaseAddress);
-
-EXTERN_C NTSTATUS NtFlushInstructionCache(
-	IN HANDLE ProcessHandle,
-	IN PVOID BaseAddress OPTIONAL,
-	IN ULONG Length);
 
 EXTERN_C NTSTATUS NtOpenThreadToken(
 	IN HANDLE ThreadHandle,

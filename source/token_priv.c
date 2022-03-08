@@ -86,7 +86,7 @@ BOOL check_token_privilege(
         0);
     if (!LookupPrivilegeNameW)
     {
-        DPRINT_ERR("Address of 'LookupPrivilegeNameW' not found");
+        api_not_found("LookupPrivilegeNameW");
         goto end;
     }
 

@@ -17,7 +17,7 @@ BOOL token_get_sid(
         0);
     if (!CopySid)
     {
-        DPRINT_ERR("Address of 'CopySid' not found");
+        api_not_found("CopySid");
         goto end;
     }
 
@@ -92,7 +92,7 @@ BOOL token_get_sid_as_string(
         0);
     if (!ConvertSidToStringSidW)
     {
-        DPRINT_ERR("Address of 'ConvertSidToStringSidW' not found");
+        api_not_found("ConvertSidToStringSidW");
         return FALSE;
     }
 
@@ -163,7 +163,7 @@ BOOL token_compare_sids(
         0);
     if (!ConvertSidToStringSidW)
     {
-        DPRINT_ERR("Address of 'ConvertSidToStringSidW' not found");
+        api_not_found("ConvertSidToStringSidW");
         goto end;
     }
 
@@ -255,7 +255,7 @@ BOOL token_get_username(
         0);
     if (!LookupAccountSidW)
     {
-        DPRINT_ERR("Address of 'LookupAccountSidW' not found");
+        api_not_found("LookupAccountSidW");
         goto end;
     }
 

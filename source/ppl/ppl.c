@@ -77,7 +77,7 @@ BOOL run_ppl_bypass_exploit(
         0);
     if (!RevertToSelf)
     {
-        DPRINT_ERR("Address of 'RevertToSelf' not found");
+        api_not_found("RevertToSelf");
         goto end;
     }
 
@@ -88,7 +88,7 @@ BOOL run_ppl_bypass_exploit(
         0);
     if (!InitializeSecurityDescriptor)
     {
-        DPRINT_ERR("Address of 'InitializeSecurityDescriptor' not found");
+        api_not_found("InitializeSecurityDescriptor");
         goto end;
     }
 
@@ -99,7 +99,7 @@ BOOL run_ppl_bypass_exploit(
         0);
     if (!SetSecurityDescriptorDacl)
     {
-        DPRINT_ERR("Address of 'SetSecurityDescriptorDacl' not found");
+        api_not_found("SetSecurityDescriptorDacl");
         goto end;
     }
 
@@ -110,7 +110,7 @@ BOOL run_ppl_bypass_exploit(
         0);
     if (!DefineDosDeviceW)
     {
-        DPRINT_ERR("Address of 'DefineDosDeviceW' not found");
+        api_not_found("DefineDosDeviceW");
         goto end;
     }
 
@@ -121,7 +121,7 @@ BOOL run_ppl_bypass_exploit(
         0);
     if (!SetKernelObjectSecurity)
     {
-        DPRINT_ERR("Address of 'SetKernelObjectSecurity' not found");
+        api_not_found("SetKernelObjectSecurity");
         goto end;
     }
 
@@ -601,7 +601,7 @@ BOOL create_protected_process_as_user(
         0);
     if (!CreateProcessAsUserW)
     {
-        DPRINT_ERR("Address of 'CreateProcessAsUserW' not found");
+        api_not_found("CreateProcessAsUserW");
         return FALSE;
     }
 
@@ -652,7 +652,7 @@ BOOL prepare_ppl_command_line(
         0);
     if (!GetSystemDirectoryW)
     {
-        DPRINT_ERR("Address of 'GetSystemDirectoryW' not found");
+        api_not_found("GetSystemDirectoryW");
         return FALSE;
     }
 
@@ -731,7 +731,7 @@ BOOL find_file_for_transaction(
         0);
     if (!ConvertStringSidToSidW)
     {
-        DPRINT_ERR("Address of 'ConvertStringSidToSidW' not found");
+        api_not_found("ConvertStringSidToSidW");
         return FALSE;
     }
 
@@ -741,7 +741,7 @@ BOOL find_file_for_transaction(
         0);
     if (!GetSecurityInfo)
     {
-        DPRINT_ERR("Address of 'GetSecurityInfo' not found");
+        api_not_found("GetSecurityInfo");
         return FALSE;
     }
 
@@ -751,7 +751,7 @@ BOOL find_file_for_transaction(
         0);
     if (!GetSystemDirectoryW)
     {
-        DPRINT_ERR("Address of 'GetSystemDirectoryW' not found");
+        api_not_found("GetSystemDirectoryW");
         return FALSE;
     }
 
@@ -761,7 +761,7 @@ BOOL find_file_for_transaction(
         0);
     if (!FindClose)
     {
-        DPRINT_ERR("Address of 'FindClose' not found");
+        api_not_found("FindClose");
         return FALSE;
     }
 
@@ -771,7 +771,7 @@ BOOL find_file_for_transaction(
         0);
     if (!FindFirstFileW)
     {
-        DPRINT_ERR("Address of 'FindFirstFileW' not found");
+        api_not_found("FindFirstFileW");
         return FALSE;
     }
 
@@ -781,7 +781,7 @@ BOOL find_file_for_transaction(
         0);
     if (!FindNextFileW)
     {
-        DPRINT_ERR("Address of 'FindNextFileW' not found");
+        api_not_found("FindNextFileW");
         return FALSE;
     }
 
@@ -899,7 +899,7 @@ BOOL write_payload_dll_transacted(
         0);
     if (!CreateFileTransactedW)
     {
-        DPRINT_ERR("Address of 'CreateFileTransactedW' not found");
+        api_not_found("CreateFileTransactedW");
         goto end;
     }
 
@@ -1237,7 +1237,7 @@ BOOL find_process_token_and_duplicate(
         0);
     if (!ConvertStringSidToSidW)
     {
-        DPRINT_ERR("Address of 'ConvertStringSidToSidW' not found");
+        api_not_found("ConvertStringSidToSidW");
         goto end;
     }
 

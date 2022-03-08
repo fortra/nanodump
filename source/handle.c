@@ -519,7 +519,7 @@ HANDLE snapshot_process(
         0);
     if (!PssNtCaptureSnapshot)
     {
-        DPRINT_ERR("Address of 'PssNtCaptureSnapshot' not found");
+        api_not_found("PssNtCaptureSnapshot");
         return NULL;
     }
 
@@ -551,7 +551,7 @@ HANDLE snapshot_process(
         0);
     if (!PssNtQuerySnapshot)
     {
-        DPRINT_ERR("Address of 'PssNtQuerySnapshot' not found");
+        api_not_found("PssNtQuerySnapshot");
         return NULL;
     }
 
@@ -588,7 +588,7 @@ BOOL free_snapshot(
         0);
     if (!PssNtFreeSnapshot)
     {
-        DPRINT_ERR("Address of 'PssNtFreeSnapshot' not found");
+        api_not_found("PssNtFreeSnapshot");
         return FALSE;
     }
 

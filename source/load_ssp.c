@@ -24,7 +24,7 @@ VOID load_ssp(
         0);
     if (!AddSecurityPackageW)
     {
-        DPRINT_ERR("Address of 'AddSecurityPackageW' not found");
+        api_not_found("AddSecurityPackageW");
         return;
     }
     mbstowcs(ssp_path_w, ssp_path, MAX_PATH);

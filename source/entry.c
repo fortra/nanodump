@@ -764,7 +764,7 @@ BOOL NanoDumpPPL(VOID)
         0);
     if (!CommandLineToArgvW)
     {
-        DPRINT_ERR("Address of 'CommandLineToArgvW' not found");
+        api_not_found("CommandLineToArgvW");
         goto end;
     }
     GetCommandLineW_t GetCommandLineW;
@@ -774,7 +774,7 @@ BOOL NanoDumpPPL(VOID)
         0);
     if (!GetCommandLineW)
     {
-        DPRINT_ERR("Address of 'GetCommandLineW' not found");
+        api_not_found("GetCommandLineW");
         goto end;
     }
 

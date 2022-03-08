@@ -305,8 +305,7 @@ BOOL malseclogon_stage_1(
         0);
     if (!CreateProcessWithLogonW)
     {
-        DPRINT_ERR("Address of 'CreateProcessWithLogonW' not found");
-        DPRINT_ERR("Failed to get handle to " LSASS " using MalSecLogon");
+        api_not_found("CreateProcessWithLogonW");
         intFree(handle_list); handle_list = NULL;
         return FALSE;
     }

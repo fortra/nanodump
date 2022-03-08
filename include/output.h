@@ -103,3 +103,9 @@ VOID LogToConsole(LPCSTR pwszFormat, ...);
     )
 
 #define malloc_failed() function_failed("HeapAlloc")
+
+#define api_not_found(function) \
+    DPRINT_ERR( \
+        "The address of '%s' was not found", \
+        function \
+    )

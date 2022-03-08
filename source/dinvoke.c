@@ -206,7 +206,7 @@ HANDLE get_library_address(
         0);
     if (!LdrLoadDll)
     {
-        DPRINT_ERR("Address of 'LdrLoadDll' not found");
+        api_not_found("LdrLoadDll");
         return NULL;
     }
 

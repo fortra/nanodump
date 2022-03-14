@@ -76,7 +76,7 @@ BOOL check_token_privilege(
     LookupPrivilegeNameW_t LookupPrivilegeNameW;
     LUID_AND_ATTRIBUTES laa = { 0 };
     TOKEN_PRIVILEGES tkp = { 0 };
-    LPWSTR pwszPrivilegeNameTemp;
+    LPWSTR pwszPrivilegeNameTemp = NULL;
     NTSTATUS status;
     BOOL success;
 

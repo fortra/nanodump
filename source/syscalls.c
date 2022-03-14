@@ -4,13 +4,20 @@
 // https://www.mdsec.co.uk/2020/12/bypassing-user-mode-hooks-and-direct-invocation-of-system-calls-for-red-teams
 
 #if defined(_MSC_VER)
+#if defined(BOF)
 #pragma data_seg(".data")
+#endif
 SW2_SYSCALL_LIST SW2_SyscallList;
+#if defined(BOF)
 #pragma data_seg(".data")
+#endif
 PVOID SyscallAddress = NULL;
-#elif defined(__GNUC__)
+#elif defined(__GNUC__) && defined(BOF)
 SW2_SYSCALL_LIST SW2_SyscallList __attribute__ ((section(".data")));
 PVOID SyscallAddress __attribute__ ((section(".data"))) = NULL;
+#elif defined(__GNUC__)
+SW2_SYSCALL_LIST SW2_SyscallList;
+PVOID SyscallAddress = NULL;
 #endif
 /*
  * If no 'syscall' instruction is found in NTDLL,

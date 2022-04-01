@@ -1,6 +1,17 @@
 #include "output.h"
 
-VOID LogToConsole(LPCSTR pwszFormat, ...)
+#if defined(DDL) && defined(PPL)
+
+#ifndef intAlloc
+#define intAlloc(size) HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size)
+#endif
+#ifndef intFree
+#define intFree(addr) HeapFree(GetProcessHeap(), 0, addr)
+#endif
+
+VOID LogToConsole(
+    IN LPCSTR pwszFormat,
+    ...)
 {
     //
     // The process in which we load this DLL does not have a console so we need to attach to the 
@@ -17,24 +28,21 @@ VOID LogToConsole(LPCSTR pwszFormat, ...)
     DWORD dwOutputStringSize = 0;
     LPSTR pwszOutputString = NULL;
     va_list va;
-    size_t offset = 0;
 
     va_start(va, pwszFormat);
 
     dwOutputStringSize = _vscprintf(pwszFormat, va) + 2; // \0
-    pwszOutputString = (LPSTR)LocalAlloc(LPTR, dwOutputStringSize);
+    pwszOutputString = intAlloc(dwOutputStringSize);
 
     if (pwszOutputString)
     {
-        if (SUCCEEDED(StringCbLength(pwszOutputString, dwOutputStringSize, &offset)))
-        {
-            StringCbVPrintf(&pwszOutputString[offset / sizeof(WCHAR)], dwOutputStringSize - offset, pwszFormat, va);
+        vsprintf_s(pwszOutputString, dwOutputStringSize, pwszFormat, va);
 
-            WriteConsole(GetStdHandle(STD_OUTPUT_HANDLE), pwszOutputString, (DWORD)strlen(pwszOutputString), NULL, NULL);
-        }
+        WriteConsole(GetStdHandle(STD_OUTPUT_HANDLE), pwszOutputString, (DWORD)strlen(pwszOutputString), NULL, NULL);
 
-        LocalFree(pwszOutputString);
+        intFree(pwszOutputString); pwszOutputString = NULL;
     }
 
     va_end(va);
 }
+#endif

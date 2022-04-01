@@ -5,7 +5,6 @@
 #else
 #include <windows.h>
  #include <stdio.h>
- #include <strsafe.h>
 #endif
 
 VOID LogToConsole(LPCSTR pwszFormat, ...);

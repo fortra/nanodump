@@ -87,12 +87,8 @@
  WINBASEAPI void * WINAPI KERNEL32$HeapAlloc (HANDLE hHeap, DWORD dwFlags, SIZE_T dwBytes);
  WINBASEAPI BOOL   WINAPI KERNEL32$HeapFree (HANDLE, DWORD, PVOID);
  WINBASEAPI DWORD  WINAPI KERNEL32$GetLastError (VOID);
- WINBASEAPI VOID   WINAPI KERNEL32$SetLastError (DWORD dwErrCode);
- WINBASEAPI VOID   WINAPI KERNEL32$StringCchPrintfW(LPWSTR pszDest,size_t cchDest,LPCWSTR pszFormat,...);
  WINBASEAPI HLOCAL WINAPI KERNEL32$LocalAlloc(UINT uFlags, SIZE_T uBytes);
  WINBASEAPI HLOCAL WINAPI KERNEL32$LocalFree(HLOCAL hMem);
-
- WINBASEAPI ULONG WINAPI NTDLL$RtlNtStatusToDosError(NTSTATUS Status);
 
  WINBASEAPI wchar_t * __cdecl MSVCRT$wcsstr(const wchar_t *_Str,const wchar_t *_SubStr);
  WINBASEAPI char *    __cdecl MSVCRT$strrchr(const char *_Str,int _Ch);
@@ -100,9 +96,7 @@
  WINBASEAPI int       __cdecl MSVCRT$memcmp(const void *_Buf1,const void *_Buf2,size_t _Size);
  WINBASEAPI size_t    __cdecl MSVCRT$strnlen(const char *s, size_t maxlen);
  WINBASEAPI size_t    __cdecl MSVCRT$wcsnlen(const wchar_t *_Src,size_t _MaxCount);
- WINBASEAPI wchar_t * __cdecl MSVCRT$wcscpy(wchar_t * __dst, const wchar_t * __src);
  WINBASEAPI wchar_t * __cdecl MSVCRT$wcsncpy(wchar_t * ,const wchar_t * ,size_t);
- WINBASEAPI size_t    __cdecl MSVCRT$wcstombs(char * _Dest,const wchar_t * _Source,size_t _MaxCount);
  WINBASEAPI size_t    __cdecl MSVCRT$mbstowcs(wchar_t * _Dest,const char * _Source,size_t _MaxCount);
  WINBASEAPI wchar_t * __cdecl MSVCRT$wcsncat(wchar_t * _Dest,const wchar_t * _Source,size_t _Count);
  WINBASEAPI int       __cdecl MSVCRT$strncmp(const char *s1, const char *s2, size_t n);
@@ -113,41 +107,37 @@
  WINBASEAPI void      __cdecl MSVCRT$memset(void *dest, int c, size_t count);
  WINBASEAPI size_t    __cdecl MSVCRT$strlen(const char *s);
  WINBASEAPI char *    __cdecl MSVCRT$strncpy(char * __dst, const char * __src, size_t __n);
- WINBASEAPI char *    __cdecl MSVCRT$strcat(char * _Dest,const char * _Source);
  WINBASEAPI char *    __cdecl MSVCRT$strncat(char * _Dest,const char * _Source, size_t __n);
+ WINBASEAPI int       __cdecl MSVCRT$_vscprintf(const char *format, va_list argptr);
+ WINBASEAPI int       __cdecl MSVCRT$vsprintf_s(char *_DstBuf,size_t _Size,const char *_Format,va_list _ArgList);
 
  #define GetProcessHeap   KERNEL32$GetProcessHeap
  #define HeapAlloc        KERNEL32$HeapAlloc
  #define HeapFree         KERNEL32$HeapFree
  #define GetLastError     KERNEL32$GetLastError
- #define SetLastError     KERNEL32$SetLastError
- #define StringCchPrintfW KERNEL32$StringCchPrintfW
  #define LocalAlloc       KERNEL32$LocalAlloc
  #define LocalFree        KERNEL32$LocalFree
 
- #define RtlNtStatusToDosError NTDLL$RtlNtStatusToDosError
-
- #define wcsstr   MSVCRT$wcsstr
- #define strrchr  MSVCRT$strrchr
- #define memcpy   MSVCRT$memcpy
- #define memcmp   MSVCRT$memcmp
- #define strnlen  MSVCRT$strnlen
- #define wcsnlen  MSVCRT$wcsnlen
- #define wcscpy   MSVCRT$wcscpy
- #define wcsncpy  MSVCRT$wcsncpy
- #define wcstombs MSVCRT$wcstombs
- #define mbstowcs MSVCRT$mbstowcs
- #define wcsncat  MSVCRT$wcsncat
- #define strncmp  MSVCRT$strncmp
- #define _wcsicmp MSVCRT$_wcsicmp
- #define srand    MSVCRT$srand
- #define rand     MSVCRT$rand
- #define time     MSVCRT$time
- #define memset   MSVCRT$memset
- #define strlen   MSVCRT$strlen
- #define strncpy  MSVCRT$strncpy
- #define strcat   MSVCRT$strcat
- #define strncat   MSVCRT$strncat
+ #define wcsstr     MSVCRT$wcsstr
+ #define strrchr    MSVCRT$strrchr
+ #define memcpy     MSVCRT$memcpy
+ #define memcmp     MSVCRT$memcmp
+ #define strnlen    MSVCRT$strnlen
+ #define wcsnlen    MSVCRT$wcsnlen
+ #define wcsncpy    MSVCRT$wcsncpy
+ #define mbstowcs   MSVCRT$mbstowcs
+ #define wcsncat    MSVCRT$wcsncat
+ #define strncmp    MSVCRT$strncmp
+ #define _wcsicmp   MSVCRT$_wcsicmp
+ #define srand      MSVCRT$srand
+ #define rand       MSVCRT$rand
+ #define time       MSVCRT$time
+ #define memset     MSVCRT$memset
+ #define strlen     MSVCRT$strlen
+ #define strncpy    MSVCRT$strncpy
+ #define strncat    MSVCRT$strncat
+ #define _vscprintf MSVCRT$_vscprintf
+ #define vsprintf_s MSVCRT$vsprintf_s
 #endif
 
 #define MINIDUMP_SIGNATURE 0x504d444d

@@ -49,7 +49,7 @@ def replace_syscall_hashes(seed):
     regex = re.compile(r'__declspec\(naked\) NTSTATUS (Nt[^(]+)')
     syscall_names = re.findall(regex, code)
     syscall_names = set(syscall_names)
-    syscall_definitions = code.split('#elif defined(__GNUC__)')[3]
+    syscall_definitions = code.split('#elif defined(__GNUC__)')[4]
 
     for syscall_name in syscall_names:
         regex = re.compile('NTSTATUS ' + syscall_name + '\\(.*?"mov rcx, (0x[A-Fa-f0-9]{8})', re.DOTALL)
@@ -70,7 +70,7 @@ def replace_syscall_hashes(seed):
         code = f.read()
 
     for syscall_name in syscall_names:
-        regex = re.compile(syscall_name + ' PROC.*?mov ecx, 0([A-Fa-f0-9]{8})h', re.DOTALL)
+        regex = re.compile(syscall_name + ' PROC.*?mov rcx, 0([A-Fa-f0-9]{8})h', re.DOTALL)
         match = re.search(regex, code)
         assert match is not None, f'hash of syscall {syscall_name} not found!'
         old_hash = match.group(1)

@@ -329,12 +329,22 @@ PVOID allocate_memory(
     return base_address;
 }
 
+// for example, encrypt the dump with an XOR key
 VOID encrypt_dump(
     IN PVOID base_address,
     IN SIZE_T region_size)
 {
-    // add your code here
-    return;
+    //BYTE key = 0x2e;
+    //PBYTE addr = NULL;
+
+    //if (!base_address)
+    //    return;
+
+    //for (SIZE_T i = 0; i < region_size; i++)
+    //{
+    //    addr = RVA(PBYTE, base_address, i);
+    //    *addr ^= key;
+    //}
 }
 
 VOID erase_dump_from_memory(

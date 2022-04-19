@@ -184,10 +184,13 @@ void go(char* args, int length)
         "The dump was created successfully, final size: %d MiB",
         (dc.rva/1024)/1024);
 
-    // at this point, you can encrypt or obfuscate the dump
-    encrypt_dump(
-        dc.BaseAddress,
-        dc.rva);
+    if (!use_valid_sig)
+    {
+        // at this point, you can encrypt or obfuscate the dump
+        encrypt_dump(
+            dc.BaseAddress,
+            dc.rva);
+    }
 
     if (write_dump_to_disk)
     {
@@ -561,10 +564,13 @@ int main(int argc, char* argv[])
         "The dump was created successfully, final size: %d MiB",
         (dc.rva/1024)/1024);
 
-    // at this point, you can encrypt or obfuscate the dump
-    encrypt_dump(
-        dc.BaseAddress,
-        dc.rva);
+    if (!use_valid_sig)
+    {
+        // at this point, you can encrypt or obfuscate the dump
+        encrypt_dump(
+            dc.BaseAddress,
+            dc.rva);
+    }
 
     success = write_file(
         &full_dump_path,
@@ -666,10 +672,13 @@ BOOL NanoDumpSSP(void)
     if (!success)
         goto end;
 
-    // at this point, you can encrypt or obfuscate the dump
-    encrypt_dump(
-        dc.BaseAddress,
-        dc.rva);
+    if (!use_valid_sig)
+    {
+        // at this point, you can encrypt or obfuscate the dump
+        encrypt_dump(
+            dc.BaseAddress,
+            dc.rva);
+    }
 
     success = write_file(
         &full_dump_path,
@@ -1022,10 +1031,13 @@ BOOL NanoDumpPPL(VOID)
         "The dump was created successfully, final size: %d MiB",
         (dc.rva/1024)/1024);
 
-    // at this point, you can encrypt or obfuscate the dump
-    encrypt_dump(
-        dc.BaseAddress,
-        dc.rva);
+    if (!use_valid_sig)
+    {
+        // at this point, you can encrypt or obfuscate the dump
+        encrypt_dump(
+            dc.BaseAddress,
+            dc.rva);
+    }
 
     success = write_file(
         &full_dump_path,

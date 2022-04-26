@@ -183,7 +183,6 @@ BOOL SW2_PopulateSyscallList(VOID)
         {
             Entries[i].Hash = SW2_HashSyscall(FunctionName);
             Entries[i].Address = Functions[Ordinals[NumberOfNames - 1]];
-            Entries[i].SyscallAddress = NULL; // we calculate this later
 
             i++;
             if (i == SW2_MAX_ENTRIES) break;
@@ -205,15 +204,12 @@ BOOL SW2_PopulateSyscallList(VOID)
 
                 TempEntry.Hash = Entries[j].Hash;
                 TempEntry.Address = Entries[j].Address;
-                TempEntry.SyscallAddress = Entries[j].SyscallAddress;
 
                 Entries[j].Hash = Entries[j + 1].Hash;
                 Entries[j].Address = Entries[j + 1].Address;
-                Entries[j].SyscallAddress = Entries[j + 1].SyscallAddress;
 
                 Entries[j + 1].Hash = TempEntry.Hash;
                 Entries[j + 1].Address = TempEntry.Address;
-                Entries[j + 1].SyscallAddress = TempEntry.SyscallAddress;
             }
         }
     }

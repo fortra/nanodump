@@ -29,7 +29,7 @@ int main(int argc, char** argv)
 	fclose(f);
 
 	printf("};\n");
-	printf("unsigned int %s_len = %d;\n", argv[2], n);
+	printf("unsigned int %s_len = %ld;\n", argv[2], n);
 
 	return 0;
 }

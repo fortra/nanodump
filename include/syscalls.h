@@ -66,7 +66,8 @@ DWORD SW2_HashSyscall(
     IN PCSTR FunctionName);
 
 PVOID GetSyscallAddress(
-    IN PVOID NtApiAddress);
+    IN PVOID nt_api_address,
+    IN ULONG32 size_of_ntapi);
 
 BOOL SW2_PopulateSyscallList(VOID);
 

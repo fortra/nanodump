@@ -30,6 +30,8 @@ nanodump:
 	cl.exe -DEXE -DPPL $(OPTIONS) source/utils.c source/syscalls.c source/dinvoke.c source/token_priv.c source/ppl/ppl_utils.c source/ppl/ppl.c
 	link.exe /OUT:dist\nanodump_ppl.x64.exe utils.obj syscalls-asm.obj syscalls.obj dinvoke.obj token_priv.obj ppl_utils.obj ppl.obj
 
+	cl.exe source/restore_signature.c /Fe:scripts\restore_signature.exe
+
 debug:
 	@echo ###### DEBUG ######
 	ML64 /c source/syscalls-asm.asm /link /NODEFAULTLIB /RELEASE /MACHINE:X64
@@ -57,6 +59,8 @@ debug:
 
 	cl.exe -DEXE -DPPL -DDEBUG $(OPTIONS) source/utils.c source/syscalls.c source/dinvoke.c source/token_priv.c source/ppl/ppl_utils.c source/ppl/ppl.c
 	link.exe /OUT:dist\nanodump_ppl.x64.exe utils.obj syscalls-asm.obj syscalls.obj dinvoke.obj token_priv.obj ppl_utils.obj ppl.obj
+
+	cl.exe source/restore_signature.c /Fe:scripts\restore_signature.exe
 
 clean:
 	@del /Q token_priv.obj dinvoke.obj entry.obj handle.obj load_ssp.obj malseclogon.obj modules.obj nanodump.obj syscalls-asm.obj syscalls.obj utils.obj dist\delete_file.x64.o dist\load_ssp.x64.exe dist\load_ssp.x64.o dist\nanodump.x64.exe dist\nanodump.x64.o dist\nanodump_ssp.x64.dll dist\nanodump_ssp.x64.exp dist\nanodump_ssp.x64.lib dist\nanodump_ppl.x64.lib dist\nanodump_ppl.x64.dll

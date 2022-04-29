@@ -55,6 +55,8 @@ nanodump: clean
 	$(CC_x64) -c source/ppl/ppl.c -o dist/$(BOFNAME)_ppl.x64.o $(OPTIONS) -DBOF -DPPL
 	$(STRIP_x64) --strip-unneeded dist/$(BOFNAME)_ppl.x64.o
 
+	$(GCC) source/restore_signature.c -o scripts/restore_signature
+
 debug: clean
 	$(info ###### DEBUG ######)
 
@@ -89,6 +91,8 @@ debug: clean
 	$(CC_x86) source/utils.c source/syscalls.c source/dinvoke.c source/token_priv.c source/ppl/ppl_utils.c source/ppl/ppl.c -o dist/$(BOFNAME)_ppl.x86.exe $(OPTIONS) -DEXE -DPPL -DDEBUG
 
 	$(CC_x64) -c source/ppl/ppl.c -o dist/$(BOFNAME)_ppl.x64.o $(OPTIONS) -DBOF -DPPL -DDEBUG
+
+	$(GCC) source/restore_signature.c -o scripts/restore_signature
 
 clean:
 	rm -f dist/*

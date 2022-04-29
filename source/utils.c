@@ -535,7 +535,7 @@ VOID print_success(
     if (!use_valid_sig)
     {
         PRINT(
-            "The minidump has an invalid signature, restore it running:\nbash restore_signature.sh %s",
+            "The minidump has an invalid signature, restore it running:\nscripts/restore_signature %s",
             strrchr(dump_path, '\\')? &strrchr(dump_path, '\\')[1] : dump_path);
     }
     if (write_dump_to_disk)

@@ -81,7 +81,7 @@ beacon> nanodump
 
 Once you downloaded the minidump, restore the invalid signature
 ```zsh
-bash restore_signature.sh <dumpfile>
+scripts/restore_signature <dumpfile>
 ```
 
 <h3>Get the secretz</h3>
@@ -175,7 +175,7 @@ Where to write the dumpfile.
 #### --valid -v
 The minidump will have a valid signature.  
 If not entered, the signature will be invalid. Before analyzing the dump restore the signature of the dump, with:  
-`bash restore_signature.sh <dumpfile>`  
+`scripts/restore_signature <dumpfile>`  
 
 #### --fork -f
 Fork LSASS and dump this new process.

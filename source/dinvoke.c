@@ -211,7 +211,7 @@ HANDLE get_library_address(
     }
 
     // create a UNICODE_STRING with the library name
-    UNICODE_STRING ModuleFileName;
+    UNICODE_STRING ModuleFileName = { 0 };
     ModuleFileName.Buffer = LibName;
     ModuleFileName.Length = wcsnlen(ModuleFileName.Buffer, MAX_PATH);
     ModuleFileName.Length *= 2;

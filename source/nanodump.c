@@ -51,7 +51,7 @@ BOOL write_header(
     IN Pdump_context dc)
 {
     DPRINT("Writing header");
-    MiniDumpHeader header;
+    MiniDumpHeader header = { 0 };
     DPRINT("Signature: 0x%x", dc->Signature);
     header.Signature = dc->Signature;
     DPRINT("Version: %hu", dc->Version);
@@ -65,7 +65,7 @@ BOOL write_header(
     header.TimeDateStamp = 0;
     header.Flags = MiniDumpNormal;
 
-    char header_bytes[SIZE_OF_HEADER];
+    char header_bytes[SIZE_OF_HEADER] = { 0 };
 
     DWORD offset = 0;
     memcpy(header_bytes + offset, &header.Signature, 4); offset += 4;
@@ -91,7 +91,7 @@ BOOL write_directory(
     IN Pdump_context dc,
     IN MiniDumpDirectory directory)
 {
-    BYTE directory_bytes[SIZE_OF_DIRECTORY];
+    BYTE directory_bytes[SIZE_OF_DIRECTORY] = { 0 };
     DWORD offset = 0;
     memcpy(directory_bytes + offset, &directory.StreamType, 4); offset += 4;
     memcpy(directory_bytes + offset, &directory.DataSize, 4); offset += 4;
@@ -106,7 +106,7 @@ BOOL write_directories(
     IN Pdump_context dc)
 {
     DPRINT("Writing directory: SystemInfoStream");
-    MiniDumpDirectory system_info_directory;
+    MiniDumpDirectory system_info_directory = { 0 };
     system_info_directory.StreamType = SystemInfoStream;
     system_info_directory.DataSize = 0; // this is calculated and written later
     system_info_directory.Rva = 0; // this is calculated and written later
@@ -117,7 +117,7 @@ BOOL write_directories(
     }
 
     DPRINT("Writing directory: ModuleListStream");
-    MiniDumpDirectory module_list_directory;
+    MiniDumpDirectory module_list_directory = { 0 };
     module_list_directory.StreamType = ModuleListStream;
     module_list_directory.DataSize = 0; // this is calculated and written later
     module_list_directory.Rva = 0; // this is calculated and written later
@@ -128,7 +128,7 @@ BOOL write_directories(
     }
 
     DPRINT("Writing directory: Memory64ListStream");
-    MiniDumpDirectory memory64_list_directory;
+    MiniDumpDirectory memory64_list_directory = { 0 };
     memory64_list_directory.StreamType = Memory64ListStream;
     memory64_list_directory.DataSize = 0; // this is calculated and written later
     memory64_list_directory.Rva = 0; // this is calculated and written later
@@ -144,7 +144,7 @@ BOOL write_directories(
 BOOL write_system_info_stream(
     IN Pdump_context dc)
 {
-    MiniDumpSystemInfo system_info;
+    MiniDumpSystemInfo system_info = { 0 };
 
     DPRINT("Writing SystemInfoStream");
 
@@ -194,7 +194,7 @@ BOOL write_system_info_stream(
 #endif
 
     ULONG32 stream_size = SIZE_OF_SYSTEM_INFO_STREAM;
-    char system_info_bytes[SIZE_OF_SYSTEM_INFO_STREAM];
+    char system_info_bytes[SIZE_OF_SYSTEM_INFO_STREAM] = { 0 };
 
     DWORD offset = 0;
     memcpy(system_info_bytes + offset, &system_info.ProcessorArchitecture, 2); offset += 2;
@@ -313,11 +313,11 @@ Pmodule_info write_module_list_stream(
         free_linked_list(module_list); module_list = NULL;
         return NULL;
     }
-    BYTE module_bytes[SIZE_OF_MINIDUMP_MODULE];
+    BYTE module_bytes[SIZE_OF_MINIDUMP_MODULE] = { 0 };
     curr_module = module_list;
     while (curr_module)
     {
-        MiniDumpModule module;
+        MiniDumpModule module = { 0 };
         module.BaseOfImage = (ULONG_PTR)curr_module->dll_base;
         module.SizeOfImage = curr_module->size_of_image;
         module.CheckSum = curr_module->CheckSum;
@@ -541,7 +541,7 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
 
     // write the rva of the actual memory content
     ULONG32 stream_size = 16 + 16 * number_of_ranges;
-    ULONG64 base_rva = stream_rva + stream_size;
+    ULONG64 base_rva = (ULONG64)stream_rva + stream_size;
     if (!append(dc, &base_rva, 8))
     {
         DPRINT_ERR("Failed to write the Memory64ListStream");

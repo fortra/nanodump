@@ -200,7 +200,7 @@ BOOL SW2_PopulateSyscallList(VOID)
             if (Entries[j].Address > Entries[j + 1].Address)
             {
                 // Swap entries.
-                SW2_SYSCALL_ENTRY TempEntry;
+                SW2_SYSCALL_ENTRY TempEntry = { 0 };
 
                 TempEntry.Hash = Entries[j].Hash;
                 TempEntry.Address = Entries[j].Address;

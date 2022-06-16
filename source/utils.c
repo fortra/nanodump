@@ -62,9 +62,9 @@ BOOL write_file(
     IN ULONG32 fileLength)
 {
     HANDLE hFile = NULL;
-    OBJECT_ATTRIBUTES objAttr;
+    OBJECT_ATTRIBUTES objAttr = { 0 };
     IO_STATUS_BLOCK IoStatusBlock;
-    LARGE_INTEGER largeInteger;
+    LARGE_INTEGER largeInteger = { 0 };
     largeInteger.QuadPart = fileLength;
 
     // init the object attributes
@@ -125,7 +125,7 @@ BOOL create_file(
     IN PUNICODE_STRING full_dump_path)
 {
     HANDLE hFile = NULL;
-    OBJECT_ATTRIBUTES objAttr;
+    OBJECT_ATTRIBUTES objAttr = { 0 };
     IO_STATUS_BLOCK IoStatusBlock;
 
     // init the object attributes
@@ -171,9 +171,9 @@ BOOL create_file(
 BOOL delete_file(
     IN LPCSTR filepath)
 {
-    OBJECT_ATTRIBUTES objAttr;
-    wchar_t wcFilePath[MAX_PATH];
-    UNICODE_STRING UnicodeFilePath;
+    OBJECT_ATTRIBUTES objAttr = { 0 };
+    wchar_t wcFilePath[MAX_PATH] = { 0 };
+    UNICODE_STRING UnicodeFilePath = { 0 };
     UnicodeFilePath.Buffer = wcFilePath;
     get_full_path(&UnicodeFilePath, filepath);
 
@@ -200,12 +200,12 @@ BOOL file_exists(
     IN LPCSTR filepath)
 {
     HANDLE hFile = NULL;
-    OBJECT_ATTRIBUTES objAttr;
+    OBJECT_ATTRIBUTES objAttr = { 0 };
     IO_STATUS_BLOCK IoStatusBlock;
-    LARGE_INTEGER largeInteger;
+    LARGE_INTEGER largeInteger = { 0 };
     largeInteger.QuadPart = 0;
-    wchar_t wcFilePath[MAX_PATH];
-    UNICODE_STRING UnicodeFilePath;
+    wchar_t wcFilePath[MAX_PATH] = { 0 };
+    UNICODE_STRING UnicodeFilePath = { 0 };
     UnicodeFilePath.Buffer = wcFilePath;
     get_full_path(&UnicodeFilePath, filepath);
 
@@ -250,7 +250,7 @@ BOOL remove_syscall_callback_hook(VOID)
 {
     // you can remove this function by providing the compiler flag: -DNOSYSHOOK
 #ifndef NOSYSHOOK
-    PROCESS_INSTRUMENTATION_CALLBACK_INFORMATION process_information;
+    PROCESS_INSTRUMENTATION_CALLBACK_INFORMATION process_information = { 0 };
 #ifdef _WIN64
     process_information.Version = 0;
 #else

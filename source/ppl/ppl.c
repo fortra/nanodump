@@ -64,8 +64,8 @@ BOOL run_ppl_bypass_exploit(
     HANDLE hCurrentToken = NULL;
     HANDLE hNewProcessToken = NULL;
     HANDLE hNewProcess = NULL;
-    SECURITY_QUALITY_OF_SERVICE Qos;
-    OBJECT_ATTRIBUTES TokenObjectAttributes;
+    SECURITY_QUALITY_OF_SERVICE Qos = { 0 };
+    OBJECT_ATTRIBUTES TokenObjectAttributes = { 0 };
 
     if (!check_ppl_requirements())
         goto end;
@@ -720,7 +720,7 @@ BOOL find_file_for_transaction(
     FindFirstFileW_t FindFirstFileW;
     FindNextFileW_t FindNextFileW;
     FindClose_t FindClose;
-    OBJECT_ATTRIBUTES oa;
+    OBJECT_ATTRIBUTES oa = { 0 };
     IO_STATUS_BLOCK IoStatusBlock;
     BOOL success;
     DWORD error_code;
@@ -1223,12 +1223,12 @@ BOOL find_process_token_and_duplicate(
     DWORD dwBufSize = 0x1000;
     PSID pSidTmp = NULL;
     LPWSTR pwszUsername = NULL;
-    NTSTATUS status;
+    NTSTATUS status = STATUS_UNSUCCESSFUL;
     ConvertStringSidToSidW_t ConvertStringSidToSidW;
     CLIENT_ID uPid = { 0 };
-    OBJECT_ATTRIBUTES ObjectAttributes;
-    OBJECT_ATTRIBUTES TokenObjectAttributes;
-    SECURITY_QUALITY_OF_SERVICE Qos;
+    OBJECT_ATTRIBUTES ObjectAttributes = { 0 };
+    OBJECT_ATTRIBUTES TokenObjectAttributes = { 0 };
+    SECURITY_QUALITY_OF_SERVICE Qos = { 0 };
     BOOL success;
 
     ConvertStringSidToSidW = (ConvertStringSidToSidW_t)(ULONG_PTR)get_function_address(

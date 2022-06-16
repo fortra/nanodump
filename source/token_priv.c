@@ -77,7 +77,7 @@ BOOL check_token_privilege(
     LUID_AND_ATTRIBUTES laa = { 0 };
     TOKEN_PRIVILEGES tkp = { 0 };
     LPWSTR pwszPrivilegeNameTemp = NULL;
-    NTSTATUS status;
+    NTSTATUS status = STATUS_UNSUCCESSFUL;
     BOOL success;
 
     LookupPrivilegeNameW = (LookupPrivilegeNameW_t)(ULONG_PTR)get_function_address(

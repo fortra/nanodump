@@ -7,7 +7,7 @@ BOOL token_get_sid(
     BOOL bReturnValue = FALSE;
     DWORD dwSize = 8;
     PTOKEN_USER pTokenUser = NULL;
-    NTSTATUS status;
+    NTSTATUS status = STATUS_UNSUCCESSFUL;
     BOOL success;
     CopySid_t CopySid;
 
@@ -118,7 +118,7 @@ BOOL is_current_user_system(
 {
     HANDLE hToken = NULL;
     LPWSTR pwszStringSid = NULL;
-    NTSTATUS status;
+    NTSTATUS status = STATUS_UNSUCCESSFUL;
     BOOL success;
 
     status = NtOpenProcessToken(
@@ -484,7 +484,7 @@ BOOL get_file_size(
 {
     NTSTATUS status;
     IO_STATUS_BLOCK IoStatusBlock;
-    FILE_STANDARD_INFORMATION fsi;
+    FILE_STANDARD_INFORMATION fsi = { 0 };
 
     if (!hFile)
         return FALSE;

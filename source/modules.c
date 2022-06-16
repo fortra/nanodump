@@ -8,7 +8,7 @@ PVOID get_peb_address(
     // avoid calling NtQueryInformationProcess
     return (PVOID)READ_MEMLOC(PEB_OFFSET);
 #else
-    PROCESS_BASIC_INFORMATION basic_info;
+    PROCESS_BASIC_INFORMATION basic_info = { 0 };
     basic_info.PebBaseAddress = 0;
     PROCESSINFOCLASS ProcessInformationClass = 0;
     NTSTATUS status = NtQueryInformationProcess(

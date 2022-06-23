@@ -246,6 +246,54 @@ BOOL file_exists(
     return TRUE;
 }
 
+BOOL create_folder(
+    IN LPCSTR folderpath)
+{
+    HANDLE hFolder = NULL;
+    OBJECT_ATTRIBUTES objAttr = { 0 };
+    IO_STATUS_BLOCK IoStatusBlock;
+    LARGE_INTEGER largeInteger = { 0 };
+    largeInteger.QuadPart = 0;
+    wchar_t wcFilePath[MAX_PATH] = { 0 };
+    UNICODE_STRING UnicodeFolderPath = { 0 };
+    UnicodeFolderPath.Buffer = wcFilePath;
+    get_full_path(&UnicodeFolderPath, folderpath);
+
+    // init the object attributes
+    InitializeObjectAttributes(
+        &objAttr,
+        &UnicodeFolderPath,
+        OBJ_CASE_INSENSITIVE,
+        NULL,
+        NULL);
+    // call NtCreateFile with FILE_OPEN and FILE_DIRECTORY_FILE
+    NTSTATUS status = NtCreateFile(
+        &hFolder,
+        FILE_GENERIC_READ,
+        &objAttr,
+        &IoStatusBlock,
+        &largeInteger,
+        FILE_ATTRIBUTE_NORMAL,
+        0,
+        FILE_CREATE,//FILE_OPEN,
+        FILE_DIRECTORY_FILE,
+        NULL,
+        0);
+    if (status == STATUS_OBJECT_NAME_COLLISION)
+        return TRUE;
+    if (status == STATUS_OBJECT_NAME_NOT_FOUND)
+        return FALSE;
+    if (!NT_SUCCESS(status))
+    {
+        syscall_failed("NtCreateFile", status);
+        DPRINT_ERR("Could check if the folder %s exists", folderpath);
+        return FALSE;
+    }
+
+    NtClose(hFolder); hFolder = NULL;
+    return TRUE;
+}
+
 BOOL remove_syscall_callback_hook(VOID)
 {
     // you can remove this function by providing the compiler flag: -DNOSYSHOOK

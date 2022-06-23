@@ -182,6 +182,129 @@ typedef VOID(NTAPI* PIO_APC_ROUTINE) (
 	IN PIO_STATUS_BLOCK IoStatusBlock,
 	IN ULONG            Reserved);
 
+typedef struct _WNF_STATE_NAME
+{
+	ULONG Data[2];
+} WNF_STATE_NAME, *PWNF_STATE_NAME;
+
+typedef struct _WNF_TYPE_ID
+{
+	GUID TypeId;
+} WNF_TYPE_ID, *PWNF_TYPE_ID;
+
+typedef const WNF_STATE_NAME *PCWNF_STATE_NAME;
+
+typedef const WNF_TYPE_ID *PCWNF_TYPE_ID;
+
+typedef ULONG WNF_CHANGE_STAMP, *PWNF_CHANGE_STAMP;
+
+typedef struct _ALPC_MESSAGE_ATTRIBUTES
+{
+	unsigned long AllocatedAttributes;
+	unsigned long ValidAttributes;
+} ALPC_MESSAGE_ATTRIBUTES, *PALPC_MESSAGE_ATTRIBUTES;
+
+typedef struct _ALPC_PORT_ATTRIBUTES
+{
+	ULONG                       Flags;
+	SECURITY_QUALITY_OF_SERVICE SecurityQos;
+	SIZE_T                      MaxMessageLength;
+	SIZE_T                      MemoryBandwidth;
+	SIZE_T                      MaxPoolUsage;
+	SIZE_T                      MaxSectionSize;
+	SIZE_T                      MaxViewSize;
+	SIZE_T                      MaxTotalSectionSize;
+	ULONG                       DupObjectTypes;
+#ifdef _WIN64
+	ULONG                       Reserved;
+#endif
+} ALPC_PORT_ATTRIBUTES, *PALPC_PORT_ATTRIBUTES;
+
+typedef struct _PORT_MESSAGE
+{
+	union
+	{
+		union
+		{
+			struct
+			{
+				short DataLength;
+				short TotalLength;
+			} s1;
+			unsigned long Length;
+		};
+	} u1;
+	union
+	{
+		union
+		{
+			struct
+			{
+				short Type;
+				short DataInfoOffset;
+			} s2;
+			unsigned long ZeroInit;
+		};
+	} u2;
+	union
+	{
+		CLIENT_ID ClientId;
+		double    DoNotUseThisField;
+	};
+	unsigned long MessageId;
+	union
+	{
+		ULONG64 ClientViewSize;
+		struct
+		{
+			unsigned long CallbackId;
+			long          __PADDING__[1];
+		};
+	};
+} PORT_MESSAGE, *PPORT_MESSAGE;
+
+// WER_API_MESSAGE should probably be just one struct
+// I didn't not find this structure documented
+
+typedef struct _WER_API_MESSAGE_SEND
+{
+    PORT_MESSAGE port_message;
+    ULONG32 value1;
+    ULONG32 value2;
+    DWORD ThreadId;
+    DWORD ProcessId;
+    DWORD TargetProcessId;
+    BYTE empty[0x538];
+} WER_API_MESSAGE_SEND, *PWER_API_MESSAGE_SEND;
+
+typedef struct _WER_API_MESSAGE_RECV
+{
+    PORT_MESSAGE port_message;
+    ULONG32 value1;
+    ULONG32 value2;
+    HANDLE Handle;
+    DWORD TargetProcessId;
+    BYTE empty[0x538];
+} WER_API_MESSAGE_RECV, *PWER_API_MESSAGE_RECV;
+
+typedef struct _PS_ATTRIBUTE
+{
+	ULONG  Attribute;
+	SIZE_T Size;
+	union
+	{
+		ULONG Value;
+		PVOID ValuePtr;
+	} u1;
+	PSIZE_T ReturnLength;
+} PS_ATTRIBUTE, *PPS_ATTRIBUTE;
+
+typedef struct _PS_ATTRIBUTE_LIST
+{
+	SIZE_T       TotalLength;
+	PS_ATTRIBUTE Attributes[1];
+} PS_ATTRIBUTE_LIST, *PPS_ATTRIBUTE_LIST;
+
 NTSTATUS NtOpenProcess(
 	OUT PHANDLE ProcessHandle,
 	IN ACCESS_MASK DesiredAccess,
@@ -401,5 +524,82 @@ EXTERN_C NTSTATUS NtQueryInformationFile(
 
 EXTERN_C NTSTATUS NtMakeTemporaryObject(
 	IN HANDLE Handle);
+
+EXTERN_C NTSTATUS NtCreateKey(
+	OUT PHANDLE KeyHandle,
+	IN ACCESS_MASK DesiredAccess,
+	IN POBJECT_ATTRIBUTES ObjectAttributes,
+	IN ULONG TitleIndex,
+	IN PUNICODE_STRING Class OPTIONAL,
+	IN ULONG CreateOptions,
+	OUT PULONG Disposition OPTIONAL);
+
+EXTERN_C NTSTATUS NtSetValueKey(
+	IN HANDLE KeyHandle,
+	IN PUNICODE_STRING ValueName,
+	IN ULONG TitleIndex OPTIONAL,
+	IN ULONG Type,
+	IN PVOID SystemData,
+	IN ULONG DataSize);
+
+EXTERN_C NTSTATUS NtQueryWnfStateNameInformation(
+	IN PVOID StateName,
+	IN ULONG NameInfoClass,
+	IN PVOID ExplicitScope OPTIONAL,
+	OUT PVOID InfoBuffer,
+	IN ULONG InfoBufferSize);
+
+EXTERN_C NTSTATUS NtUpdateWnfStateData(
+	IN PVOID StateName,
+	IN PVOID Buffer OPTIONAL,
+	IN ULONG Length OPTIONAL,
+	IN PCWNF_TYPE_ID TypeId OPTIONAL,
+	IN PVOID ExplicitScope OPTIONAL,
+	IN WNF_CHANGE_STAMP MatchingChangeStamp,
+	IN ULONG CheckStamp);
+
+EXTERN_C NTSTATUS NtOpenEvent(
+	OUT PHANDLE EventHandle,
+	IN ACCESS_MASK DesiredAccess,
+	IN POBJECT_ATTRIBUTES ObjectAttributes);
+
+EXTERN_C NTSTATUS NtAlpcConnectPort(
+	OUT PHANDLE PortHandle,
+	IN PUNICODE_STRING PortName,
+	IN POBJECT_ATTRIBUTES ObjectAttributes OPTIONAL,
+	IN PALPC_PORT_ATTRIBUTES PortAttributes OPTIONAL,
+	IN ULONG Flags,
+	IN PSID RequiredServerSid OPTIONAL,
+	IN OUT PVOID ConnectionMessage OPTIONAL,
+	IN OUT PULONG BufferLength OPTIONAL,
+	IN OUT PALPC_MESSAGE_ATTRIBUTES OutMessageAttributes OPTIONAL,
+	IN OUT PALPC_MESSAGE_ATTRIBUTES InMessageAttributes OPTIONAL,
+	IN PLARGE_INTEGER Timeout OPTIONAL);
+
+EXTERN_C NTSTATUS NtAlpcSendWaitReceivePort(
+	IN HANDLE PortHandle,
+	IN ULONG Flags,
+	IN PPORT_MESSAGE SendMessage OPTIONAL,
+	IN OUT PALPC_MESSAGE_ATTRIBUTES SendMessageAttributes OPTIONAL,
+	OUT PPORT_MESSAGE ReceiveMessage OPTIONAL,
+	IN OUT PSIZE_T BufferLength OPTIONAL,
+	IN OUT PALPC_MESSAGE_ATTRIBUTES ReceiveMessageAttributes OPTIONAL,
+	IN PLARGE_INTEGER Timeout OPTIONAL);
+
+EXTERN_C NTSTATUS NtCreateThreadEx(
+	OUT PHANDLE ThreadHandle,
+	IN ACCESS_MASK DesiredAccess,
+	IN POBJECT_ATTRIBUTES ObjectAttributes OPTIONAL,
+	IN HANDLE ProcessHandle,
+	IN PVOID StartRoutine,
+	IN PVOID Argument OPTIONAL,
+	IN ULONG CreateFlags,
+	IN SIZE_T ZeroBits,
+	IN SIZE_T StackSize,
+	IN SIZE_T MaximumStackSize,
+	IN PPS_ATTRIBUTE_LIST AttributeList OPTIONAL);
+
+EXTERN_C NTSTATUS NtDeleteKey(
+	IN HANDLE KeyHandle);
 
 #endif

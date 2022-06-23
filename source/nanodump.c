@@ -8,6 +8,7 @@
 #include "syscalls.c"
 #include "token_priv.c"
 #include "malseclogon.c"
+#include "werfault.c"
 #endif
 
 VOID writeat(

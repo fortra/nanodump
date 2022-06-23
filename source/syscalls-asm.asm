@@ -786,4 +786,220 @@ NtMakeTemporaryObject PROC
 	jmp r11
 NtMakeTemporaryObject ENDP
 
+NtCreateKey PROC
+	mov [rsp +8], rcx
+	mov [rsp+16], rdx
+	mov [rsp+24], r8
+	mov [rsp+32], r9
+	mov rcx, 0A1B2860Ch
+	push rcx
+	sub rsp, 028h
+	call SW3_GetSyscallAddress
+	add rsp, 028h
+	pop rcx
+	push rax
+	sub rsp, 028h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	mov rcx, [rsp+8]
+	mov rdx, [rsp+16]
+	mov r8, [rsp+24]
+	mov r9, [rsp+32]
+	mov r10, rcx
+	jmp r11
+NtCreateKey ENDP
+
+NtSetValueKey PROC
+	mov [rsp +8], rcx
+	mov [rsp+16], rdx
+	mov [rsp+24], r8
+	mov [rsp+32], r9
+	mov rcx, 00A1F2D80h
+	push rcx
+	sub rsp, 028h
+	call SW3_GetSyscallAddress
+	add rsp, 028h
+	pop rcx
+	push rax
+	sub rsp, 028h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	mov rcx, [rsp+8]
+	mov rdx, [rsp+16]
+	mov r8, [rsp+24]
+	mov r9, [rsp+32]
+	mov r10, rcx
+	jmp r11
+NtSetValueKey ENDP
+
+NtQueryWnfStateNameInformation PROC
+	mov [rsp +8], rcx
+	mov [rsp+16], rdx
+	mov [rsp+24], r8
+	mov [rsp+32], r9
+	mov rcx, 014823613h
+	push rcx
+	sub rsp, 028h
+	call SW3_GetSyscallAddress
+	add rsp, 028h
+	pop rcx
+	push rax
+	sub rsp, 028h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	mov rcx, [rsp+8]
+	mov rdx, [rsp+16]
+	mov r8, [rsp+24]
+	mov r9, [rsp+32]
+	mov r10, rcx
+	jmp r11
+NtQueryWnfStateNameInformation ENDP
+
+NtUpdateWnfStateData PROC
+	mov [rsp +8], rcx
+	mov [rsp+16], rdx
+	mov [rsp+24], r8
+	mov [rsp+32], r9
+	mov rcx, 0E63DF28Ah
+	push rcx
+	sub rsp, 028h
+	call SW3_GetSyscallAddress
+	add rsp, 028h
+	pop rcx
+	push rax
+	sub rsp, 028h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	mov rcx, [rsp+8]
+	mov rdx, [rsp+16]
+	mov r8, [rsp+24]
+	mov r9, [rsp+32]
+	mov r10, rcx
+	jmp r11
+NtUpdateWnfStateData ENDP
+
+NtOpenEvent PROC
+	mov [rsp +8], rcx
+	mov [rsp+16], rdx
+	mov [rsp+24], r8
+	mov [rsp+32], r9
+	mov rcx, 032A83D3Ah
+	push rcx
+	sub rsp, 028h
+	call SW3_GetSyscallAddress
+	add rsp, 028h
+	pop rcx
+	push rax
+	sub rsp, 028h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	mov rcx, [rsp+8]
+	mov rdx, [rsp+16]
+	mov r8, [rsp+24]
+	mov r9, [rsp+32]
+	mov r10, rcx
+	jmp r11
+NtOpenEvent ENDP
+
+NtAlpcConnectPort PROC
+	mov [rsp +8], rcx
+	mov [rsp+16], rdx
+	mov [rsp+24], r8
+	mov [rsp+32], r9
+	mov rcx, 06AF3595Ch
+	push rcx
+	sub rsp, 028h
+	call SW3_GetSyscallAddress
+	add rsp, 028h
+	pop rcx
+	push rax
+	sub rsp, 028h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	mov rcx, [rsp+8]
+	mov rdx, [rsp+16]
+	mov r8, [rsp+24]
+	mov r9, [rsp+32]
+	mov r10, rcx
+	jmp r11
+NtAlpcConnectPort ENDP
+
+NtAlpcSendWaitReceivePort PROC
+	mov [rsp +8], rcx
+	mov [rsp+16], rdx
+	mov [rsp+24], r8
+	mov [rsp+32], r9
+	mov rcx, 0E830236Eh
+	push rcx
+	sub rsp, 028h
+	call SW3_GetSyscallAddress
+	add rsp, 028h
+	pop rcx
+	push rax
+	sub rsp, 028h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	mov rcx, [rsp+8]
+	mov rdx, [rsp+16]
+	mov r8, [rsp+24]
+	mov r9, [rsp+32]
+	mov r10, rcx
+	jmp r11
+NtAlpcSendWaitReceivePort ENDP
+
+NtCreateThreadEx PROC
+	mov [rsp +8], rcx
+	mov [rsp+16], rdx
+	mov [rsp+24], r8
+	mov [rsp+32], r9
+	mov rcx, 0113F55E3h
+	push rcx
+	sub rsp, 028h
+	call SW3_GetSyscallAddress
+	add rsp, 028h
+	pop rcx
+	push rax
+	sub rsp, 028h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	mov rcx, [rsp+8]
+	mov rdx, [rsp+16]
+	mov r8, [rsp+24]
+	mov r9, [rsp+32]
+	mov r10, rcx
+	jmp r11
+NtCreateThreadEx ENDP
+
+NtDeleteKey PROC
+	mov [rsp +8], rcx
+	mov [rsp+16], rdx
+	mov [rsp+24], r8
+	mov [rsp+32], r9
+	mov rcx, 06BDA0E04h
+	push rcx
+	sub rsp, 028h
+	call SW3_GetSyscallAddress
+	add rsp, 028h
+	pop rcx
+	push rax
+	sub rsp, 028h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	mov rcx, [rsp+8]
+	mov rdx, [rsp+16]
+	mov r8, [rsp+24]
+	mov r9, [rsp+32]
+	mov r10, rcx
+	jmp r11
+NtDeleteKey ENDP
+
 end

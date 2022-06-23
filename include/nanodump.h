@@ -20,6 +20,7 @@
 #include "syscalls.h"
 #include "token_priv.h"
 #include "malseclogon.h"
+#include "werfault.h"
 #endif
 
 // amount of memory requested to write the dump: 200 MiB
@@ -110,6 +111,8 @@
  WINBASEAPI char *    __cdecl MSVCRT$strncat(char * _Dest,const char * _Source, size_t __n);
  WINBASEAPI int       __cdecl MSVCRT$_vscprintf(const char *format, va_list argptr);
  WINBASEAPI int       __cdecl MSVCRT$vsprintf_s(char *_DstBuf,size_t _Size,const char *_Format,va_list _ArgList);
+ WINBASEAPI size_t    __cdecl MSVCRT$wcslen(const wchar_t *_Str);
+
 
  #define GetProcessHeap   KERNEL32$GetProcessHeap
  #define HeapAlloc        KERNEL32$HeapAlloc
@@ -138,6 +141,7 @@
  #define strncat    MSVCRT$strncat
  #define _vscprintf MSVCRT$_vscprintf
  #define vsprintf_s MSVCRT$vsprintf_s
+ #define wcslen     MSVCRT$wcslen
 #endif
 
 #define MINIDUMP_SIGNATURE 0x504d444d

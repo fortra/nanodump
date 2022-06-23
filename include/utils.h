@@ -20,10 +20,12 @@ typedef struct _linked_list
 
 #ifdef _WIN64
  #define CID_OFFSET 0x40
+ #define TEB_OFFSET 0x30
  #define PEB_OFFSET 0x60
  #define READ_MEMLOC __readgsqword
 #else
  #define CID_OFFSET 0x20
+ #define TEB_OFFSET 0x18
  #define PEB_OFFSET 0x30
  #define READ_MEMLOC __readfsdword
 #endif
@@ -121,6 +123,9 @@ BOOL delete_file(
 
 BOOL file_exists(
     IN LPCSTR filepath);
+
+BOOL create_folder(
+    IN LPCSTR folderpath);
 
 BOOL wait_for_process(
     IN HANDLE hProcess);

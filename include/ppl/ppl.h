@@ -14,7 +14,7 @@
 #include "ppl/ppl_utils.h"
 
 #define PPL_BINARY L"services.exe"
-#define DLL_TO_HIJACK_WIN81 L"SspiCli.dll"
+#define DLL_TO_HIJACK_WIN63 L"SspiCli.dll"
 #define DLL_TO_HIJACK_WIN10 L"EventAggregation.dll"
 #define DLL_LINK_TARGET L"foobar"
 

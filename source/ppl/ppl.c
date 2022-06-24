@@ -1085,10 +1085,10 @@ BOOL check_ppl_requirements(VOID)
 
     NtClose(hToken); hToken = NULL;
 
-    // Check windows version >= 8.1
-    if (!is_win_8_point_1_or_grater())
+    // Check windows version >= 6.3
+    if (!is_win_6_point_3_or_grater())
     {
-        DPRINT_ERR("The Windows version must be 8.1 or greater");
+        PRINT_ERR("The Windows version must be 6.3 or greater");
         return FALSE;
     }
 
@@ -1114,9 +1114,9 @@ BOOL get_hijackeable_dllname(
         return TRUE;
     }
 
-    if (is_win_8_point_1_or_grater())
+    if (is_win_6_point_3_or_grater())
     {
-        wcsncpy(*ppwszDllName, DLL_TO_HIJACK_WIN81, 64);
+        wcsncpy(*ppwszDllName, DLL_TO_HIJACK_WIN63, 64);
         return TRUE;
     }
 
@@ -1360,7 +1360,10 @@ BOOL find_process_token_and_duplicate(
                                             *phToken = hTokenDup;
                                             bReturnValue = TRUE;
                                         }
-                                        DPRINT("The token was not valid.");
+                                        if (!bReturnValue)
+                                        {
+                                            DPRINT("The token was not valid.");
+                                        }
                                     }
                                 }
                             }

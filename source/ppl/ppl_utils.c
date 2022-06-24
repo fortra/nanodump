@@ -297,7 +297,7 @@ end:
     return bReturnValue;
 }
 
-BOOL is_win_8_point_1_or_grater(VOID)
+BOOL is_win_6_point_3_or_grater(VOID)
 {
     PVOID pPeb;
     ULONG32 OSMajorVersion;
@@ -307,13 +307,13 @@ BOOL is_win_8_point_1_or_grater(VOID)
     OSMajorVersion = *RVA(PULONG32, pPeb, OSMAJORVERSION_OFFSET);
     OSMinorVersion = *RVA(PULONG32, pPeb, OSMINORVERSION_OFFSET);
 
-    if (OSMajorVersion > 8)
+    if (OSMajorVersion > 6)
         return TRUE;
 
-    if (OSMajorVersion < 8)
+    if (OSMajorVersion < 6)
         return FALSE;
 
-    if (OSMinorVersion >= 1)
+    if (OSMinorVersion >= 3)
         return TRUE;
 
     return FALSE;

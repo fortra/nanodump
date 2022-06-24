@@ -56,7 +56,7 @@ BOOL token_get_username(
     IN HANDLE hToken,
     OUT LPWSTR* ppwszUsername);
 
-BOOL is_win_8_point_1_or_grater(VOID);
+BOOL is_win_6_point_3_or_grater(VOID);
 
 BOOL is_win_10_or_grater(VOID);
 

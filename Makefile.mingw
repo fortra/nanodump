@@ -36,7 +36,7 @@ nanodump: clean
 	$(CC_x64) -c source/delete_file.c -o dist/delete_file.x64.o $(OPTIONS) -DBOF
 	$(STRIP_x64) --strip-unneeded dist/load_ssp.x64.o
 
-	$(GCC) source/bin2c.c -o dist/bin2c
+	$(GCC) source/bin2c.c -o dist/bin2c -static -s -Os
 
 	$(CC_x64) source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/entry.c -o dist/$(BOFNAME)_ppl.x64.dll $(OPTIONS) -DNANO -DPPL -DDDL -shared
 	$(STRIP_x64) --strip-all dist/$(BOFNAME)_ppl.x64.dll
@@ -55,7 +55,7 @@ nanodump: clean
 	$(CC_x64) -c source/ppl/ppl.c -o dist/$(BOFNAME)_ppl.x64.o $(OPTIONS) -DBOF -DPPL
 	$(STRIP_x64) --strip-unneeded dist/$(BOFNAME)_ppl.x64.o
 
-	$(GCC) source/restore_signature.c -o scripts/restore_signature
+	$(GCC) source/restore_signature.c -o scripts/restore_signature -static -s -Os
 
 debug: clean
 	$(info ###### DEBUG ######)
@@ -78,7 +78,7 @@ debug: clean
 
 	$(CC_x64) -c source/delete_file.c -o dist/delete_file.x64.o $(OPTIONS) -DBOF -DDEBUG
 
-	$(GCC) source/bin2c.c -o dist/bin2c
+	$(GCC) source/bin2c.c -o dist/bin2c -static -s -Os
 
 	$(CC_x64) source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c -o dist/$(BOFNAME)_ppl.x64.dll $(OPTIONS) -DNANO -DPPL -DDDL -shared -DDEBUG
 	./dist/bin2c dist/$(BOFNAME)_ppl.x64.dll nanodump_ppl_dll > include/$(BOFNAME)_ppl_dll.x64.h
@@ -92,7 +92,7 @@ debug: clean
 
 	$(CC_x64) -c source/ppl/ppl.c -o dist/$(BOFNAME)_ppl.x64.o $(OPTIONS) -DBOF -DPPL -DDEBUG
 
-	$(GCC) source/restore_signature.c -o scripts/restore_signature
+	$(GCC) source/restore_signature.c -o scripts/restore_signature -static -s -Os
 
 clean:
 	rm -f dist/*

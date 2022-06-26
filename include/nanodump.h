@@ -112,7 +112,7 @@
  WINBASEAPI int       __cdecl MSVCRT$_vscprintf(const char *format, va_list argptr);
  WINBASEAPI int       __cdecl MSVCRT$vsprintf_s(char *_DstBuf,size_t _Size,const char *_Format,va_list _ArgList);
  WINBASEAPI size_t    __cdecl MSVCRT$wcslen(const wchar_t *_Str);
-
+ WINBASEAPI int       __cdecl MSVCRT$sprintf_s(char *_DstBuf, size_t _DstSize, const char *_Format, ...);
 
  #define GetProcessHeap   KERNEL32$GetProcessHeap
  #define HeapAlloc        KERNEL32$HeapAlloc
@@ -142,6 +142,8 @@
  #define _vscprintf MSVCRT$_vscprintf
  #define vsprintf_s MSVCRT$vsprintf_s
  #define wcslen     MSVCRT$wcslen
+ #define sprintf_s MSVCRT$sprintf_s
+
 #endif
 
 #define MINIDUMP_SIGNATURE 0x504d444d

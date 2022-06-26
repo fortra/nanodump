@@ -55,7 +55,7 @@ BOOL check_token_privileges(
         if (!success)
         {
             NtClose(hToken); hToken = NULL;
-            PRINT_ERR("A privilege is missing: %ls", ppwszRequiredPrivileges[i]);
+            PRINT_ERR("A privilege is missing: %ls. Are you elevated?", ppwszRequiredPrivileges[i]);
             return FALSE;
         }
     }

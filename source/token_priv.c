@@ -10,13 +10,9 @@ BOOL enable_debug_priv(VOID)
     // you can remove this function by providing the compiler flag: -DNODPRIV
     BOOL success = TRUE;
 #ifndef NODPRIV
-    LPCWSTR ppwszRequiredPrivileges[1] = {
-        SeDebugPrivilege
-    };
-
-    success = check_token_privileges(
-        ppwszRequiredPrivileges,
-        1,
+    success = check_token_privilege(
+        NULL,
+        SeDebugPrivilege,
         TRUE);
     if (success)
     {
@@ -27,25 +23,31 @@ BOOL enable_debug_priv(VOID)
 }
 
 BOOL check_token_privileges(
+    IN HANDLE hToken OPTIONAL,
     IN LPCWSTR ppwszRequiredPrivileges[],
     IN DWORD dwNumRequiredPrivileges,
     IN BOOL bEnablePrivilege)
 {
-    HANDLE hToken = NULL;
     BOOL success = FALSE;
+    BOOL own_token = FALSE;
+    NTSTATUS status = STATUS_UNSUCCESSFUL;
 
     if (!ppwszRequiredPrivileges || !dwNumRequiredPrivileges)
         return TRUE;
 
-    // get a handle to our token
-    NTSTATUS status = NtOpenProcessToken(
-        NtCurrentProcess(),
-        TOKEN_QUERY | TOKEN_ADJUST_PRIVILEGES,
-        &hToken);
-    if (!NT_SUCCESS(status))
+    if (!hToken)
     {
-        syscall_failed("NtOpenProcessToken", status);
-        return FALSE;
+        // get a handle to our token
+        own_token = TRUE;
+        status = NtOpenProcessToken(
+            NtCurrentProcess(),
+            TOKEN_QUERY | TOKEN_ADJUST_PRIVILEGES,
+            &hToken);
+        if (!NT_SUCCESS(status))
+        {
+            syscall_failed("NtOpenProcessToken", status);
+            goto end;
+        }
     }
 
     for (int i = 0; i < dwNumRequiredPrivileges; i++)
@@ -55,21 +57,29 @@ BOOL check_token_privileges(
             hToken,
             ppwszRequiredPrivileges[i],
             bEnablePrivilege);
-        if (!success)
+        if (!success && own_token && bEnablePrivilege)
         {
-            NtClose(hToken); hToken = NULL;
             PRINT_ERR("A privilege is missing: %ls. Are you elevated?", ppwszRequiredPrivileges[i]);
-            return FALSE;
+            goto end;
+        }
+        else if (!success)
+        {
+            PRINT_ERR("A privilege is missing: %ls", ppwszRequiredPrivileges[i]);
+            goto end;
         }
     }
 
-    NtClose(hToken); hToken = NULL;
+    success = TRUE;
 
-    return TRUE;
+end:
+    if (own_token && hToken)
+        NtClose(hToken);
+
+    return success;
 }
 
 BOOL check_token_privilege(
-    IN HANDLE hToken,
+    IN HANDLE hToken OPTIONAL,
     IN LPCWSTR pwszPrivilege,
     IN BOOL bEnablePrivilege)
 {
@@ -81,7 +91,8 @@ BOOL check_token_privilege(
     TOKEN_PRIVILEGES tkp = { 0 };
     LPWSTR pwszPrivilegeNameTemp = NULL;
     NTSTATUS status = STATUS_UNSUCCESSFUL;
-    BOOL success;
+    BOOL own_token = FALSE;
+    BOOL success = FALSE;
 
     LookupPrivilegeNameW = (LookupPrivilegeNameW_t)(ULONG_PTR)get_function_address(
         get_library_address(ADVAPI32_DLL, TRUE),
@@ -91,6 +102,21 @@ BOOL check_token_privilege(
     {
         api_not_found("LookupPrivilegeNameW");
         goto end;
+    }
+
+    if (!hToken)
+    {
+        // get a handle to our token
+        own_token = TRUE;
+        status = NtOpenProcessToken(
+            NtCurrentProcess(),
+            TOKEN_QUERY | TOKEN_ADJUST_PRIVILEGES,
+            &hToken);
+        if (!NT_SUCCESS(status))
+        {
+            syscall_failed("NtOpenProcessToken", status);
+            goto end;
+        }
     }
 
     do
@@ -193,6 +219,8 @@ end:
         intFree(pTokenPrivileges);
     if (pwszPrivilegeNameTemp)
         intFree(pwszPrivilegeNameTemp);
+    if (own_token && hToken)
+        NtClose(hToken);
 
     return bReturnValue;
 }

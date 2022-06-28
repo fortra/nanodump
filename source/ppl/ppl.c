@@ -1053,38 +1053,20 @@ end:
 
 BOOL check_ppl_requirements(VOID)
 {
-    HANDLE hToken = NULL;
+    BOOL success = FALSE;
+
     LPCWSTR ppwszRequiredPrivileges[2] = {
         L"SeDebugPrivilege",
         L"SeImpersonatePrivilege"
     };
-    NTSTATUS status;
-    BOOL success;
 
-    // get a handle to our token
-    status = NtOpenProcessToken(
-        NtCurrentProcess(),
-        TOKEN_QUERY | TOKEN_ADJUST_PRIVILEGES,
-        &hToken);
-    if (!NT_SUCCESS(status))
-    {
-        syscall_failed("NtOpenProcessToken", status);
+    success = check_token_privileges(
+        NULL,
+        ppwszRequiredPrivileges,
+        ARRAY_SIZE(ppwszRequiredPrivileges),
+        TRUE);
+    if (!success)
         return FALSE;
-    }
-
-    for (int i = 0; i < ARRAY_SIZE(ppwszRequiredPrivileges); i++)
-    {
-        // make sure we have all the privileges we need
-        success = check_token_privilege(hToken, ppwszRequiredPrivileges[i], TRUE);
-        if (!success)
-        {
-            NtClose(hToken); hToken = NULL;
-            PRINT_ERR("A privilege is missing: %ls", ppwszRequiredPrivileges[i]);
-            return FALSE;
-        }
-    }
-
-    NtClose(hToken); hToken = NULL;
 
     // Check windows version >= 6.3
     if (!is_win_6_point_3_or_grater())

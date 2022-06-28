@@ -8,33 +8,19 @@ BOOL impersonate_user(
     IN DWORD dwPrivilegeCount)
 {
     BOOL bReturnValue = FALSE;
-
-    HANDLE hCurrentProcessToken = NULL;
     *phToken = NULL;
     HANDLE hToken = NULL;
-    NTSTATUS status;
-    BOOL success;
+    BOOL success = FALSE;
 
-    status = NtOpenProcessToken(
-        NtCurrentProcess(),
-        MAXIMUM_ALLOWED,
-        &hCurrentProcessToken);
-    if (!NT_SUCCESS(status))
-    {
-        syscall_failed("NtOpenProcessToken", status);
-        goto end;
-    }
-
-    success = check_token_privilege(
-        hCurrentProcessToken,
+    LPCWSTR ppwszRequiredPrivileges[2] = {
         L"SeDebugPrivilege",
-        TRUE);
-    if (!success)
-        goto end;
+        L"SeImpersonatePrivilege"
+    };
 
-    success = check_token_privilege(
-        hCurrentProcessToken,
-        L"SeImpersonatePrivilege",
+    success = check_token_privileges(
+        NULL,
+        ppwszRequiredPrivileges,
+        ARRAY_SIZE(ppwszRequiredPrivileges),
         TRUE);
     if (!success)
         goto end;
@@ -55,8 +41,6 @@ BOOL impersonate_user(
     bReturnValue = TRUE;
 
 end:
-    if (hCurrentProcessToken)
-        NtClose(hCurrentProcessToken);
     if (!bReturnValue && hToken)
         NtClose(hToken);
 
@@ -212,29 +196,18 @@ BOOL find_process_token_and_duplicate(
                                     {
                                         DPRINT("This token is not restricted.");
 
-                                        if (pwszPrivileges && dwPrivilegeCount != 0)
-                                        {
-                                            DWORD dwPrivilegeFound = 0;
-                                            for (DWORD i = 0; i < dwPrivilegeCount; i++)
-                                            {
-                                                if (check_token_privilege(hTokenDup, pwszPrivileges[i], FALSE))
-                                                    dwPrivilegeFound++;
-                                            }
-
-                                            if (dwPrivilegeFound == dwPrivilegeCount)
-                                            {
-                                                DPRINT("Found a valid Token.");
-                                                *phToken = hTokenDup;
-                                                bReturnValue = TRUE;
-                                            }
-                                        }
-                                        else
+                                        success = check_token_privileges(
+                                            hTokenDup,
+                                            pwszPrivileges,
+                                            dwPrivilegeCount,
+                                            FALSE);
+                                        if (success)
                                         {
                                             DPRINT("Found a valid Token.");
                                             *phToken = hTokenDup;
                                             bReturnValue = TRUE;
                                         }
-                                        if (!bReturnValue)
+                                        else
                                         {
                                             DPRINT("The token was not valid.");
                                         }
@@ -317,7 +290,6 @@ BOOL impersonate_process(
     HANDLE hProcess = NULL;
     HANDLE hToken = NULL;
     HANDLE hTokenDup = NULL;
-    HANDLE hCurrentProcessToken = NULL;
     NTSTATUS status = STATUS_UNSUCCESSFUL;
     CLIENT_ID uPid = { 0 };
     OBJECT_ATTRIBUTES ObjectAttributes = { 0 };
@@ -335,26 +307,15 @@ BOOL impersonate_process(
 
     uPid.UniqueProcess = (HANDLE)(ULONG_PTR)process_id;
 
-    status = NtOpenProcessToken(
-        NtCurrentProcess(),
-        MAXIMUM_ALLOWED,
-        &hCurrentProcessToken);
-    if (!NT_SUCCESS(status))
-    {
-        syscall_failed("NtOpenProcessToken", status);
-        goto end;
-    }
-
-    success = check_token_privilege(
-        hCurrentProcessToken,
+    LPCWSTR ppwszRequiredPrivileges[2] = {
         L"SeDebugPrivilege",
-        TRUE);
-    if (!success)
-        goto end;
+        L"SeImpersonatePrivilege"
+    };
 
-    success = check_token_privilege(
-        hCurrentProcessToken,
-        L"SeImpersonatePrivilege",
+    success = check_token_privileges(
+        NULL,
+        ppwszRequiredPrivileges,
+        ARRAY_SIZE(ppwszRequiredPrivileges),
         TRUE);
     if (!success)
         goto end;
@@ -401,8 +362,6 @@ BOOL impersonate_process(
     DPRINT("Impersonating PID %ld", process_id);
 
 end:
-    if (hCurrentProcessToken)
-        NtClose(hCurrentProcessToken);
     if (hProcess)
         NtClose(hProcess);
     if (hToken)

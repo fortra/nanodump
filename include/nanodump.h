@@ -21,6 +21,7 @@
 #include "token_priv.h"
 #include "malseclogon.h"
 #include "werfault.h"
+#include "impersonate.h"
 #endif
 
 // amount of memory requested to write the dump: 200 MiB
@@ -113,6 +114,8 @@
  WINBASEAPI int       __cdecl MSVCRT$vsprintf_s(char *_DstBuf,size_t _Size,const char *_Format,va_list _ArgList);
  WINBASEAPI size_t    __cdecl MSVCRT$wcslen(const wchar_t *_Str);
  WINBASEAPI int       __cdecl MSVCRT$sprintf_s(char *_DstBuf, size_t _DstSize, const char *_Format, ...);
+ WINBASEAPI int       __cdecl MSVCRT$swprintf_s(wchar_t *_Dst,size_t _SizeInWords,const wchar_t *_Format,...);
+ WINBASEAPI wchar_t * __cdecl MSVCRT$wcsrchr(const wchar_t *_Str,wchar_t _Ch);
 
  #define GetProcessHeap   KERNEL32$GetProcessHeap
  #define HeapAlloc        KERNEL32$HeapAlloc
@@ -142,7 +145,9 @@
  #define _vscprintf MSVCRT$_vscprintf
  #define vsprintf_s MSVCRT$vsprintf_s
  #define wcslen     MSVCRT$wcslen
- #define sprintf_s MSVCRT$sprintf_s
+ #define sprintf_s  MSVCRT$sprintf_s
+ #define swprintf_s MSVCRT$swprintf_s
+ #define wcsrchr    MSVCRT$wcsrchr
 
 #endif
 

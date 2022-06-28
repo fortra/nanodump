@@ -11,6 +11,7 @@
 #include "dinvoke.h"
 #include "syscalls.h"
 #include "token_priv.h"
+#include "impersonate.h"
 #include "ppl/ppl_utils.h"
 
 #define PPL_BINARY L"services.exe"

@@ -33,29 +33,6 @@ typedef struct _FILE_STANDARD_INFORMATION {
 
 #endif
 
-BOOL token_get_sid(
-    IN HANDLE hToken,
-    OUT PSID* ppSid);
-
-BOOL token_get_sid_as_string(
-    IN HANDLE hToken,
-    OUT LPWSTR* ppwszStringSid);
-
-BOOL is_current_user_system(
-    OUT PBOOL pbResult);
-
-BOOL token_compare_sids(
-    IN PSID pSidA,
-    IN PSID pSidB);
-
-BOOL token_is_not_restricted(
-    IN HANDLE hToken,
-    OUT PBOOL pbIsNotRestricted);
-
-BOOL token_get_username(
-    IN HANDLE hToken,
-    OUT LPWSTR* ppwszUsername);
-
 BOOL is_win_6_point_3_or_grater(VOID);
 
 BOOL is_win_10_or_grater(VOID);

@@ -32,7 +32,10 @@ BOOL check_token_privileges(
     IN BOOL bEnablePrivilege)
 {
     HANDLE hToken = NULL;
-    BOOL success;
+    BOOL success = FALSE;
+
+    if (!ppwszRequiredPrivileges || !dwNumRequiredPrivileges)
+        return TRUE;
 
     // get a handle to our token
     NTSTATUS status = NtOpenProcessToken(

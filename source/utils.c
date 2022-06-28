@@ -2,6 +2,92 @@
 #include "handle.h"
 #include "syscalls.h"
 
+
+BOOL find_process_id_by_name(
+    IN LPCSTR process_name,
+    OUT PDWORD pPid)
+{
+    BOOL success = FALSE;
+    NTSTATUS status = STATUS_UNSUCCESSFUL;
+    HANDLE hProcess = NULL;
+    PUNICODE_STRING image = NULL;
+    WCHAR wprocess_name[MAX_PATH] = { 0 };
+    LPWSTR current_process = NULL;
+    *pPid = 0;
+
+    if (!process_name)
+        goto end;
+
+    mbstowcs(wprocess_name, process_name, MAX_PATH);
+
+    while (TRUE)
+    {
+        /*
+         * loop over each process
+         */
+        status = NtGetNextProcess(
+            hProcess,
+            PROCESS_QUERY_INFORMATION,
+            0,
+            0,
+            &hProcess);
+        if (status == STATUS_NO_MORE_ENTRIES)
+        {
+            PRINT_ERR("The process '%s' was not found", process_name);
+            goto end;
+        }
+        if (!NT_SUCCESS(status))
+        {
+            syscall_failed("NtGetNextProcess", status);
+            goto end;
+        }
+
+        /*
+         * get the full path of the process binary
+         */
+        image = get_process_image(hProcess);
+        if (!image)
+            continue;
+
+        if (image->Length == 0)
+        {
+            intFree(image); image = NULL;
+            continue;
+        }
+
+        /*
+         * get the  process name
+         */
+        current_process = &wcsrchr(image->Buffer, '\\')[1];
+
+        /*
+         * we always return the first match, ignore the rest if any
+         */
+        if (!_wcsicmp(current_process, wprocess_name))
+        {
+            intFree(image); image = NULL;
+            /*
+             * get the PID of the process
+             */
+            *pPid = get_pid(hProcess);
+            break;
+        }
+
+        intFree(image); image = NULL;
+    }
+
+    if (*pPid)
+        success = TRUE;
+
+end:
+    if (hProcess)
+        NtClose(hProcess);
+    if (image)
+        intFree(image);
+
+    return success;
+}
+
 BOOL is_full_path(
     IN LPCSTR filename)
 {
@@ -612,8 +698,6 @@ VOID print_success(
 
 #endif
 
-#if defined(NANO) && !defined(SSP)
-
 PVOID get_process_image(
     IN HANDLE hProcess)
 {
@@ -646,6 +730,29 @@ PVOID get_process_image(
     return NULL;
 }
 
+DWORD get_pid(
+    IN HANDLE hProcess)
+{
+    PROCESS_BASIC_INFORMATION basic_info;
+    basic_info.UniqueProcessId = 0;
+    PROCESSINFOCLASS ProcessInformationClass = 0;
+    NTSTATUS status = NtQueryInformationProcess(
+        hProcess,
+        ProcessInformationClass,
+        &basic_info,
+        sizeof(PROCESS_BASIC_INFORMATION),
+        NULL);
+    if (!NT_SUCCESS(status))
+    {
+        syscall_failed("NtQueryInformationProcess", status);
+        return 0;
+    }
+
+    return basic_info.UniqueProcessId;
+}
+
+#if defined(NANO) && !defined(SSP)
+
 BOOL is_lsass(
     IN HANDLE hProcess)
 {
@@ -667,27 +774,6 @@ BOOL is_lsass(
 
     intFree(image); image = NULL;
     return FALSE;
-}
-
-DWORD get_pid(
-    IN HANDLE hProcess)
-{
-    PROCESS_BASIC_INFORMATION basic_info;
-    basic_info.UniqueProcessId = 0;
-    PROCESSINFOCLASS ProcessInformationClass = 0;
-    NTSTATUS status = NtQueryInformationProcess(
-        hProcess,
-        ProcessInformationClass,
-        &basic_info,
-        sizeof(PROCESS_BASIC_INFORMATION),
-        NULL);
-    if (!NT_SUCCESS(status))
-    {
-        syscall_failed("NtQueryInformationProcess", status);
-        return 0;
-    }
-
-    return basic_info.UniqueProcessId;
 }
 
 /*

@@ -602,4 +602,9 @@ EXTERN_C NTSTATUS NtCreateThreadEx(
 EXTERN_C NTSTATUS NtDeleteKey(
 	IN HANDLE KeyHandle);
 
+EXTERN_C NTSTATUS NtPrivilegeCheck(
+	IN HANDLE ClientToken,
+	IN OUT PPRIVILEGE_SET RequiredPrivileges,
+	OUT PBOOL Result);
+
 #endif

@@ -7,18 +7,14 @@
 
 BOOL enable_debug_priv(VOID)
 {
-    // you can remove this function by providing the compiler flag: -DNODPRIV
-    BOOL success = TRUE;
-#ifndef NODPRIV
-    success = check_token_privilege(
+    BOOL success = check_token_privilege(
         NULL,
         SeDebugPrivilege,
-        TRUE);
-    if (success)
+        FALSE);
+    if (!success)
     {
-        DPRINT("SeDebugPrivilege enabled");
+        PRINT_ERR("Could not enable SeDebugPrivilege. Are you elevated?");
     }
-#endif
     return success;
 }
 
@@ -89,10 +85,12 @@ BOOL check_token_privilege(
     LookupPrivilegeNameW_t LookupPrivilegeNameW;
     LUID_AND_ATTRIBUTES laa = { 0 };
     TOKEN_PRIVILEGES tkp = { 0 };
+    PRIVILEGE_SET priv_set = { 0 };
     LPWSTR pwszPrivilegeNameTemp = NULL;
     NTSTATUS status = STATUS_UNSUCCESSFUL;
     BOOL own_token = FALSE;
     BOOL success = FALSE;
+    BOOL found_priv = FALSE;
 
     LookupPrivilegeNameW = (LookupPrivilegeNameW_t)(ULONG_PTR)get_function_address(
         get_library_address(ADVAPI32_DLL, TRUE),
@@ -184,7 +182,29 @@ BOOL check_token_privilege(
         if (!_wcsicmp(pwszPrivilegeNameTemp, pwszPrivilege))
         {
             // found it
-            if (bEnablePrivilege)
+            found_priv = TRUE;
+
+            // test if already enabled
+            priv_set.PrivilegeCount = 1;
+            priv_set.Privilege[0].Luid = laa.Luid;
+            priv_set.Privilege[0].Attributes = laa.Attributes;
+            status = NtPrivilegeCheck(
+                hToken,
+                &priv_set,
+                &bReturnValue);
+            if (!NT_SUCCESS(status))
+            {
+                syscall_failed("NtPrivilegeCheck", status);
+                bReturnValue = FALSE;
+                goto end;
+            }
+
+            if (bReturnValue)
+            {
+                DPRINT("Privilege %ls was already enabled", pwszPrivilegeNameTemp);
+            }
+
+            if (!bReturnValue && bEnablePrivilege)
             {
                 tkp.PrivilegeCount = 1;
                 tkp.Privileges[0].Luid = laa.Luid;
@@ -202,14 +222,21 @@ BOOL check_token_privilege(
                     syscall_failed("NtAdjustPrivilegesToken", status);
                     goto end;
                 }
+                DPRINT("Enabled %ls", pwszPrivilegeNameTemp);
+                bReturnValue = TRUE;
             }
-            bReturnValue = TRUE;
+
+            if (!bReturnValue && !bEnablePrivilege)
+            {
+                DPRINT("The privilege %ls is not enabled", pwszPrivilegeNameTemp);
+            }
+
             break;
         }
         intFree(pwszPrivilegeNameTemp); pwszPrivilegeNameTemp = NULL;
     }
 
-    if (!bReturnValue)
+    if (!found_priv)
     {
         DPRINT_ERR("The privilege %ls was not found", pwszPrivilege);
     }

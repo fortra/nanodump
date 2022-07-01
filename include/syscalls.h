@@ -305,6 +305,12 @@ typedef struct _PS_ATTRIBUTE_LIST
 	PS_ATTRIBUTE Attributes[1];
 } PS_ATTRIBUTE_LIST, *PPS_ATTRIBUTE_LIST;
 
+typedef enum _EVENT_TYPE
+{
+	NotificationEvent = 0,
+	SynchronizationEvent = 1,
+} EVENT_TYPE, *PEVENT_TYPE;
+
 NTSTATUS NtOpenProcess(
 	OUT PHANDLE ProcessHandle,
 	IN ACCESS_MASK DesiredAccess,
@@ -606,5 +612,28 @@ EXTERN_C NTSTATUS NtPrivilegeCheck(
 	IN HANDLE ClientToken,
 	IN OUT PPRIVILEGE_SET RequiredPrivileges,
 	OUT PBOOL Result);
+
+EXTERN_C NTSTATUS NtCreateEvent(
+	OUT PHANDLE EventHandle,
+	IN ACCESS_MASK DesiredAccess,
+	IN POBJECT_ATTRIBUTES ObjectAttributes OPTIONAL,
+	IN EVENT_TYPE EventType,
+	IN BOOLEAN InitialState);
+
+EXTERN_C NTSTATUS NtTerminateThread(
+	IN HANDLE ThreadHandle,
+	IN NTSTATUS ExitStatus);
+
+EXTERN_C NTSTATUS _NtFsControlFile(
+	IN HANDLE FileHandle,
+	IN HANDLE Event OPTIONAL,
+	IN PIO_APC_ROUTINE ApcRoutine OPTIONAL,
+	IN PVOID ApcContext OPTIONAL,
+	OUT PIO_STATUS_BLOCK IoStatusBlock,
+	IN ULONG FsControlCode,
+	IN PVOID InputBuffer OPTIONAL,
+	IN ULONG InputBufferLength,
+	OUT PVOID OutputBuffer OPTIONAL,
+	IN ULONG OutputBufferLength);
 
 #endif

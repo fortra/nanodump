@@ -5,6 +5,19 @@
 
 #if !defined(SSP)
 
+BOOL enable_impersonate_priv(VOID)
+{
+    BOOL success = check_token_privilege(
+        NULL,
+        L"SeImpersonatePrivilege",
+        TRUE);
+    if (!success)
+    {
+        PRINT_ERR("Could not enable SeImpersonatePrivilege. Are you elevated?");
+    }
+    return success;
+}
+
 BOOL enable_debug_priv(VOID)
 {
     BOOL success = check_token_privilege(

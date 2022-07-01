@@ -17,7 +17,8 @@ typedef DWORD(WINAPI* PssNtFreeSnapshot_t) (HANDLE SnapshotHandle);
 #define PssNtFreeSnapshot_SW2_HASH 0x248F0BD4
 
 #define LSASS_EXE L"lsass.exe"
-#define PROCESS_TYPE L"Process"
+#define PROCESS_HANDLE_TYPE L"Process"
+#define TOKEN_HANDLE_TYPE L"Token"
 
 #define MAX_PROCESSES 5000
 
@@ -151,6 +152,7 @@ HANDLE obtain_lsass_handle(
     IN DWORD lsass_pid,
     IN DWORD permissions,
     IN BOOL dup,
+    IN BOOL seclogon_race,
     IN BOOL is_malseclogon_stage_2,
     IN LPCSTR dump_path);
 
@@ -174,6 +176,7 @@ PPROCESS_LIST get_processes_from_handle_table(
 POBJECT_TYPES_INFORMATION QueryObjectTypesInfo(VOID);
 
 BOOL GetTypeIndexByName(
+    IN LPWSTR handle_type,
     OUT PULONG ProcesTypeIndex);
 
 HANDLE duplicate_lsass_handle(

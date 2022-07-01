@@ -1026,4 +1026,76 @@ NtPrivilegeCheck PROC
 	jmp r11
 NtPrivilegeCheck ENDP
 
+NtCreateEvent PROC
+	mov [rsp +8], rcx
+	mov [rsp+16], rdx
+	mov [rsp+24], r8
+	mov [rsp+32], r9
+	mov rcx, 010893520h
+	push rcx
+	sub rsp, 028h
+	call SW3_GetSyscallAddress
+	add rsp, 028h
+	pop rcx
+	push rax
+	sub rsp, 028h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	mov rcx, [rsp+8]
+	mov rdx, [rsp+16]
+	mov r8, [rsp+24]
+	mov r9, [rsp+32]
+	mov r10, rcx
+	jmp r11
+NtCreateEvent ENDP
+
+NtTerminateThread PROC
+	mov [rsp +8], rcx
+	mov [rsp+16], rdx
+	mov [rsp+24], r8
+	mov [rsp+32], r9
+	mov rcx, 0381B3AB5h
+	push rcx
+	sub rsp, 028h
+	call SW3_GetSyscallAddress
+	add rsp, 028h
+	pop rcx
+	push rax
+	sub rsp, 028h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	mov rcx, [rsp+8]
+	mov rdx, [rsp+16]
+	mov r8, [rsp+24]
+	mov r9, [rsp+32]
+	mov r10, rcx
+	jmp r11
+NtTerminateThread ENDP
+
+_NtFsControlFile PROC
+	mov [rsp +8], rcx
+	mov [rsp+16], rdx
+	mov [rsp+24], r8
+	mov [rsp+32], r9
+	mov rcx, 020C6D09Ch
+	push rcx
+	sub rsp, 028h
+	call SW3_GetSyscallAddress
+	add rsp, 028h
+	pop rcx
+	push rax
+	sub rsp, 028h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	mov rcx, [rsp+8]
+	mov rdx, [rsp+16]
+	mov r8, [rsp+24]
+	mov r9, [rsp+32]
+	mov r10, rcx
+	jmp r11
+_NtFsControlFile ENDP
+
 end

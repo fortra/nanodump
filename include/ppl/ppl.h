@@ -59,11 +59,7 @@ BOOL run_ppl_bypass_exploit(
     IN unsigned int nanodump_dll_len,
     IN LPCSTR dump_path,
     IN BOOL use_valid_sig,
-    IN BOOL fork_lsass,
-    IN BOOL snapshot_lsass,
-    IN BOOL duplicate_handle,
-    IN BOOL use_malseclogon,
-    IN LPCSTR malseclogon_target_binary);
+    IN BOOL duplicate_handle);
 
 BOOL create_protected_process_as_user(
     IN HANDLE hToken,
@@ -73,11 +69,7 @@ BOOL create_protected_process_as_user(
 BOOL prepare_ppl_command_line(
     IN LPCSTR dump_path,
     IN BOOL use_valid_sig,
-    IN BOOL fork_lsass,
-    IN BOOL snapshot_lsass,
     IN BOOL duplicate_handle,
-    IN BOOL use_malseclogon,
-    IN LPCSTR malseclogon_target_binary,
     OUT LPWSTR* command_line);
 
 BOOL find_file_for_transaction(

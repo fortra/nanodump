@@ -22,6 +22,7 @@
 #include "malseclogon.h"
 #include "werfault.h"
 #include "impersonate.h"
+#include "spoof_callstack.h"
 #endif
 
 // amount of memory requested to write the dump: 200 MiB

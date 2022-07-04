@@ -59,6 +59,6 @@ PVOID get_function_address(
     IN WORD ordinal);
 
 HANDLE get_library_address(
-    IN LPWSTR LibName,
+    IN LPWSTR lib_path,
     IN BOOL DoLoad);
 

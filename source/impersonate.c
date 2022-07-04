@@ -200,7 +200,7 @@ BOOL find_process_token_and_duplicate(
                                             hTokenDup,
                                             pwszPrivileges,
                                             dwPrivilegeCount,
-                                            FALSE);
+                                            TRUE);
                                         if (success)
                                         {
                                             DPRINT("Found a valid Token.");

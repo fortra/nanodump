@@ -47,6 +47,11 @@ __declspec(naked) void SyscallNotFound(void)
 }
 #endif
 
+PVOID get_ntopenprocess_syscall_address(VOID)
+{
+    return SW3_GetSyscallAddress(ZwOpenProcess_SW2_HASH);
+}
+
 /*
  * the idea here is to find a 'syscall' instruction in 'ntdll.dll'
  * so that we can call it from our code and try to hide the fact
@@ -1322,6 +1327,86 @@ __declspec(naked) NTSTATUS _NtFsControlFile(
 {
     __asm {
         push 0x20C6D09C
+        call SW3_GetSyscallAddress
+        pop ebx
+        push eax
+        push ebx
+        call SW2_GetSyscallNumber
+        add esp, 4
+        pop ebx
+        mov edx, esp
+        sub edx, 4
+        call ebx
+        ret
+    }
+}
+
+__declspec(naked) NTSTATUS NtGetContextThread(
+    IN HANDLE ThreadHandle,
+    IN OUT PCONTEXT ThreadContext)
+{
+    __asm {
+        push 0xBA9EF43C
+        call SW3_GetSyscallAddress
+        pop ebx
+        push eax
+        push ebx
+        call SW2_GetSyscallNumber
+        add esp, 4
+        pop ebx
+        mov edx, esp
+        sub edx, 4
+        call ebx
+        ret
+    }
+}
+
+__declspec(naked) NTSTATUS NtSetContextThread(
+    IN HANDLE ThreadHandle,
+    IN PCONTEXT Context)
+{
+    __asm {
+        push 0xCB668D44
+        call SW3_GetSyscallAddress
+        pop ebx
+        push eax
+        push ebx
+        call SW2_GetSyscallNumber
+        add esp, 4
+        pop ebx
+        mov edx, esp
+        sub edx, 4
+        call ebx
+        ret
+    }
+}
+
+__declspec(naked) NTSTATUS NtResumeThread(
+    IN HANDLE ThreadHandle,
+    IN OUT PULONG PreviousSuspendCount OPTIONAL)
+{
+    __asm {
+        push 0x1339598F
+        call SW3_GetSyscallAddress
+        pop ebx
+        push eax
+        push ebx
+        call SW2_GetSyscallNumber
+        add esp, 4
+        pop ebx
+        mov edx, esp
+        sub edx, 4
+        call ebx
+        ret
+    }
+}
+
+__declspec(naked) NTSTATUS NtDelayExecution(
+    IN BOOLEAN Alertable,
+    IN PLARGE_INTEGER DelayInterval)
+{
+    __asm {
+        push 0xB6EB75BA
         call SW3_GetSyscallAddress
         pop ebx
         push eax
@@ -3574,6 +3659,190 @@ __declspec(naked) NTSTATUS _NtFsControlFile(
 #else
     asm(
         "push 0x20C6D09C \n"
+        "call SW3_GetSyscallAddress \n"
+        "pop ebx \n"
+        "push eax \n"
+        "push ebx \n"
+        "call SW2_GetSyscallNumber \n"
+        "add esp, 4 \n"
+        "pop ebx \n"
+        "mov edx, esp \n"
+        "sub edx, 4 \n"
+        "call ebx \n"
+        "ret \n"
+    );
+#endif
+}
+
+__declspec(naked) NTSTATUS NtGetContextThread(
+    IN HANDLE ThreadHandle,
+    IN OUT PCONTEXT ThreadContext)
+{
+#if defined(_WIN64)
+    asm(
+        "mov [rsp +8], rcx \n"
+        "mov [rsp+16], rdx \n"
+        "mov [rsp+24], r8 \n"
+        "mov [rsp+32], r9 \n"
+        "mov rcx, 0xBA9EF43C \n"
+        "push rcx \n"
+        "sub rsp, 0x28 \n"
+        "call SW3_GetSyscallAddress \n"
+        "add rsp, 0x28 \n"
+        "pop rcx \n"
+        "push rax \n"
+        "sub rsp, 0x28 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add rsp, 0x28 \n"
+        "pop r11 \n"
+        "mov rcx, [rsp+8] \n"
+        "mov rdx, [rsp+16] \n"
+        "mov r8, [rsp+24] \n"
+        "mov r9, [rsp+32] \n"
+        "mov r10, rcx \n"
+        "jmp r11 \n"
+    );
+#else
+    asm(
+        "push 0xBA9EF43C \n"
+        "call SW3_GetSyscallAddress \n"
+        "pop ebx \n"
+        "push eax \n"
+        "push ebx \n"
+        "call SW2_GetSyscallNumber \n"
+        "add esp, 4 \n"
+        "pop ebx \n"
+        "mov edx, esp \n"
+        "sub edx, 4 \n"
+        "call ebx \n"
+        "ret \n"
+    );
+#endif
+}
+
+__declspec(naked) NTSTATUS NtSetContextThread(
+    IN HANDLE ThreadHandle,
+    IN PCONTEXT Context)
+{
+#if defined(_WIN64)
+    asm(
+        "mov [rsp +8], rcx \n"
+        "mov [rsp+16], rdx \n"
+        "mov [rsp+24], r8 \n"
+        "mov [rsp+32], r9 \n"
+        "mov rcx, 0xCB668D44 \n"
+        "push rcx \n"
+        "sub rsp, 0x28 \n"
+        "call SW3_GetSyscallAddress \n"
+        "add rsp, 0x28 \n"
+        "pop rcx \n"
+        "push rax \n"
+        "sub rsp, 0x28 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add rsp, 0x28 \n"
+        "pop r11 \n"
+        "mov rcx, [rsp+8] \n"
+        "mov rdx, [rsp+16] \n"
+        "mov r8, [rsp+24] \n"
+        "mov r9, [rsp+32] \n"
+        "mov r10, rcx \n"
+        "jmp r11 \n"
+    );
+#else
+    asm(
+        "push 0xCB668D44 \n"
+        "call SW3_GetSyscallAddress \n"
+        "pop ebx \n"
+        "push eax \n"
+        "push ebx \n"
+        "call SW2_GetSyscallNumber \n"
+        "add esp, 4 \n"
+        "pop ebx \n"
+        "mov edx, esp \n"
+        "sub edx, 4 \n"
+        "call ebx \n"
+        "ret \n"
+    );
+#endif
+}
+
+__declspec(naked) NTSTATUS NtResumeThread(
+    IN HANDLE ThreadHandle,
+    IN OUT PULONG PreviousSuspendCount OPTIONAL)
+{
+#if defined(_WIN64)
+    asm(
+        "mov [rsp +8], rcx \n"
+        "mov [rsp+16], rdx \n"
+        "mov [rsp+24], r8 \n"
+        "mov [rsp+32], r9 \n"
+        "mov rcx, 0x1339598F \n"
+        "push rcx \n"
+        "sub rsp, 0x28 \n"
+        "call SW3_GetSyscallAddress \n"
+        "add rsp, 0x28 \n"
+        "pop rcx \n"
+        "push rax \n"
+        "sub rsp, 0x28 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add rsp, 0x28 \n"
+        "pop r11 \n"
+        "mov rcx, [rsp+8] \n"
+        "mov rdx, [rsp+16] \n"
+        "mov r8, [rsp+24] \n"
+        "mov r9, [rsp+32] \n"
+        "mov r10, rcx \n"
+        "jmp r11 \n"
+    );
+#else
+    asm(
+        "push 0x1339598F \n"
+        "call SW3_GetSyscallAddress \n"
+        "pop ebx \n"
+        "push eax \n"
+        "push ebx \n"
+        "call SW2_GetSyscallNumber \n"
+        "add esp, 4 \n"
+        "pop ebx \n"
+        "mov edx, esp \n"
+        "sub edx, 4 \n"
+        "call ebx \n"
+        "ret \n"
+    );
+#endif
+}
+
+__declspec(naked) NTSTATUS NtDelayExecution(
+    IN BOOLEAN Alertable,
+    IN PLARGE_INTEGER DelayInterval)
+{
+#if defined(_WIN64)
+    asm(
+        "mov [rsp +8], rcx \n"
+        "mov [rsp+16], rdx \n"
+        "mov [rsp+24], r8 \n"
+        "mov [rsp+32], r9 \n"
+        "mov rcx, 0xB6EB75BA \n"
+        "push rcx \n"
+        "sub rsp, 0x28 \n"
+        "call SW3_GetSyscallAddress \n"
+        "add rsp, 0x28 \n"
+        "pop rcx \n"
+        "push rax \n"
+        "sub rsp, 0x28 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add rsp, 0x28 \n"
+        "pop r11 \n"
+        "mov rcx, [rsp+8] \n"
+        "mov rdx, [rsp+16] \n"
+        "mov r8, [rsp+24] \n"
+        "mov r9, [rsp+32] \n"
+        "mov r10, rcx \n"
+        "jmp r11 \n"
+    );
+#else
+    asm(
+        "push 0xB6EB75BA \n"
         "call SW3_GetSyscallAddress \n"
         "pop ebx \n"
         "push eax \n"

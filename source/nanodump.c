@@ -9,6 +9,7 @@
 #include "token_priv.c"
 #include "malseclogon.c"
 #include "werfault.c"
+#include "spoof_callstack.c"
 #endif
 
 VOID writeat(

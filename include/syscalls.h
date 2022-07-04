@@ -10,6 +10,8 @@
 
 #include "utils.h"
 
+#define ZwOpenProcess_SW2_HASH 0xCD9B2A0F
+
 #define SW2_SEED 0x1337C0DE
 #define SW2_ROL8(v) (v << 8 | v >> 24)
 #define SW2_ROR8(v) (v >> 8 | v << 24)
@@ -61,6 +63,8 @@ typedef struct _SW2_PEB {
 	PVOID Reserved3[2];
 	PSW2_PEB_LDR_DATA Ldr;
 } SW2_PEB, *PSW2_PEB;
+
+PVOID get_ntopenprocess_syscall_address(VOID);
 
 DWORD SW2_HashSyscall(
     IN PCSTR FunctionName);
@@ -635,5 +639,21 @@ EXTERN_C NTSTATUS _NtFsControlFile(
 	IN ULONG InputBufferLength,
 	OUT PVOID OutputBuffer OPTIONAL,
 	IN ULONG OutputBufferLength);
+
+EXTERN_C NTSTATUS NtGetContextThread(
+	IN HANDLE ThreadHandle,
+	IN OUT PCONTEXT ThreadContext);
+
+EXTERN_C NTSTATUS NtSetContextThread(
+	IN HANDLE ThreadHandle,
+	IN PCONTEXT Context);
+
+EXTERN_C NTSTATUS NtResumeThread(
+	IN HANDLE ThreadHandle,
+	IN OUT PULONG PreviousSuspendCount OPTIONAL);
+
+EXTERN_C NTSTATUS NtDelayExecution(
+	IN BOOLEAN Alertable,
+	IN PLARGE_INTEGER DelayInterval);
 
 #endif

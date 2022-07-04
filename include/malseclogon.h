@@ -81,7 +81,7 @@ BOOL check_if_succeded(
 VOID kill_created_processes(
     IN PPROCESS_LIST created_processes);
 
-BOOL MalSecLogon(
+BOOL malseclogon_handle_leak(
     IN LPCSTR binary_path,
     IN LPCSTR dump_path,
     IN BOOL fork_lsass,

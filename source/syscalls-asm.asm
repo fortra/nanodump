@@ -1098,4 +1098,100 @@ _NtFsControlFile PROC
 	jmp r11
 _NtFsControlFile ENDP
 
+NtGetContextThread PROC
+	mov [rsp +8], rcx
+	mov [rsp+16], rdx
+	mov [rsp+24], r8
+	mov [rsp+32], r9
+	mov rcx, 0BA9EF43Ch
+	push rcx
+	sub rsp, 028h
+	call SW3_GetSyscallAddress
+	add rsp, 028h
+	pop rcx
+	push rax
+	sub rsp, 028h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	mov rcx, [rsp+8]
+	mov rdx, [rsp+16]
+	mov r8, [rsp+24]
+	mov r9, [rsp+32]
+	mov r10, rcx
+	jmp r11
+NtGetContextThread ENDP
+
+NtSetContextThread PROC
+	mov [rsp +8], rcx
+	mov [rsp+16], rdx
+	mov [rsp+24], r8
+	mov [rsp+32], r9
+	mov rcx, 0CB668D44h
+	push rcx
+	sub rsp, 028h
+	call SW3_GetSyscallAddress
+	add rsp, 028h
+	pop rcx
+	push rax
+	sub rsp, 028h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	mov rcx, [rsp+8]
+	mov rdx, [rsp+16]
+	mov r8, [rsp+24]
+	mov r9, [rsp+32]
+	mov r10, rcx
+	jmp r11
+NtSetContextThread ENDP
+
+NtResumeThread PROC
+	mov [rsp +8], rcx
+	mov [rsp+16], rdx
+	mov [rsp+24], r8
+	mov [rsp+32], r9
+	mov rcx, 01339598Fh
+	push rcx
+	sub rsp, 028h
+	call SW3_GetSyscallAddress
+	add rsp, 028h
+	pop rcx
+	push rax
+	sub rsp, 028h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	mov rcx, [rsp+8]
+	mov rdx, [rsp+16]
+	mov r8, [rsp+24]
+	mov r9, [rsp+32]
+	mov r10, rcx
+	jmp r11
+NtResumeThread ENDP
+
+NtDelayExecution PROC
+	mov [rsp +8], rcx
+	mov [rsp+16], rdx
+	mov [rsp+24], r8
+	mov [rsp+32], r9
+	mov rcx, 0B6EB75BAh
+	push rcx
+	sub rsp, 028h
+	call SW3_GetSyscallAddress
+	add rsp, 028h
+	pop rcx
+	push rax
+	sub rsp, 028h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	mov rcx, [rsp+8]
+	mov rdx, [rsp+16]
+	mov r8, [rsp+24]
+	mov r9, [rsp+32]
+	mov r10, rcx
+	jmp r11
+NtDelayExecution ENDP
+
 end

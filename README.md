@@ -226,9 +226,6 @@ Leak an LSASS handle into the specified binary and then duplicate it.
 #### --seclogon-duplicate -sd
 Force seclogon to open a handle to LSASS and duplicate it.  
 
-#### --seclogon-duplicate -sd
-Force seclogon to open a handle to LSASS and duplicate it.  
-
 #### --spoof-callstack -sc { svchost,wmi,rpc }
 Call NtOpenProcess with a fake function callstack.  
 

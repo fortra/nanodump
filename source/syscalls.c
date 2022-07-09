@@ -577,18 +577,19 @@ __declspec(naked) NTSTATUS NtWriteFile(
     }
 }
 
-__declspec(naked) NTSTATUS NtCreateProcess(
+__declspec(naked) NTSTATUS NtCreateProcessEx(
     OUT PHANDLE ProcessHandle,
     IN ACCESS_MASK DesiredAccess,
     IN POBJECT_ATTRIBUTES ObjectAttributes OPTIONAL,
     IN HANDLE ParentProcess,
-    IN BOOLEAN InheritObjectTable,
+    IN ULONG Flags,
     IN HANDLE SectionHandle OPTIONAL,
     IN HANDLE DebugPort OPTIONAL,
-    IN HANDLE ExceptionPort OPTIONAL)
+    IN HANDLE ExceptionPort OPTIONAL,
+    IN ULONG JobMemberLevel)
 {
     __asm {
-        push 0xF538D0A0
+        push 0x1198E2E3
         call SW3_GetSyscallAddress
         pop ebx
         push eax
@@ -2052,15 +2053,16 @@ __declspec(naked) NTSTATUS NtWriteFile(
 #endif
 }
 
-__declspec(naked) NTSTATUS NtCreateProcess(
+__declspec(naked) NTSTATUS NtCreateProcessEx(
     OUT PHANDLE ProcessHandle,
     IN ACCESS_MASK DesiredAccess,
     IN POBJECT_ATTRIBUTES ObjectAttributes OPTIONAL,
     IN HANDLE ParentProcess,
-    IN BOOLEAN InheritObjectTable,
+    IN ULONG Flags,
     IN HANDLE SectionHandle OPTIONAL,
     IN HANDLE DebugPort OPTIONAL,
-    IN HANDLE ExceptionPort OPTIONAL)
+    IN HANDLE ExceptionPort OPTIONAL,
+    IN ULONG JobMemberLevel)
 {
 #if defined(_WIN64)
     asm(
@@ -2068,7 +2070,7 @@ __declspec(naked) NTSTATUS NtCreateProcess(
         "mov [rsp+16], rdx \n"
         "mov [rsp+24], r8 \n"
         "mov [rsp+32], r9 \n"
-        "mov rcx, 0xF538D0A0 \n"
+        "mov rcx, 0x1198E2E3 \n"
         "push rcx \n"
         "sub rsp, 0x28 \n"
         "call SW3_GetSyscallAddress \n"
@@ -2088,7 +2090,7 @@ __declspec(naked) NTSTATUS NtCreateProcess(
     );
 #else
     asm(
-        "push 0xF538D0A0 \n"
+        "push 0x1198E2E3 \n"
         "call SW3_GetSyscallAddress \n"
         "pop ebx \n"
         "push eax \n"

@@ -306,12 +306,12 @@ NtWriteFile PROC
 	jmp r11
 NtWriteFile ENDP
 
-NtCreateProcess PROC
+NtCreateProcessEx PROC
 	mov [rsp +8], rcx
 	mov [rsp+16], rdx
 	mov [rsp+24], r8
 	mov [rsp+32], r9
-	mov rcx, 0F538D0A0h
+	mov rcx, 01198E2E3h
 	push rcx
 	sub rsp, 028h
 	call SW3_GetSyscallAddress
@@ -328,7 +328,7 @@ NtCreateProcess PROC
 	mov r9, [rsp+32]
 	mov r10, rcx
 	jmp r11
-NtCreateProcess ENDP
+NtCreateProcessEx ENDP
 
 NtQuerySystemInformation PROC
 	mov [rsp +8], rcx

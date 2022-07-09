@@ -246,7 +246,7 @@ void go(char* args, int length)
     ret_val = TRUE;
 
 cleanup:
-    if (forked_lsass)
+    if (forked_lsass || use_seclogon_duplicate)
         kill_process(0, hProcess);
     if (hProcess)
         NtClose(hProcess);
@@ -783,7 +783,7 @@ int main(int argc, char* argv[])
     ret_val = TRUE;
 
 cleanup:
-    if (forked_lsass)
+    if (forked_lsass || use_seclogon_duplicate)
         kill_process(0, hProcess);
     if (hProcess)
         NtClose(hProcess);

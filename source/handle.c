@@ -476,27 +476,20 @@ HANDLE fork_process(
 
     // fork the LSASS process
     HANDLE hCloneProcess = NULL;
-    OBJECT_ATTRIBUTES CloneObjectAttributes;
 
-    InitializeObjectAttributes(
-        &CloneObjectAttributes,
-        NULL,
-        OBJ_CASE_INSENSITIVE,
-        NULL,
-        NULL);
-
-    NTSTATUS status = NtCreateProcess(
+    NTSTATUS status = NtCreateProcessEx(
         &hCloneProcess,
         GENERIC_ALL,
-        &CloneObjectAttributes,
+        NULL,
         hProcess,
-        TRUE,
+        CREATE_SUSPENDED,
         NULL,
         NULL,
-        NULL);
+        NULL,
+        0);
     if (!NT_SUCCESS(status))
     {
-        syscall_failed("NtCreateProcess", status);
+        syscall_failed("NtCreateProcessEx", status);
         DPRINT_ERR("Could not fork " LSASS);
         hCloneProcess = NULL;
     }

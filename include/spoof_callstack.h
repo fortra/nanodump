@@ -91,6 +91,7 @@ typedef struct _UNWIND_INFO {
 HANDLE open_handle_with_spoofed_callstack(
     IN DWORD stack_type,
     IN DWORD lsass_pid,
-    IN DWORD permissions);
+    IN DWORD permissions,
+    IN DWORD attributes);
 
 #endif

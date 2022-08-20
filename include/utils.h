@@ -96,6 +96,7 @@ typedef struct _PROCESS_INSTRUMENTATION_CALLBACK_INFORMATION
     PVOID Callback;
 } PROCESS_INSTRUMENTATION_CALLBACK_INFORMATION, *PPROCESS_INSTRUMENTATION_CALLBACK_INFORMATION;
 
+DWORD get_tick_count(VOID);
 
 BOOL find_process_id_by_name(
     IN LPCSTR process_name,
@@ -143,6 +144,9 @@ BOOL is_lsass(
 
 DWORD get_pid(
     IN HANDLE hProcess);
+
+DWORD get_tid(
+    IN HANDLE hThread);
 
 BOOL kill_process(
     IN DWORD pid,

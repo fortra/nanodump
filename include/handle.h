@@ -166,24 +166,28 @@ BOOL check_handle_privs(
     IN DWORD permissions);
 
 HANDLE make_handle_full_access(
-    IN HANDLE hProcess);
+    IN HANDLE hProcess,
+    IN DWORD attributes);
 
 HANDLE obtain_lsass_handle(
     IN DWORD lsass_pid,
     IN DWORD permissions,
     IN BOOL dup,
     IN BOOL seclogon_race,
-    IN DWORD spoof_stack,
+    IN DWORD spoof_callstack,
     IN BOOL is_malseclogon_stage_2,
-    IN LPCSTR dump_path);
+    IN LPCSTR dump_path,
+    IN DWORD attributes);
 
 HANDLE find_lsass(
-    IN DWORD dwFlags);
+    IN DWORD dwFlags,
+    IN DWORD attributes);
 
 HANDLE get_process_handle(
     IN DWORD dwPid,
     IN DWORD dwFlags,
-    IN BOOL quiet);
+    IN BOOL quiet,
+    IN DWORD attributes);
 
 PSYSTEM_HANDLE_INFORMATION get_all_handles(VOID);
 
@@ -202,10 +206,12 @@ BOOL GetTypeIndexByName(
 
 HANDLE duplicate_lsass_handle(
     IN DWORD lsass_pid,
-    IN DWORD permissions);
+    IN DWORD permissions,
+    IN DWORD attributes);
 
 HANDLE fork_process(
-    IN HANDLE hProcess);
+    IN HANDLE hProcess,
+    IN DWORD attributes);
 
 HANDLE snapshot_process(
     IN HANDLE hProcess,

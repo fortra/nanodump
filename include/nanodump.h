@@ -23,6 +23,7 @@
 #include "werfault.h"
 #include "impersonate.h"
 #include "spoof_callstack.h"
+#include "shtinkering.h"
 #endif
 
 // amount of memory requested to write the dump: 200 MiB
@@ -39,6 +40,7 @@
 // permissions requested by NtOpenProcess
 #define LSASS_DEFAULT_PERMISSIONS (PROCESS_QUERY_INFORMATION|PROCESS_VM_READ)
 #define LSASS_CLONE_PERMISSIONS (PROCESS_QUERY_INFORMATION|PROCESS_CREATE_PROCESS)
+#define LSASS_SHTINKERING_PERMISSIONS (PROCESS_QUERY_LIMITED_INFORMATION|PROCESS_VM_READ)
 // permissions requested by PssNtCaptureSnapshot
 #define PROCESS_PPSCAPTURESNAPSHOT_PERMISSIONS PSS_CAPTURE_VA_CLONE
 #define THREAD_PPSCAPTURESNAPSHOT_PERMISSIONS 0

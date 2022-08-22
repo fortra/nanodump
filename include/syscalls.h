@@ -224,48 +224,48 @@ typedef struct _ALPC_PORT_ATTRIBUTES
 #endif
 } ALPC_PORT_ATTRIBUTES, *PALPC_PORT_ATTRIBUTES;
 
-typedef struct _PORT_MESSAGE
+typedef short CSHORT;
+typedef struct _QUAD
 {
 	union
 	{
-		union
+		INT64 UseThisFieldToCopy;
+		float DoNotUseThisField;
+	};
+} QUAD, * PQUAD;
+
+typedef struct PORT_MESSAGE
+{
+	union
+	{
+		struct
 		{
-			struct
-			{
-				short DataLength;
-				short TotalLength;
-			} s1;
-			unsigned long Length;
-		};
+			CSHORT DataLength;
+			CSHORT TotalLength;
+		} s1;
+		ULONG Length;
 	} u1;
 	union
 	{
-		union
+		struct
 		{
-			struct
-			{
-				short Type;
-				short DataInfoOffset;
-			} s2;
-			unsigned long ZeroInit;
-		};
+			CSHORT Type;
+			CSHORT DataInfoOffset;
+		} s2;
+		ULONG ZeroInit;
 	} u2;
 	union
 	{
 		CLIENT_ID ClientId;
-		double    DoNotUseThisField;
+		QUAD DoNotUseThisField;
 	};
-	unsigned long MessageId;
+	ULONG MessageId;
 	union
 	{
-		ULONG64 ClientViewSize;
-		struct
-		{
-			unsigned long CallbackId;
-			long          __PADDING__[1];
-		};
+		SIZE_T ClientViewSize;
+		ULONG CallbackId;
 	};
-} PORT_MESSAGE, *PPORT_MESSAGE;
+} PORT_MESSAGE, * PPORT_MESSAGE;
 
 // WER_API_MESSAGE should probably be just one struct
 // I didn't not find this structure documented
@@ -291,6 +291,40 @@ typedef struct _WER_API_MESSAGE_RECV
     BYTE empty[0x538];
 } WER_API_MESSAGE_RECV, *PWER_API_MESSAGE_RECV;
 
+typedef struct _ReportExceptionWerAlpcMessage
+{
+    PORT_MESSAGE PortMessage;
+    DWORD MessageType;
+    NTSTATUS NtStatusErrorCode;
+    DWORD Flags;
+    DWORD TargetProcessId;
+    HANDLE hFileMapping;
+#ifndef _WIN64
+    DWORD Filler0;
+#endif
+    HANDLE hRecoveryEvent;
+#ifndef _WIN64
+    DWORD Filler1;
+#endif
+    HANDLE hCompletionEvent;
+#ifndef _WIN64
+    DWORD Filler2;
+#endif
+    HANDLE hFileMapping2;
+#ifndef _WIN64
+    DWORD Filler3;
+#endif
+    HANDLE hTargetProcess;
+#ifndef _WIN64
+    DWORD Filler4;
+#endif
+    HANDLE hTargetThread;
+#ifndef _WIN64
+    DWORD Filler5;
+#endif
+    DWORD Filler6[324];
+} ReportExceptionWerAlpcMessage, *PReportExceptionWerAlpcMessage;
+
 typedef struct _PS_ATTRIBUTE
 {
 	ULONG  Attribute;
@@ -314,6 +348,21 @@ typedef enum _EVENT_TYPE
 	NotificationEvent = 0,
 	SynchronizationEvent = 1,
 } EVENT_TYPE, *PEVENT_TYPE;
+
+typedef struct _THREAD_BASIC_INFORMATION {
+  NTSTATUS                ExitStatus;
+  PVOID                   TebBaseAddress;
+  CLIENT_ID               ClientId;
+  KAFFINITY               AffinityMask;
+  KPRIORITY               Priority;
+  KPRIORITY               BasePriority;
+} THREAD_BASIC_INFORMATION, *PTHREAD_BASIC_INFORMATION;
+
+typedef enum _SECTION_INHERIT
+{
+	ViewShare = 1,
+	ViewUnmap = 2
+} SECTION_INHERIT, *PSECTION_INHERIT;
 
 EXTERN_C NTSTATUS NtOpenProcess(
 	OUT PHANDLE ProcessHandle,
@@ -656,5 +705,42 @@ EXTERN_C NTSTATUS NtResumeThread(
 EXTERN_C NTSTATUS NtDelayExecution(
 	IN BOOLEAN Alertable,
 	IN PLARGE_INTEGER DelayInterval);
+
+EXTERN_C NTSTATUS NtGetNextThread(
+	IN HANDLE ProcessHandle,
+	IN HANDLE ThreadHandle,
+	IN ACCESS_MASK DesiredAccess,
+	IN ULONG HandleAttributes,
+	IN ULONG Flags,
+	OUT PHANDLE NewThreadHandle);
+
+EXTERN_C NTSTATUS _NtQueryInformationThread(
+	IN HANDLE ThreadHandle,
+	IN THREADINFOCLASS ThreadInformationClass,
+	OUT PTHREAD_BASIC_INFORMATION ThreadInformation,
+	IN ULONG ThreadInformationLength,
+	OUT PULONG ReturnLength OPTIONAL);
+
+EXTERN_C NTSTATUS NtOpenThread(
+	OUT PHANDLE ThreadHandle,
+	IN ACCESS_MASK DesiredAccess,
+	IN POBJECT_ATTRIBUTES ObjectAttributes,
+	IN CLIENT_ID* ClientId OPTIONAL);
+
+EXTERN_C NTSTATUS NtMapViewOfSection(
+	IN HANDLE SectionHandle,
+	IN HANDLE ProcessHandle,
+	IN OUT PVOID BaseAddress,
+	IN ULONG ZeroBits,
+	IN SIZE_T CommitSize,
+	IN OUT PLARGE_INTEGER SectionOffset OPTIONAL,
+	IN OUT PSIZE_T ViewSize,
+	IN SECTION_INHERIT InheritDisposition,
+	IN ULONG AllocationType,
+	IN ULONG Win32Protect);
+
+EXTERN_C NTSTATUS NtUnmapViewOfSection(
+	IN HANDLE ProcessHandle,
+	IN PVOID BaseAddress);
 
 #endif

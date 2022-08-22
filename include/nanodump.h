@@ -23,6 +23,7 @@
 #include "werfault.h"
 #include "impersonate.h"
 #include "spoof_callstack.h"
+#include "shtinkering.h"
 #endif
 
 // amount of memory requested to write the dump: 200 MiB
@@ -39,6 +40,7 @@
 // permissions requested by NtOpenProcess
 #define LSASS_DEFAULT_PERMISSIONS (PROCESS_QUERY_INFORMATION|PROCESS_VM_READ)
 #define LSASS_CLONE_PERMISSIONS (PROCESS_QUERY_INFORMATION|PROCESS_CREATE_PROCESS)
+#define LSASS_SHTINKERING_PERMISSIONS (PROCESS_QUERY_LIMITED_INFORMATION|PROCESS_VM_READ)
 // permissions requested by PssNtCaptureSnapshot
 #define PROCESS_PPSCAPTURESNAPSHOT_PERMISSIONS PSS_CAPTURE_VA_CLONE
 #define THREAD_PPSCAPTURESNAPSHOT_PERMISSIONS 0
@@ -101,6 +103,7 @@
  WINBASEAPI size_t    __cdecl MSVCRT$wcsnlen(const wchar_t *_Src,size_t _MaxCount);
  WINBASEAPI wchar_t * __cdecl MSVCRT$wcsncpy(wchar_t * ,const wchar_t * ,size_t);
  WINBASEAPI size_t    __cdecl MSVCRT$mbstowcs(wchar_t * _Dest,const char * _Source,size_t _MaxCount);
+ WINBASEAPI size_t    __cdecl MSVCRT$wcstombs(char * __restrict__ _Dest,const wchar_t * __restrict__ _Source,size_t _MaxCount);
  WINBASEAPI wchar_t * __cdecl MSVCRT$wcsncat(wchar_t * _Dest,const wchar_t * _Source,size_t _Count);
  WINBASEAPI int       __cdecl MSVCRT$strncmp(const char *s1, const char *s2, size_t n);
  WINBASEAPI int       __cdecl MSVCRT$_wcsicmp(const wchar_t *_Str1,const wchar_t *_Str2);
@@ -133,6 +136,7 @@
  #define wcsnlen    MSVCRT$wcsnlen
  #define wcsncpy    MSVCRT$wcsncpy
  #define mbstowcs   MSVCRT$mbstowcs
+ #define wcstombs   MSVCRT$wcstombs
  #define wcsncat    MSVCRT$wcsncat
  #define strncmp    MSVCRT$strncmp
  #define _wcsicmp   MSVCRT$_wcsicmp

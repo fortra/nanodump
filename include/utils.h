@@ -18,6 +18,10 @@ typedef struct _linked_list
 
 #define RVA(type, base_addr, rva) (type)(ULONG_PTR)((ULONG_PTR) base_addr + rva)
 
+typedef DWORD(WINAPI* GetEnvironmentVariableW_t) (LPCWSTR lpName, LPWSTR lpBuffer, DWORD nSize);
+
+#define GetEnvironmentVariableW_SW2_HASH 0x2F9C600B
+
 #ifdef _WIN64
  #define CID_OFFSET 0x40
  #define TEB_OFFSET 0x30
@@ -95,6 +99,13 @@ typedef struct _PROCESS_INSTRUMENTATION_CALLBACK_INFORMATION
     ULONG Reserved;
     PVOID Callback;
 } PROCESS_INSTRUMENTATION_CALLBACK_INFORMATION, *PPROCESS_INSTRUMENTATION_CALLBACK_INFORMATION;
+
+BOOL print_shtinkering_crash_location(VOID);
+
+BOOL get_env_var(
+    IN LPWSTR name,
+    OUT LPWSTR value,
+    IN DWORD size);
 
 DWORD get_tick_count(VOID);
 

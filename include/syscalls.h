@@ -725,7 +725,7 @@ EXTERN_C NTSTATUS NtOpenThread(
 	OUT PHANDLE ThreadHandle,
 	IN ACCESS_MASK DesiredAccess,
 	IN POBJECT_ATTRIBUTES ObjectAttributes,
-	IN PCLIENT_ID ClientId OPTIONAL);
+	IN CLIENT_ID* ClientId OPTIONAL);
 
 EXTERN_C NTSTATUS NtMapViewOfSection(
 	IN HANDLE SectionHandle,

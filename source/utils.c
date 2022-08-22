@@ -1,6 +1,69 @@
 #include "utils.h"
 #include "handle.h"
+#include "dinvoke.h"
 #include "syscalls.h"
+
+#ifndef SSP
+
+BOOL print_shtinkering_crash_location(VOID)
+{
+    BOOL ret_val = FALSE;
+    DWORD bufferSize = 300;
+    LPWSTR env_var = NULL;
+    BOOL success = FALSE;
+
+    env_var = intAlloc(bufferSize);
+    if (!env_var)
+    {
+        malloc_failed();
+        goto cleanup;
+    }
+
+    success = get_env_var(L"LocalAppData", env_var, bufferSize);
+    if (!success)
+        goto cleanup;
+
+    PRINT("Done, run: dir %ls\\CrashDumps\\", env_var);
+
+    ret_val = TRUE;
+
+cleanup:
+    if (env_var)
+        intFree(env_var);
+
+    return ret_val;
+}
+
+BOOL get_env_var(
+    IN LPWSTR name,
+    OUT LPWSTR value,
+    IN DWORD size)
+{
+    BOOL ret_val = FALSE;
+    GetEnvironmentVariableW_t GetEnvironmentVariableW = NULL;
+
+    GetEnvironmentVariableW = (GetEnvironmentVariableW_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        GetEnvironmentVariableW_SW2_HASH,
+        0);
+    if (!GetEnvironmentVariableW)
+    {
+        api_not_found("GetEnvironmentVariableW");
+        goto cleanup;
+    }
+
+    size = GetEnvironmentVariableW(name, value, size);
+    if (!size)
+    {
+        DPRINT_ERR("Retrieving %ls failed", value);
+        goto cleanup;
+    }
+
+    ret_val = TRUE;
+
+cleanup:
+    return ret_val;
+}
 
 // https://github.com/kevoreilly/capemon/blob/940c76cc17c4daefbf11f6cd932a9dece472ace1/hook_sleep.c#L502
 DWORD get_tick_count(VOID)
@@ -13,6 +76,8 @@ DWORD get_tick_count(VOID)
     else
         return (DWORD)(((ULONGLONG)*(DWORD *)0x7ffe0000 * *(DWORD *)0x7ffe0004) >> 24);
 }
+
+#endif
 
 BOOL find_process_id_by_name(
     IN LPCSTR process_name,
@@ -272,6 +337,10 @@ BOOL delete_file(
     wchar_t wcFilePath[MAX_PATH] = { 0 };
     UNICODE_STRING UnicodeFilePath = { 0 };
     UnicodeFilePath.Buffer = wcFilePath;
+
+    if (!filepath)
+        return TRUE;
+
     get_full_path(&UnicodeFilePath, filepath);
 
     // init the object attributes
@@ -304,6 +373,10 @@ BOOL file_exists(
     wchar_t wcFilePath[MAX_PATH] = { 0 };
     UNICODE_STRING UnicodeFilePath = { 0 };
     UnicodeFilePath.Buffer = wcFilePath;
+
+    if (!filepath)
+        return FALSE;
+
     get_full_path(&UnicodeFilePath, filepath);
 
     // init the object attributes

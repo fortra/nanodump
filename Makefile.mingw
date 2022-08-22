@@ -18,10 +18,10 @@ nanodump: clean
 	$(CC_x64) -c source/entry.c -o dist/$(BOFNAME).x64.o $(OPTIONS) -DNANO -DBOF
 	$(STRIP_x64) --strip-unneeded dist/$(BOFNAME).x64.o
 
-	$(CC_x64) source/utils.c source/handle.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/entry.c -o dist/$(BOFNAME)_ssp.x64.dll $(OPTIONS) -DNANO -DSSP -DDDL -shared
+	$(CC_x64) source/utils.c source/handle.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/entry.c -o dist/$(BOFNAME)_ssp.x64.dll $(OPTIONS) -DNANO -DSSP -DDDL -shared
 	$(STRIP_x64) --strip-all dist/$(BOFNAME)_ssp.x64.dll
 
-	$(CC_x86) source/utils.c source/handle.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/entry.c -o dist/$(BOFNAME)_ssp.x86.dll $(OPTIONS) -DNANO -DSSP -DDDL -shared
+	$(CC_x86) source/utils.c source/handle.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/entry.c -o dist/$(BOFNAME)_ssp.x86.dll $(OPTIONS) -DNANO -DSSP -DDDL -shared
 	$(STRIP_x86) --strip-all dist/$(BOFNAME)_ssp.x86.dll
 
 	$(CC_x64) -c source/load_ssp.c -o dist/load_ssp.x64.o $(OPTIONS) -DBOF
@@ -66,9 +66,9 @@ debug: clean
 
 	$(CC_x64) -c source/entry.c -o dist/$(BOFNAME).x64.o $(OPTIONS) -DNANO -DBOF -DDEBUG
 
-	$(CC_x64) source/utils.c source/handle.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/entry.c -o dist/$(BOFNAME)_ssp.x64.dll $(OPTIONS) -DNANO -DSSP -DDDL -shared -DDEBUG
+	$(CC_x64) source/utils.c source/handle.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/entry.c -o dist/$(BOFNAME)_ssp.x64.dll $(OPTIONS) -DNANO -DSSP -DDDL -shared -DDEBUG
 
-	$(CC_x86) source/utils.c source/handle.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/entry.c -o dist/$(BOFNAME)_ssp.x86.dll $(OPTIONS) -DNANO -DSSP -DDDL -shared -DDEBUG
+	$(CC_x86) source/utils.c source/handle.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/entry.c -o dist/$(BOFNAME)_ssp.x86.dll $(OPTIONS) -DNANO -DSSP -DDDL -shared -DDEBUG
 
 	$(CC_x64) -c source/load_ssp.c -o dist/load_ssp.x64.o $(OPTIONS) -DBOF -DDEBUG
 

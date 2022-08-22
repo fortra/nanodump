@@ -119,7 +119,8 @@ VOID set_command_line(
     IN BOOL fork_lsass,
     IN BOOL snapshot_lsass,
     IN BOOL use_valid_sig,
-    IN BOOL use_lsass_shtinkering);
+    IN BOOL use_lsass_shtinkering,
+    IN LPWSTR synchronization_file);
 
 BOOL save_new_process_pid(
     IN PPROCESS_LIST process_list,
@@ -127,7 +128,7 @@ BOOL save_new_process_pid(
 
 BOOL check_if_succeded(
     IN DWORD new_pid,
-    IN LPCSTR dump_path);
+    IN LPWSTR dump_path);
 
 VOID kill_created_processes(
     IN PPROCESS_LIST created_processes);

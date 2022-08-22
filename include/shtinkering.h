@@ -43,7 +43,6 @@ typedef struct _EVENT_DATA_DESCRIPTOR {
 } EVENT_DATA_DESCRIPTOR, *PEVENT_DATA_DESCRIPTOR;
 
 typedef ULONG(WINAPI* EtwEventWriteNoRegistration_t) (GUID const *ProviderId, EVENT_DESCRIPTOR const *EventDescriptor, ULONG UserDataCount, EVENT_DATA_DESCRIPTOR *UserData);
-typedef DWORD(WINAPI* GetEnvironmentVariableW_t) (LPCWSTR lpName, LPWSTR lpBuffer, DWORD nSize);
 
 #define EtwEventWriteNoRegistration_SW2_HASH 0x980FF899
 #define NtUpdateWnfStateData_SW2_HASH 0x6CC3F2FE

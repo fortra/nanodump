@@ -11,6 +11,7 @@
 #include "werfault.c"
 #include "spoof_callstack.c"
 #include "shtinkering.c"
+#include "impersonate.c"
 #endif
 
 VOID writeat(

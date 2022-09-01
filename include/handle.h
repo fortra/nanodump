@@ -165,11 +165,35 @@ BOOL check_handle_privs(
     IN HANDLE handle,
     IN DWORD permissions);
 
+HANDLE duplicate_handle_local(
+    IN HANDLE hProcess,
+    IN ACCESS_MASK DesiredAccess,
+    IN DWORD HandleAttributes);
+
 HANDLE make_handle_full_access(
     IN HANDLE hProcess,
     IN DWORD attributes);
 
-HANDLE obtain_lsass_handle(
+BOOL obtain_lsass_handle(
+    OUT PHANDLE phProcess,
+    IN DWORD lsass_pid,
+    IN BOOL duplicate_handle,
+    IN BOOL duplicate_local,
+    IN BOOL use_seclogon_duplicate,
+    IN DWORD spoof_callstack,
+    IN BOOL is_seclogon_leak_local_stage_2,
+    IN LPCSTR seclogon_leak_remote_binary,
+    OUT PPROCESS_LIST* Pcreated_processes,
+    IN BOOL use_valid_sig,
+    IN LPCSTR dump_path,
+    IN BOOL fork_lsass,
+    IN BOOL snapshot_lsass,
+    OUT PHANDLE PhSnapshot,
+    IN BOOL use_seclogon_leak_local,
+    IN BOOL use_seclogon_leak_remote,
+    IN BOOL use_lsass_shtinkering);
+
+HANDLE open_handle_to_lsass(
     IN DWORD lsass_pid,
     IN DWORD permissions,
     IN BOOL dup,

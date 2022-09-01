@@ -161,13 +161,15 @@ BOOL malseclogon_handle_leak(
         created_processes = intAlloc(sizeof(PROCESS_LIST));
         if (!created_processes)
         {
-            *Pcreated_processes = NULL;
+            if (Pcreated_processes)
+                *Pcreated_processes = NULL;
             malloc_failed();
             DPRINT_ERR("Failed to get handle to " LSASS " using MalSecLogon");
             return FALSE;
         }
     }
-    *Pcreated_processes = created_processes;
+    if (Pcreated_processes)
+        *Pcreated_processes = created_processes;
     // leak an LSASS handle using MalSecLogon
     success = malseclogon_stage_1(
         binary_path,
@@ -186,7 +188,8 @@ BOOL malseclogon_handle_leak(
         {
             kill_created_processes(created_processes);
             intFree(created_processes); created_processes = NULL;
-            *Pcreated_processes = NULL;
+            if (Pcreated_processes)
+                *Pcreated_processes = NULL;
         }
         return FALSE;
     }

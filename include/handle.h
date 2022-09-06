@@ -165,7 +165,7 @@ BOOL check_handle_privs(
     IN HANDLE handle,
     IN DWORD permissions);
 
-HANDLE duplicate_handle_local(
+HANDLE elevate_handle_via_duplicate(
     IN HANDLE hProcess,
     IN ACCESS_MASK DesiredAccess,
     IN DWORD HandleAttributes);
@@ -178,7 +178,7 @@ BOOL obtain_lsass_handle(
     OUT PHANDLE phProcess,
     IN DWORD lsass_pid,
     IN BOOL duplicate_handle,
-    IN BOOL duplicate_local,
+    IN BOOL elevate_handle,
     IN BOOL use_seclogon_duplicate,
     IN DWORD spoof_callstack,
     IN BOOL is_seclogon_leak_local_stage_2,

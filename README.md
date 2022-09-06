@@ -12,7 +12,7 @@ A flexible tool that creates a minidump of the LSASS process.
   <li><a href="#fork">Process forking</a></li>
   <li><a href="#snapshot">Snapshot</a></li>
   <li><a href="#handledup">Handle duplication</a></li>
-  <li><a href="#duplocal">Duplicate local handle</a></li>
+  <li><a href="#elevate-handle">Elevate handle</a></li>
   <li><a href="#seclogon-leak-local">Seclogon handle leak local</a></li>
   <li><a href="#seclogon-leak-remote">Seclogon handle leak remote</a></li>
   <li><a href="#seclogon-duplication">Seclogon handle duplication</a></li>
@@ -118,7 +118,7 @@ As opening a handle to LSASS can be detected, nanodump can instead search for ex
 If one is found, it will copy it and use it to create the minidump.  
 Note that it is not guaranteed to find such handle.
 
-<h2 id="duplocal">6. Duplicate local handle</h2>
+<h2 id="elevate-handle">6. Elevate handle</h2>
 
 You can obtaina handle to LSASS with PROCESS_QUERY_LIMITED_INFORMATION, which is likely to be whitelisted, and then elevate that handle by duplicating it.
 
@@ -232,7 +232,7 @@ Create a snapshot of LSASS and dump this new process.
 #### --duplicate -d
 Try to find an existing handle to LSASS and duplicate it.
 
-#### --duplicate-local -dl
+#### --elevate-handle -eh
 open a handle to LSASS with low privileges and duplicate it to gain higher privileges.
 
 #### --seclogon-leak-local -sll
@@ -333,17 +333,17 @@ beacon> nanodump --seclogon-leak-local --shtinkering
 
 Obtain a handle with low privs and elevate it using _duplicate local_:
 ```
-beacon> nanodump --duplicate-local
+beacon> nanodump --elevate-handle
 ```
 
 Obtain a handle with low privs using a valid calling stack and elevate it using _duplicate local_:
 ```
-beacon> nanodump --duplicate-local --spoof-callstack rpc
+beacon> nanodump --elevate-handle --spoof-callstack rpc
 ```
 
 Duplicate an existing low priv handle and elevate it using _duplicate local_:
 ```
-beacon> nanodump --duplicate --duplicate-local
+beacon> nanodump --duplicate --elevate-handle
 ```
 
 <h2 id="redirectors">16. HTTPS redirectors</h2>

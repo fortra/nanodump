@@ -270,8 +270,6 @@ void usage(char* procname)
     PRINT("Obtain an LSASS handle via:");
     PRINT("    --duplicate, -d");
     PRINT("            duplicate an existing " LSASS " handle");
-    PRINT("    --elevate-handle, -eh");
-    PRINT("            open a handle to " LSASS " with low privileges and duplicate it to gain higher privileges");
     PRINT("    --seclogon-leak-local, -sll");
     PRINT("            leak an " LSASS " handle into nanodump via seclogon");
     PRINT("    --seclogon-leak-remote BIN_PATH, -slt BIN_PATH");
@@ -292,6 +290,9 @@ void usage(char* procname)
     PRINT("            fork the target process before dumping");
     PRINT("    --snapshot, -s");
     PRINT("            snapshot the target process before dumping");
+    PRINT("Avoid opening a handle with high privileges:")
+    PRINT("    --elevate-handle, -eh");
+    PRINT("            open a handle to " LSASS " with low privileges and duplicate it to gain higher privileges");
     PRINT("Miscellaneous:");
     PRINT("    --getpid");
     PRINT("            print the PID of " LSASS " and leave");

@@ -50,8 +50,6 @@ Dumpfile options:\
 Obtain an LSASS handle via:\
     --duplicate, -d\
             duplicate an existing LSASS handle\
-    --elevate-handle, -eh\
-            open a handle to LSASS with low privileges and duplicate it to gain higher privileges\
     --seclogon-leak-local, -sll\
             leak an LSASS handle into nanodump via seclogon\
     --seclogon-leak-remote BIN_PATH, -slt BIN_PATH\
@@ -70,6 +68,9 @@ Avoid reading LSASS directly:\
             fork the target process before dumping\
     --snapshot, -s\
             snapshot the target process before dumping\
+Avoid opening a handle with high privileges:\
+    --elevate-handle, -eh\
+            open a handle to LSASS with low privileges and duplicate it to gain higher privileges\
 Miscellaneous:\
     --getpid\
             print the PID of LSASS and leave\

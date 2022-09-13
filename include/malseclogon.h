@@ -175,11 +175,11 @@ DWORD get_seclogon_pid(VOID);
 
 HANDLE malseclogon_race_condition(
     IN DWORD lsass_pid,
+    IN DWORD permissions,
     IN DWORD attributes);
 
 #ifdef EXE
-HANDLE malseclogon_stage_2(
-    IN LPCSTR dump_path);
+HANDLE malseclogon_stage_2(VOID);
 #endif
 
 #endif

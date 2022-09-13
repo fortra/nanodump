@@ -200,7 +200,6 @@ HANDLE open_handle_to_lsass(
     IN BOOL seclogon_race,
     IN DWORD spoof_callstack,
     IN BOOL is_malseclogon_stage_2,
-    IN LPCSTR dump_path,
     IN DWORD attributes);
 
 HANDLE find_lsass(

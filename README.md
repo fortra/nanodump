@@ -221,21 +221,22 @@ To access this feature, use the paramter `--spoof-callstack` with the values `sv
 You can combine many techniques to customize how nanodump operates.  
 The following table indicates which flags can be used together.
 
-
-|                        | --write | --valid | --duplicate | --duplicate-local | --seclogon-leak-local | --seclogon-leak-remote | --seclogon-duplicate | --spoof-callstack | --silent-process-exit | --shtinkering | --fork | --snapshot |
-|------------------------|---------|---------|-------------|-------------------|-----------------------|------------------------|----------------------|-------------------|-----------------------|---------------|--------|------------|
-| --write                | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                      | ✓                    | ✓                 |                       |               | ✓      | ✓          |
-| --valid                | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                      | ✓                    | ✓                 |                       |               | ✓      | ✓          |
-| --duplicate            | ✓       | ✓       | ✓           | ✓                 |                       |                        |                      |                   |                       | ✓             | ✓      | ✓          |
-| --duplicate-local      | ✓       | ✓       | ✓           | ✓                 |                       |                        |                      | ✓                 |                       | ✓             | ✓      | ✓          |
-| --seclogon-leak-local  | ✓       | ✓       |             |                   | ✓                     |                        |                      |                   |                       | ✓             | ✓      | ✓          |
-| --seclogon-leak-remote | ✓       | ✓       |             |                   |                       | ✓                      |                      |                   |                       | ✓             | ✓      | ✓          |
-| --seclogon-duplicate   | ✓       | ✓       |             |                   |                       |                        | ✓                    |                   |                       | ✓             | ✓      | ✓          |
-| --spoof-callstack      | ✓       | ✓       |             | ✓                 |                       |                        |                      | ✓                 |                       | ✓             | ✓      | ✓          |
-| --silent-process-exit  |         |         |             |                   |                       |                        |                      |                   | ✓                     |               |        |            |
-| --shtinkering          |         |         | ✓           | ✓                 | ✓                     | ✓                      | ✓                    | ✓                 |                       | ✓             |        |            |
-| --fork                 | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                      | ✓                    | ✓                 |                       |               | ✓      |            |
-| --snapshot             | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                      | ✓                    | ✓                 |                       |               |        | ✓          |
+|                        | --write | --valid | --duplicate | --duplicate-local | --seclogon-leak-local | --seclogon-leak-remote | --seclogon-duplicate | --spoof-callstack | --silent-process-exit | --shtinkering | --fork | --snapshot | SSP | PPL |
+|------------------------|:-------:|:-------:|:-----------:|:-----------------:|:---------------------:|:----------------------:|:--------------------:|:-----------------:|:---------------------:|:-------------:|:------:|:----------:|:---:|:---:|
+| --write                | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                      | ✓                    | ✓                 |                       |               | ✓      | ✓          |     | ✓   |
+| --valid                | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                      | ✓                    | ✓                 |                       |               | ✓      | ✓          |     | ✓   |
+| --duplicate            | ✓       | ✓       | ✓           | ✓                 |                       |                        |                      |                   |                       | ✓             | ✓      | ✓          |     | ✓   |
+| --duplicate-local      | ✓       | ✓       | ✓           | ✓                 |                       |                        |                      | ✓                 |                       | ✓             | ✓      | ✓          |     |     |
+| --seclogon-leak-local  | ✓       | ✓       |             |                   | ✓                     |                        |                      |                   |                       | ✓             | ✓      | ✓          |     |     |
+| --seclogon-leak-remote | ✓       | ✓       |             |                   |                       | ✓                      |                      |                   |                       | ✓             | ✓      | ✓          |     |     |
+| --seclogon-duplicate   | ✓       | ✓       |             |                   |                       |                        | ✓                    |                   |                       | ✓             | ✓      | ✓          |     |     |
+| --spoof-callstack      | ✓       | ✓       |             | ✓                 |                       |                        |                      | ✓                 |                       | ✓             | ✓      | ✓          |     |     |
+| --silent-process-exit  |         |         |             |                   |                       |                        |                      |                   | ✓                     |               |        |            |     |     |
+| --shtinkering          |         |         | ✓           | ✓                 | ✓                     | ✓                      | ✓                    | ✓                 |                       | ✓             |        |            |     |     |
+| --fork                 | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                      | ✓                    | ✓                 |                       |               | ✓      |            |     |     |
+| --snapshot             | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                      | ✓                    | ✓                 |                       |               |        | ✓          |     |     |
+| SSP                    |         |         |             |                   |                       |                        |                      |                   |                       |               |        |            | ✓   |     |
+| PPL                    | ✓       | ✓       | ✓           |                   |                       |                        |                      |                   |                       |               |        |            |     | ✓   |
 
 <h2 id="examples">4. Examples</h2>
 

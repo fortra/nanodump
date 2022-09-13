@@ -9,7 +9,7 @@ A flexible tool that creates a minidump of the LSASS process.
 <ol>
   <li><a href="#usage">Usage</a></li>
   <li><a href="#features">Features</a></li>
-  <li><a href="#params">Parameters</a></li>
+  <li><a href="#combinations">Combining techniques</a></li>
   <li><a href="#examples">Examples</a></li>
   <li><a href="#redirectors">HTTPS redirectors</a></li>
 </ol>
@@ -216,54 +216,7 @@ The offsets used in this feature, are only valid for Windows 10.0.19044.1706 (21
 You can spoof the callstack of svchost, wmi and rpc.  
 To access this feature, use the paramter `--spoof-callstack` with the values `svchost`, `wmi` or `rpc`.  
 
-<h2 id="params">3. Parameters</h2>
-
-#### --write -w < path > (required for EXE)
-Where to write the dumpfile.
-* **BOF**: If this parameter is not provided, the dump will be downloaded in a fileless manner.
-* **EXE**: This parameter is required given that no C2 channel exists
-
-#### --valid -v
-The minidump will have a valid signature.  
-If not entered, the signature will be invalid. Before analyzing the dump restore the signature of the dump, with:  
-`scripts/restore_signature <dumpfile>`  
-
-#### --fork -f
-Fork LSASS and dump this new process.
-
-#### --snapshot -s
-Create a snapshot of LSASS and dump this new process.
-
-#### --duplicate -d
-Try to find an existing handle to LSASS and duplicate it.
-
-#### --elevate-handle -eh
-open a handle to LSASS with low privileges and duplicate it to gain higher privileges.
-
-#### --seclogon-leak-local -sll
-Leak an LSASS handle into nanodump from the seclogon service  
-**If used from Cobalt Strike, an unsigned binary will be written to disk**  
-
-#### --seclogon-leak-remote -slr < binary path >
-Leak an LSASS handle into the specified binary and then duplicate it.  
-
-#### --seclogon-duplicate -sd
-Force seclogon to open a handle to LSASS and duplicate it.  
-
-#### --spoof-callstack -sc { svchost,wmi,rpc }
-Call NtOpenProcess with a fake function callstack.  
-
-#### --silent-process-exit -spe < folder >
-Force WerFault to dump LSASS in the specified folder via SilentProcessExit.  
-
-#### --shtinkering -sk
-Force WerFault to dump LSASS in the specified folder via Shtinkering.  
-
-#### --getpid
-Get PID of LSASS and leave.  
-This is just for convenience, nanodump does not need the PID of LSASS.
-
-<h3>Mix and match</h2>
+<h2 id="combinations">3. Combining techniques</h2>
 
 You can combine many techniques to customize how nanodump operates.  
 The following table indicates which flags can be used together.
@@ -284,9 +237,7 @@ The following table indicates which flags can be used together.
 | --fork                 | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                      | ✓                    | ✓                 |                       |               | ✓      |            |
 | --snapshot             | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                      | ✓                    | ✓                 |                       |               |        | ✓          |
 
-
-
-<h2 id="examples">3. Examples</h2>
+<h2 id="examples">4. Examples</h2>
 
 Read LSASS indirectly by creating a fork and write the dump to disk with an invalid signature:
 ```
@@ -374,7 +325,7 @@ Duplicate an existing low priv handle and elevate it using _duplicate local_:
 beacon> nanodump --duplicate --elevate-handle
 ```
 
-<h2 id="redirectors">4. HTTPS redirectors</h2>
+<h2 id="redirectors">5. HTTPS redirectors</h2>
 
 If you are using an HTTPS redirector (as you should), you might run into issues when downloading the dump filessly due to the size of the requests that leak the dump.  
 Increase the max size of requests on your web server to allow nanodump to download the dump.

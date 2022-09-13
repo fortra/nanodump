@@ -30,7 +30,7 @@ VOID writeat(
 BOOL append(
     IN Pdump_context dc,
     IN const PVOID data,
-    IN unsigned size)
+    IN ULONG32 size)
 {
     ULONG32 new_rva = dc->rva + size;
     if (new_rva < dc->rva)
@@ -289,7 +289,7 @@ Pmodule_info write_module_list_stream(
     {
         number_of_modules++;
         curr_module->name_rva = dc->rva;
-        ULONG32 full_name_length = wcsnlen((wchar_t*)&curr_module->dll_name, sizeof(curr_module->dll_name));
+        ULONG32 full_name_length = (ULONG32)wcsnlen((wchar_t*)&curr_module->dll_name, sizeof(curr_module->dll_name));
         full_name_length++; // account for the null byte at the end
         full_name_length *= 2;
         // write the length of the name
@@ -542,9 +542,16 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
         free_linked_list(memory_ranges); memory_ranges = NULL;
         return NULL;
     }
+    // make sure we don't overflow stream_size
+    if (16 + 16 * number_of_ranges > 0xffffffff)
+    {
+        DPRINT_ERR("Too many ranges!");
+        free_linked_list(memory_ranges); memory_ranges = NULL;
+        return NULL;
+    }
 
     // write the rva of the actual memory content
-    ULONG32 stream_size = 16 + 16 * number_of_ranges;
+    ULONG32 stream_size = (ULONG32)(16 + 16 * number_of_ranges);
     ULONG64 base_rva = (ULONG64)stream_rva + stream_size;
     if (!append(dc, &base_rva, 8))
     {
@@ -609,7 +616,12 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
                 status);
             //return NULL;
         }
-        if (!append(dc, buffer, curr_range->DataSize))
+        if (curr_range->DataSize > 0xffffffff)
+        {
+            DPRINT_ERR("The current range is larger that the 32-bit address space!");
+            curr_range->DataSize = 0xffffffff;
+        }
+        if (!append(dc, buffer, (ULONG32)curr_range->DataSize))
         {
             DPRINT_ERR("Failed to write the Memory64ListStream");
             free_linked_list(memory_ranges); memory_ranges = NULL;

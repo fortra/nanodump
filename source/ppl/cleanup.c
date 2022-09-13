@@ -97,7 +97,7 @@ BOOL delete_known_dll_entry(VOID)
     DPRINT("Object to delete: %ls", pwszLinkPath);
 
     name.Buffer  = pwszLinkPath;
-    name.Length  = wcsnlen(name.Buffer, MAX_PATH);;
+    name.Length  = (USHORT)wcsnlen(name.Buffer, MAX_PATH);;
     name.Length *= 2;
     name.MaximumLength = name.Length + 2;
     InitializeObjectAttributes(&oa, &name, OBJ_CASE_INSENSITIVE, NULL, NULL);

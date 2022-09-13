@@ -78,7 +78,7 @@ PVOID resolve_reference(
 
     // addr points to a string like: NewLibrary.NewFunctionName
     api = &strrchr(addr, '.')[1];
-    DWORD dll_length = (ULONG_PTR)api - (ULONG_PTR)addr;
+    DWORD dll_length = (DWORD)((ULONG_PTR)api - (ULONG_PTR)addr);
     char dll[MAX_PATH + 1] = {0};
     strncpy(dll, (LPCSTR)addr, dll_length);
     strncat(dll, "dll", MAX_PATH);
@@ -166,8 +166,8 @@ PVOID get_function_address(
         return NULL;
 
     // check if addr is a pointer to another function in another DLL
-    if (addr >= (PVOID)exp &&
-        addr <  RVA(PVOID, exp, exp_size))
+    if ((ULONG_PTR)addr >= (ULONG_PTR)exp &&
+        (ULONG_PTR)addr <  RVA(ULONG_PTR, exp, exp_size))
     {
         // the function seems to be defined somewhere else
         addr = resolve_reference(
@@ -226,7 +226,7 @@ HANDLE get_library_address(
     // create a UNICODE_STRING with the library name
     UNICODE_STRING ModuleFileName = { 0 };
     ModuleFileName.Buffer = lib_path;
-    ModuleFileName.Length = wcsnlen(ModuleFileName.Buffer, MAX_PATH);
+    ModuleFileName.Length = (USHORT)wcsnlen(ModuleFileName.Buffer, MAX_PATH);
     ModuleFileName.Length *= 2;
     ModuleFileName.MaximumLength = ModuleFileName.Length + 2;
 

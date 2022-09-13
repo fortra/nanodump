@@ -11,13 +11,10 @@ SW2_SYSCALL_LIST SW2_SyscallList;
 #if defined(BOF)
 #pragma data_seg(".data")
 #endif
-PVOID SyscallAddress = NULL;
 #elif defined(__GNUC__) && defined(BOF)
 SW2_SYSCALL_LIST SW2_SyscallList __attribute__ ((section(".data")));
-PVOID SyscallAddress __attribute__ ((section(".data"))) = NULL;
 #elif defined(__GNUC__)
 SW2_SYSCALL_LIST SW2_SyscallList;
-PVOID SyscallAddress = NULL;
 #endif
 /*
  * If no 'syscall' instruction is found in NTDLL,
@@ -61,7 +58,7 @@ PVOID GetSyscallAddress(
     IN PVOID nt_api_address,
     IN ULONG32 size_of_ntapi)
 {
-    PVOID SyscallAddress;
+    PVOID syscall_address = NULL;
 #ifdef _WIN64
     BYTE syscall_code[] = { 0x0f, 0x05, 0xc3 };
 #else
@@ -69,14 +66,14 @@ PVOID GetSyscallAddress(
 #endif
 
     // we will loook for a syscall;ret up to the end of the api
-    ULONG max_look_range = size_of_ntapi - sizeof(syscall_code) + 1;
+    ULONG32 max_look_range = size_of_ntapi - sizeof(syscall_code) + 1;
 
 #ifdef _M_IX86
     if (local_is_wow64())
     {
         // if we are a WoW64 process, jump to WOW32Reserved
-        SyscallAddress = (PVOID)READ_MEMLOC(0xc0);
-        return SyscallAddress;
+        syscall_address = (PVOID)READ_MEMLOC(0xc0);
+        return syscall_address;
     }
 #endif
 
@@ -84,12 +81,12 @@ PVOID GetSyscallAddress(
     {
         // we don't really care if there is a 'jmp' between
         // nt_api_address and the 'syscall; ret' instructions
-        SyscallAddress = SW2_RVA2VA(PVOID, nt_api_address, offset);
+        syscall_address = SW2_RVA2VA(PVOID, nt_api_address, offset);
 
-        if (!memcmp((PVOID)syscall_code, SyscallAddress, sizeof(syscall_code)))
+        if (!memcmp((PVOID)syscall_code, syscall_address, sizeof(syscall_code)))
         {
             // we can use the original code for this system call :)
-            return SyscallAddress;
+            return syscall_address;
         }
     }
 
@@ -101,23 +98,23 @@ PVOID GetSyscallAddress(
         // let's try with an Nt* API below our syscall
         for (ULONG32 offset = 0; offset < max_look_range; offset++)
         {
-            SyscallAddress = SW2_RVA2VA(
+            syscall_address = SW2_RVA2VA(
                 PVOID,
                 nt_api_address,
                 offset + num_jumps * size_of_ntapi);
-            if (!memcmp((PVOID)syscall_code, SyscallAddress, sizeof(syscall_code)))
-                return SyscallAddress;
+            if (!memcmp((PVOID)syscall_code, syscall_address, sizeof(syscall_code)))
+                return syscall_address;
         }
 
         // let's try with an Nt* API above our syscall
         for (ULONG32 offset = 0; offset < max_look_range; offset++)
         {
-            SyscallAddress = SW2_RVA2VA(
+            syscall_address = SW2_RVA2VA(
                 PVOID,
                 nt_api_address,
                 offset - num_jumps * size_of_ntapi);
-            if (!memcmp((PVOID)syscall_code, SyscallAddress, sizeof(syscall_code)))
-                return SyscallAddress;
+            if (!memcmp((PVOID)syscall_code, syscall_address, sizeof(syscall_code)))
+                return syscall_address;
         }
     }
 
@@ -198,7 +195,7 @@ BOOL SW2_PopulateSyscallList(VOID)
     SW2_SyscallList.Count = i;
 
     // Sort the list by address in ascending order.
-    for (DWORD i = 0; i < SW2_SyscallList.Count - 1; i++)
+    for (i = 0; i < SW2_SyscallList.Count - 1; i++)
     {
         for (DWORD j = 0; j < SW2_SyscallList.Count - i - 1; j++)
         {
@@ -223,7 +220,7 @@ BOOL SW2_PopulateSyscallList(VOID)
     ULONG size_of_ntapi = Entries[1].Address - Entries[0].Address;
 
     // finally calculate the address of each syscall
-    for (DWORD i = 0; i < SW2_SyscallList.Count - 1; i++)
+    for (i = 0; i < SW2_SyscallList.Count - 1; i++)
     {
         PVOID nt_api_address = SW2_RVA2VA(PVOID, DllBase, Entries[i].Address);
         Entries[i].SyscallAddress = GetSyscallAddress(nt_api_address, size_of_ntapi);
@@ -238,7 +235,7 @@ EXTERN_C DWORD SW2_GetSyscallNumber(
     if (!SW2_PopulateSyscallList())
     {
         DPRINT_ERR("SW2_PopulateSyscallList failed");
-        return -1;
+        return 0;
     }
 
     for (DWORD i = 0; i < SW2_SyscallList.Count; i++)
@@ -249,7 +246,7 @@ EXTERN_C DWORD SW2_GetSyscallNumber(
         }
     }
     DPRINT_ERR("syscall with hash 0x%lx not found", FunctionHash);
-    return -1;
+    return 0;
 }
 
 EXTERN_C PVOID SW3_GetSyscallAddress(

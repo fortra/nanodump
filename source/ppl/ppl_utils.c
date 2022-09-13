@@ -47,7 +47,7 @@ BOOL object_manager_create_directory(
     *phDirectory = NULL;
 
     name.Buffer  = dirname;
-    name.Length  = wcsnlen(name.Buffer, MAX_PATH);;
+    name.Length  = (USHORT)wcsnlen(name.Buffer, MAX_PATH);;
     name.Length *= 2;
     name.MaximumLength = name.Length + 2;
     InitializeObjectAttributes(&oa, &name, OBJ_CASE_INSENSITIVE, NULL, NULL);
@@ -81,12 +81,12 @@ BOOL object_manager_create_symlik(
     *phLink = NULL;
 
     name.Buffer  = linkname;
-    name.Length  = wcsnlen(name.Buffer, MAX_PATH);;
+    name.Length  = (USHORT)wcsnlen(name.Buffer, MAX_PATH);;
     name.Length *= 2;
     name.MaximumLength = name.Length + 2;
 
     target.Buffer  = targetname;
-    target.Length  = wcsnlen(target.Buffer, MAX_PATH);;
+    target.Length  = (USHORT)wcsnlen(target.Buffer, MAX_PATH);;
     target.Length *= 2;
     target.MaximumLength = target.Length + 2;
 
@@ -139,7 +139,7 @@ BOOL check_known_dll_symbolic_link(
     wcsncat(pwszLinkName, pwszDllName, MAX_PATH);
 
     name.Buffer  = pwszLinkName;
-    name.Length  = wcsnlen(name.Buffer, MAX_PATH);;
+    name.Length  = (USHORT)wcsnlen(name.Buffer, MAX_PATH);;
     name.Length *= 2;
     name.MaximumLength = name.Length + 2;
     InitializeObjectAttributes(&oa, &name, OBJ_CASE_INSENSITIVE, NULL, NULL);

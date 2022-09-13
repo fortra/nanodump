@@ -4,6 +4,8 @@
 #include "ntdefs.h"
 #include "output.h"
 
+#define UNUSED(x) (void)(x)
+
 #if defined(_MSC_VER)
  #define ProcessInstrumentationCallback 40
 #endif

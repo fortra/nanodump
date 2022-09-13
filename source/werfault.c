@@ -84,7 +84,10 @@ BOOL set_registry_keys(
 
     // set up registry key name
     IFEORegistryKeyName.Length = 0;
-    IFEORegistryKeyName.MaximumLength = wcslen(IFEO_REG_KEY) * sizeof(WCHAR) + wcslen(proc) * sizeof(WCHAR) + 2;
+    IFEORegistryKeyName.MaximumLength = 0;
+    IFEORegistryKeyName.MaximumLength += (USHORT)wcslen(IFEO_REG_KEY) * sizeof(WCHAR);
+    IFEORegistryKeyName.MaximumLength += (USHORT)wcslen(proc) * sizeof(WCHAR);
+    IFEORegistryKeyName.MaximumLength +=  2;
     IFEORegistryKeyName.Buffer = intAlloc(IFEORegistryKeyName.MaximumLength);
     if (!IFEORegistryKeyName.Buffer)
     {
@@ -138,7 +141,10 @@ BOOL set_registry_keys(
 
     // set up registry key name SPE
     SPERegistryKeyName.Length = 0;
-    SPERegistryKeyName.MaximumLength = wcslen(SILENT_PROCESS_EXIT_REG_KEY) * sizeof(WCHAR) + wcslen(proc) * sizeof(WCHAR) + 2;
+    SPERegistryKeyName.MaximumLength = 0;
+    SPERegistryKeyName.MaximumLength += (USHORT)wcslen(SILENT_PROCESS_EXIT_REG_KEY) * sizeof(WCHAR);
+    SPERegistryKeyName.MaximumLength += (USHORT)wcslen(proc) * sizeof(WCHAR);
+    SPERegistryKeyName.MaximumLength += 2;
     SPERegistryKeyName.Buffer = intAlloc(SPERegistryKeyName.MaximumLength);
     if (!SPERegistryKeyName.Buffer)
     {
@@ -218,7 +224,7 @@ BOOL set_registry_keys(
         0,
         REG_SZ,
         LocalDumpFolder,
-        wcslen(LocalDumpFolder) * sizeof(WCHAR) + 2);
+        (ULONG)wcslen(LocalDumpFolder) * sizeof(WCHAR) + 2);
     if (!NT_SUCCESS(status))
     {
         syscall_failed("NtSetValueKey", status);

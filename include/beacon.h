@@ -50,8 +50,8 @@ DECLSPEC_IMPORT void   BeaconOutput(int type, char* data, int len);
 
 /* Token Functions */
 DECLSPEC_IMPORT BOOL   BeaconUseToken(HANDLE token);
-DECLSPEC_IMPORT void   BeaconRevertToken();
-DECLSPEC_IMPORT BOOL   BeaconIsAdmin();
+DECLSPEC_IMPORT void   BeaconRevertToken(VOID);
+DECLSPEC_IMPORT BOOL   BeaconIsAdmin(VOID);
 
 /* Spawn+Inject Functions */
 DECLSPEC_IMPORT void   BeaconGetSpawnTo(BOOL x86, char* buffer, int length);

@@ -203,7 +203,7 @@ VOID get_full_path(
     // add the file path
     wcsncat(full_dump_path->Buffer, wcFileName, MAX_PATH);
     // set the length fields
-    full_dump_path->Length = wcsnlen(full_dump_path->Buffer, MAX_PATH);
+    full_dump_path->Length = (USHORT)wcsnlen(full_dump_path->Buffer, MAX_PATH);
     full_dump_path->Length *= 2;
     full_dump_path->MaximumLength = full_dump_path->Length + 2;
 }
@@ -512,7 +512,7 @@ VOID free_linked_list(
 
     for (int i = number_of_nodes - 1; i >= 0; i--)
     {
-        Plinked_list node = (Plinked_list)head;
+        node = (Plinked_list)head;
 
         int jumps = i;
         while (jumps--)
@@ -552,6 +552,8 @@ VOID encrypt_dump(
     IN PVOID base_address,
     IN SIZE_T region_size)
 {
+    UNUSED(base_address);
+    UNUSED(region_size);
     //BYTE key = 0x2e;
     //PBYTE addr = NULL;
 
@@ -832,7 +834,7 @@ DWORD get_pid(
         return 0;
     }
 
-    return basic_info.UniqueProcessId;
+    return (DWORD)basic_info.UniqueProcessId;
 }
 
 DWORD get_tid(

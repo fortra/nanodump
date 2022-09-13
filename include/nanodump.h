@@ -301,7 +301,7 @@ VOID writeat(
 BOOL append(
     IN Pdump_context dc,
     IN const PVOID data,
-    IN unsigned size);
+    IN ULONG32 size);
 
 BOOL write_header(
     IN Pdump_context dc);

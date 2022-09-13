@@ -8,6 +8,8 @@
 #include "ntdefs.h"
 #include "utils.h"
 
+#define UNUSED(x) (void)(x)
+
 #define LSASRV_DLL L"lsasrv.dll"
 #ifdef _WIN64
 #define LDR_POINTER_OFFSET 0x18

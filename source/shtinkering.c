@@ -461,7 +461,7 @@ BOOL werfault_shtinkering(
     mps.ExceptionPointers = &exceptionPointers;
     mps.hCompletionEvent = hCompletionEvent;
     mps.hRecoveryEvent = hRecoveryEvent;
-    mps.NtErrorCode = E_FAIL;
+    mps.NtErrorCode = (DWORD)E_FAIL;
     mps.NtStatusErrorCode = STATUS_UNSUCCESSFUL;
     mps.TickCount = get_tick_count();
     mps.TargetProcessPid = lsass_pid;

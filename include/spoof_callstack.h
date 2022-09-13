@@ -9,6 +9,8 @@
 #include "utils.h"
 #include "dinvoke.h"
 
+#define UNUSED(x) (void)(x)
+
 #define SVC_STACK 1
 #define WMI_STACK 2
 #define RPC_STACK 3

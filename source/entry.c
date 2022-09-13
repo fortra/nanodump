@@ -944,6 +944,8 @@ __declspec(dllexport) BOOL APIENTRY DllMain(
     DWORD fdwReason,
     LPVOID lpReserved)
 {
+    UNUSED(hinstDLL);
+    UNUSED(lpReserved);
     switch (fdwReason)
     {
         case DLL_PROCESS_ATTACH:
@@ -977,6 +979,7 @@ BOOL NanoDumpPPL(VOID)
     CHAR           dump_path[MAX_PATH]  = { 0 };
     WCHAR          wcFilePath[MAX_PATH] = { 0 };
     UNICODE_STRING full_dump_path       = { 0 };
+    LPWSTR*        argv                 = NULL;
 
     full_dump_path.Buffer        = wcFilePath;
     full_dump_path.Length        = 0;
@@ -1020,7 +1023,6 @@ BOOL NanoDumpPPL(VOID)
         goto cleanup;
     }
 
-    LPWSTR* argv = NULL;
     int argc = 0;
     argv = CommandLineToArgvW(GetCommandLineW(), &argc);
     if (!argv || !argc)
@@ -1190,6 +1192,8 @@ __declspec(dllexport) BOOL APIENTRY DllMain(
     DWORD fdwReason,
     LPVOID lpReserved)
 {
+    UNUSED(hinstDLL);
+    UNUSED(lpReserved);
     switch (fdwReason)
     {
         case DLL_PROCESS_ATTACH:
@@ -1209,7 +1213,7 @@ __declspec(dllexport) BOOL APIENTRY DllMain(
 //
 //   000000014005B1C8  LogonUserExExW SspiCli
 //
-void APIENTRY LogonUserExExW() {}
+void APIENTRY LogonUserExExW(VOID) {}
 
 //
 // Windows 10 -> EventAggregation.dll
@@ -1223,14 +1227,14 @@ void APIENTRY LogonUserExExW() {}
 //   0000000140083758  EaFreeAggregatedEventParameters EventAggregation
 //   0000000140083760  EADeleteAggregateEvent EventAggregation
 //   0000000140083768  EAQueryAggregateEventData EventAggregation
-void APIENTRY BriCreateBrokeredEvent() {}
-void APIENTRY BriDeleteBrokeredEvent() {}
-void APIENTRY EaCreateAggregatedEvent() {}
-void APIENTRY EACreateAggregateEvent() {}
-void APIENTRY EaQueryAggregatedEventParameters() {}
-void APIENTRY EAQueryAggregateEventData() {}
-void APIENTRY EaFreeAggregatedEventParameters() {}
-void APIENTRY EaDeleteAggregatedEvent() {}
-void APIENTRY EADeleteAggregateEvent() {}
+void APIENTRY BriCreateBrokeredEvent(VOID) {}
+void APIENTRY BriDeleteBrokeredEvent(VOID) {}
+void APIENTRY EaCreateAggregatedEvent(VOID) {}
+void APIENTRY EACreateAggregateEvent(VOID) {}
+void APIENTRY EaQueryAggregatedEventParameters(VOID) {}
+void APIENTRY EAQueryAggregateEventData(VOID) {}
+void APIENTRY EaFreeAggregatedEventParameters(VOID) {}
+void APIENTRY EaDeleteAggregatedEvent(VOID) {}
+void APIENTRY EADeleteAggregateEvent(VOID) {}
 
 #endif

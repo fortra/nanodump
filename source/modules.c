@@ -4,6 +4,7 @@ PVOID get_peb_address(
     IN HANDLE hProcess)
 {
 #ifdef SSP
+    UNUSED(hProcess);
     // if nanodump is running as an SSP,
     // avoid calling NtQueryInformationProcess
     return (PVOID)READ_MEMLOC(PEB_OFFSET);

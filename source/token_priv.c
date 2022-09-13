@@ -34,7 +34,7 @@ BOOL enable_debug_priv(VOID)
 BOOL check_token_privileges(
     IN HANDLE hToken OPTIONAL,
     IN LPCWSTR ppwszRequiredPrivileges[],
-    IN DWORD dwNumRequiredPrivileges,
+    IN ULONG32 dwNumRequiredPrivileges,
     IN BOOL bEnablePrivilege)
 {
     BOOL success = FALSE;
@@ -59,7 +59,7 @@ BOOL check_token_privileges(
         }
     }
 
-    for (int i = 0; i < dwNumRequiredPrivileges; i++)
+    for (ULONG32 i = 0; i < dwNumRequiredPrivileges; i++)
     {
         // make sure we have all the privileges we need
         success = check_token_privilege(

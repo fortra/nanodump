@@ -1115,7 +1115,7 @@ void go(char* args, int length)
 
 void usage(char* procname)
 {
-    PRINT("usage: %s --write C:\\Windows\\Temp\\doc.docx [--valid] [--duplicate] [--spoof-callstack] [--fork] [--snapshot]] [--help]", procname);
+    PRINT("usage: %s --write C:\\Windows\\Temp\\doc.docx [--valid] [--duplicate] [--help]", procname);
     PRINT("Dumpfile options:");
     PRINT("    --write DUMP_PATH, -w DUMP_PATH");
     PRINT("            filename of the dump");

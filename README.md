@@ -221,12 +221,12 @@ To access this feature, use the paramter `--spoof-callstack` with the values `sv
 You can combine many techniques to customize how nanodump operates.  
 The following table indicates which flags can be used together.
 
-|                        | --write | --valid | --duplicate | --duplicate-local | --seclogon-leak-local | --seclogon-leak-remote | --seclogon-duplicate | --spoof-callstack | --silent-process-exit | --shtinkering | --fork | --snapshot | SSP | PPL |
+|                        | --write | --valid | --duplicate | --elevate-handle | --seclogon-leak-local | --seclogon-leak-remote | --seclogon-duplicate | --spoof-callstack | --silent-process-exit | --shtinkering | --fork | --snapshot | SSP | PPL |
 |------------------------|:-------:|:-------:|:-----------:|:-----------------:|:---------------------:|:----------------------:|:--------------------:|:-----------------:|:---------------------:|:-------------:|:------:|:----------:|:---:|:---:|
 | --write                | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                      | ✓                    | ✓                 |                       |               | ✓      | ✓          |     | ✓   |
 | --valid                | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                      | ✓                    | ✓                 |                       |               | ✓      | ✓          |     | ✓   |
 | --duplicate            | ✓       | ✓       | ✓           | ✓                 |                       |                        |                      |                   |                       | ✓             | ✓      | ✓          |     | ✓   |
-| --duplicate-local      | ✓       | ✓       | ✓           | ✓                 |                       |                        |                      | ✓                 |                       | ✓             | ✓      | ✓          |     |     |
+| --elevate-handle       | ✓       | ✓       | ✓           | ✓                 |                       |                        |                      | ✓                 |                       | ✓             | ✓      | ✓          |     |     |
 | --seclogon-leak-local  | ✓       | ✓       |             |                   | ✓                     |                        |                      |                   |                       | ✓             | ✓      | ✓          |     |     |
 | --seclogon-leak-remote | ✓       | ✓       |             |                   |                       | ✓                      |                      |                   |                       | ✓             | ✓      | ✓          |     |     |
 | --seclogon-duplicate   | ✓       | ✓       |             |                   |                       |                        | ✓                    |                   |                       | ✓             | ✓      | ✓          |     |     |

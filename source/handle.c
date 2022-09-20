@@ -343,7 +343,7 @@ BOOL obtain_lsass_handle(
     // remember the permissions we needed
     duplicate_permissions = permissions;
 
-    // if --duplicate-local was provided, we use PROCESS_QUERY_LIMITED_INFORMATION
+    // if --elevate-handle was provided, we use PROCESS_QUERY_LIMITED_INFORMATION
     if (elevate_handle)
     {
         permissions = PROCESS_QUERY_LIMITED_INFORMATION;

@@ -24,7 +24,7 @@ typedef struct _module_info
     struct _module_info* next;
     ULONG64 dll_base;
     ULONG32 size_of_image;
-    char dll_name[256];
+    char dll_name[512];
     ULONG32 name_rva;
     ULONG32 TimeDateStamp;
     ULONG32 CheckSum;

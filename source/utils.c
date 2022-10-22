@@ -940,7 +940,7 @@ BOOL kill_process(
 DWORD get_lsass_pid(VOID)
 {
     DWORD lsass_pid;
-    HANDLE hProcess = find_lsass(PROCESS_QUERY_INFORMATION, 0);
+    HANDLE hProcess = find_lsass(PROCESS_QUERY_LIMITED_INFORMATION, 0);
     if (!hProcess)
         return 0;
     lsass_pid = get_pid(hProcess);

@@ -278,6 +278,7 @@ BOOL obtain_lsass_handle(
     IN DWORD lsass_pid,
     IN BOOL duplicate_handle,
     IN BOOL elevate_handle,
+    IN BOOL duplicate_elevate,
     IN BOOL use_seclogon_duplicate,
     IN DWORD spoof_callstack,
     IN BOOL is_seclogon_leak_local_stage_2,
@@ -302,6 +303,13 @@ BOOL obtain_lsass_handle(
 
     if (!phProcess)
         return FALSE;
+
+    // --duplicate-elevate is simply --duplicate and --elevate-handle used together
+    if (duplicate_elevate)
+    {
+        elevate_handle = TRUE;
+        duplicate_handle = TRUE;
+    }
 
     if (use_seclogon_leak && !is_seclogon_leak_local_stage_2)
     {

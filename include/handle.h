@@ -179,6 +179,7 @@ BOOL obtain_lsass_handle(
     IN DWORD lsass_pid,
     IN BOOL duplicate_handle,
     IN BOOL elevate_handle,
+    IN BOOL duplicate_elevate,
     IN BOOL use_seclogon_duplicate,
     IN DWORD spoof_callstack,
     IN BOOL is_seclogon_leak_local_stage_2,

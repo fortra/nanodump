@@ -221,22 +221,23 @@ To access this feature, use the paramter `--spoof-callstack` with the values `sv
 You can combine many techniques to customize how nanodump operates.  
 The following table indicates which flags can be used together.
 
-|                        | --write | --valid | --duplicate | --elevate-handle | --seclogon-leak-local | --seclogon-leak-remote | --seclogon-duplicate | --spoof-callstack | --silent-process-exit | --shtinkering | --fork | --snapshot | SSP | PPL |
-|------------------------|:-------:|:-------:|:-----------:|:-----------------:|:---------------------:|:----------------------:|:--------------------:|:-----------------:|:---------------------:|:-------------:|:------:|:----------:|:---:|:---:|
-| --write                | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                      | ✓                    | ✓                 |                       |               | ✓      | ✓          |     | ✓   |
-| --valid                | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                      | ✓                    | ✓                 |                       |               | ✓      | ✓          |     | ✓   |
-| --duplicate            | ✓       | ✓       | ✓           | ✓                 |                       |                        |                      |                   |                       | ✓             | ✓      | ✓          |     | ✓   |
-| --elevate-handle       | ✓       | ✓       | ✓           | ✓                 |                       |                        |                      | ✓                 |                       | ✓             | ✓      | ✓          |     |     |
-| --seclogon-leak-local  | ✓       | ✓       |             |                   | ✓                     |                        |                      |                   |                       | ✓             | ✓      | ✓          |     |     |
-| --seclogon-leak-remote | ✓       | ✓       |             |                   |                       | ✓                      |                      |                   |                       | ✓             | ✓      | ✓          |     |     |
-| --seclogon-duplicate   | ✓       | ✓       |             |                   |                       |                        | ✓                    |                   |                       | ✓             | ✓      | ✓          |     |     |
-| --spoof-callstack      | ✓       | ✓       |             | ✓                 |                       |                        |                      | ✓                 |                       | ✓             | ✓      | ✓          |     |     |
-| --silent-process-exit  |         |         |             |                   |                       |                        |                      |                   | ✓                     |               |        |            |     |     |
-| --shtinkering          |         |         | ✓           | ✓                 | ✓                     | ✓                      | ✓                    | ✓                 |                       | ✓             |        |            |     |     |
-| --fork                 | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                      | ✓                    | ✓                 |                       |               | ✓      |            |     |     |
-| --snapshot             | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                      | ✓                    | ✓                 |                       |               |        | ✓          |     |     |
-| SSP                    |         |         |             |                   |                       |                        |                      |                   |                       |               |        |            | ✓   |     |
-| PPL                    | ✓       | ✓       | ✓           |                   |                       |                        |                      |                   |                       |               |        |            |     | ✓   |
+|                        | --write | --valid | --duplicate | --elevate-handle | --duplicate-elevate | --seclogon-leak-local | --seclogon-leak-remote | --seclogon-duplicate | --spoof-callstack | --silent-process-exit | --shtinkering | --fork | --snapshot | SSP | PPL |
+|------------------------|:-------:|:-------:|:-----------:|:-----------------:|:---------------------:|:---------------------:|:----------------------:|:--------------------:|:-----------------:|:---------------------:|:-------------:|:------:|:----------:|:---:|:---:|
+| --write                | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                     | ✓                      | ✓                    | ✓                 |                       |               | ✓      | ✓          |     | ✓   |
+| --valid                | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                     | ✓                      | ✓                    | ✓                 |                       |               | ✓      | ✓          |     | ✓   |
+| --duplicate            | ✓       | ✓       | ✓           |                   |                       |                       |                        |                      |                   |                       | ✓             | ✓      | ✓          |     | ✓   |
+| --elevate-handle       | ✓       | ✓       |             | ✓                 |                       |                       |                        |                      | ✓                 |                       | ✓             | ✓      | ✓          |     |     |
+| --duplicate-elevate    | ✓       | ✓       |             |                   | ✓                     |                       |                        |                      |                   |                       | ✓             | ✓      | ✓          |     |     |
+| --seclogon-leak-local  | ✓       | ✓       |             |                   |                       | ✓                     |                        |                      |                   |                       | ✓             | ✓      | ✓          |     |     |
+| --seclogon-leak-remote | ✓       | ✓       |             |                   |                       |                       | ✓                      |                      |                   |                       | ✓             | ✓      | ✓          |     |     |
+| --seclogon-duplicate   | ✓       | ✓       |             |                   |                       |                       |                        | ✓                    |                   |                       | ✓             | ✓      | ✓          |     |     |
+| --spoof-callstack      | ✓       | ✓       |             | ✓                 |                       |                       |                        |                      | ✓                 |                       | ✓             | ✓      | ✓          |     |     |
+| --silent-process-exit  |         |         |             |                   |                       |                       |                        |                      |                   | ✓                     |               |        |            |     |     |
+| --shtinkering          |         |         | ✓           | ✓                 | ✓                     | ✓                     | ✓                      | ✓                    | ✓                 |                       | ✓             |        |            |     |     |
+| --fork                 | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                     | ✓                      | ✓                    | ✓                 |                       |               | ✓      |            |     |     |
+| --snapshot             | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                     | ✓                      | ✓                    | ✓                 |                       |               |        | ✓          |     |     |
+| SSP                    |         |         |             |                   |                       |                       |                        |                      |                   |                       |               |        |            | ✓   |     |
+| PPL                    | ✓       | ✓       | ✓           |                   |                       |                       |                        |                      |                   |                       |               |        |            |     | ✓   |
 
 <h2 id="examples">4. Examples</h2>
 
@@ -311,19 +312,19 @@ Obtain a handle using seclogon leak local and create the dump using the Shtinker
 beacon> nanodump --seclogon-leak-local --shtinkering
 ```
 
-Obtain a handle with low privs and elevate it using _duplicate local_:
+Obtain a handle with low privs and elevate it using _elevate handle_:
 ```
 beacon> nanodump --elevate-handle
 ```
 
-Obtain a handle with low privs using a valid calling stack and elevate it using _duplicate local_:
+Obtain a handle with low privs using a valid calling stack and elevate it using _elevate handle_:
 ```
 beacon> nanodump --elevate-handle --spoof-callstack rpc
 ```
 
-Duplicate an existing low priv handle and elevate it using _duplicate local_:
+Duplicate an existing low priv handle and elevate it using _elevate handle_:
 ```
-beacon> nanodump --duplicate --elevate-handle
+beacon> nanodump --duplicate-elevate
 ```
 
 <h2 id="redirectors">5. HTTPS redirectors</h2>
@@ -357,4 +358,4 @@ location ~ ^...$ {
 - [itm4n](https://twitter.com/itm4n) for the original PPL userland exploit implementation, [PPLDump](https://github.com/itm4n/PPLdump).
 - [Asaf Gilboa](https://mobile.twitter.com/asaf_gilboa) for [Lsass Memory Dumps are Stealthier than Ever Before - Part 2](https://www.deepinstinct.com/blog/lsass-memory-dumps-are-stealthier-than-ever-before-part-2) and the Shtinkering technique
 - [William Burgess](https://twitter.com/joehowwolf) for [Spoofing Call Stacks To Confuse EDRs](https://labs.withsecure.com/blog/spoofing-call-stacks-to-confuse-edrs)
-- [Sebastian Feldmann](https://twitter.com/thefLinkk) and [Fabian](https://twitter.com/testert01) for the _duplicate local_ technique discussed at [Morph Your Malware!](https://www.youtube.com/watch?v=AucQUjJBJuw)
+- [Sebastian Feldmann](https://twitter.com/thefLinkk) and [Fabian](https://twitter.com/testert01) for the _elevate handle_ technique discussed at [Morph Your Malware!](https://www.youtube.com/watch?v=AucQUjJBJuw)

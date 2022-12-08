@@ -153,13 +153,15 @@ typedef struct _HANDLE_LIST
     HANDLE Handle[MAX_HANDLES];
 } HANDLE_LIST, *PHANDLE_LIST;
 
-PHANDLE_LIST find_token_handles_in_process(
+BOOL find_token_handles_in_process(
     IN DWORD process_pid,
-    IN DWORD permissions);
+    IN DWORD permissions,
+    OUT PHANDLE_LIST* phandle_list);
 
-PHANDLE_LIST find_process_handles_in_process(
+BOOL find_process_handles_in_process(
     IN DWORD process_pid,
-    IN DWORD permissions);
+    IN DWORD permissions,
+    OUT PHANDLE_LIST* phandle_list);
 
 BOOL check_handle_privs(
     IN HANDLE handle,
@@ -213,18 +215,20 @@ HANDLE get_process_handle(
     IN BOOL quiet,
     IN DWORD attributes);
 
-PSYSTEM_HANDLE_INFORMATION get_all_handles(VOID);
+BOOL get_all_handles(
+    OUT PSYSTEM_HANDLE_INFORMATION* phandle_table);
 
 BOOL process_is_included(
     IN PPROCESS_LIST process_list,
     IN ULONG ProcessId);
 
-PPROCESS_LIST get_processes_from_handle_table(
-    IN PSYSTEM_HANDLE_INFORMATION handleTableInformation);
+BOOL get_processes_from_handle_table(
+    IN PSYSTEM_HANDLE_INFORMATION handleTableInformation,
+    OUT PPROCESS_LIST* pprocess_list);
 
-POBJECT_TYPES_INFORMATION QueryObjectTypesInfo(VOID);
+POBJECT_TYPES_INFORMATION query_object_types_info(VOID);
 
-BOOL GetTypeIndexByName(
+BOOL get_type_index_by_name(
     IN LPWSTR handle_type,
     OUT PULONG ProcesTypeIndex);
 

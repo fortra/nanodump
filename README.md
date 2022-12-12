@@ -17,7 +17,7 @@ A flexible tool that creates a minidump of the LSASS process.
 <h2 id="usage">1. Usage</h2>
 
 ```
-usage: nanodump [--write C:\Windows\Temp\doc.docx] [--valid] [--duplicate] [--elevate-handle] [--seclogon-leak-local] [--seclogon-leak-remote C:\Windows\notepad.exe] [--seclogon-duplicate] [--spoof-callstack svchost] [--silent-process-exit C:\Windows\Temp] [--shtinkering] [--fork] [--snapshot] [--getpid] [--help]
+usage: Z:\nanodump.x64.exe [--write C:\Windows\Temp\doc.docx] [--valid] [--duplicate] [--elevate-handle] [--duplicate-elevate] [--seclogon-leak-local] [--seclogon-leak-remote C:\Windows\notepad.exe] [--seclogon-duplicate] [--spoof-callstack svchost] [--silent-process-exit C:\Windows\Temp] [--shtinkering] [--fork] [--snapshot] [--getpid] [--help]
 Dumpfile options:
     --write DUMP_PATH, -w DUMP_PATH
             filename of the dump
@@ -25,7 +25,9 @@ Dumpfile options:
             create a dump with a valid signature
 Obtain an LSASS handle via:
     --duplicate, -d
-            duplicate an existing LSASS handle
+            duplicate a high privileged existing LSASS handle
+    --duplicate-elevate, -de
+            duplicate a low privileged existing LSASS handle and then elevate it
     --seclogon-leak-local, -sll
             leak an LSASS handle into nanodump via seclogon
     --seclogon-leak-remote BIN_PATH, -slt BIN_PATH

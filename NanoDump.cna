@@ -41,7 +41,7 @@ local('$string $c');
 beacon_command_register(
 "nanodump",
 "Use syscalls to dump LSASS.",
-"usage: Z:\nanodump.x64.exe [--write C:\Windows\Temp\doc.docx] [--valid] [--duplicate] [--elevate-handle] [--duplicate-elevate] [--seclogon-leak-local] [--seclogon-leak-remote C:\Windows\notepad.exe] [--seclogon-duplicate] [--spoof-callstack svchost] [--silent-process-exit C:\Windows\Temp] [--shtinkering] [--fork] [--snapshot] [--getpid] [--help]\
+"usage: nanodump [--write C:\Windows\Temp\doc.docx] [--valid] [--duplicate] [--elevate-handle] [--duplicate-elevate] [--seclogon-leak-local] [--seclogon-leak-remote C:\Windows\notepad.exe] [--seclogon-duplicate] [--spoof-callstack svchost] [--silent-process-exit C:\Windows\Temp] [--shtinkering] [--fork] [--snapshot] [--getpid] [--help]\
 Dumpfile options:\
     --write DUMP_PATH, -w DUMP_PATH\
             filename of the dump\

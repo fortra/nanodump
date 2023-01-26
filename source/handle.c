@@ -771,7 +771,7 @@ BOOL get_type_index_by_name(
         CurrentType = (POBJECT_TYPE_INFORMATION_V2)OBJECT_TYPES_NEXT_ENTRY(CurrentType);
     }
 
-    DPRINT_ERR("Index of type 'Process' not found");
+    DPRINT_ERR("Index of type '%ls' not found", handle_type);
 
 cleanup:
     if (ObjectTypes)

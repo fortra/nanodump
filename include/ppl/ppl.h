@@ -93,24 +93,3 @@ BOOL check_ppl_requirements(VOID);
 
 BOOL get_hijackeable_dllname(
     OUT LPWSTR* ppwszDllName);
-
-BOOL impersonate_user(
-    IN LPCWSTR pwszSid,
-    IN PHANDLE phToken,
-    IN LPCWSTR pwszPrivileges[],
-    IN DWORD dwPrivilegeCount);
-
-BOOL impersonate(
-    IN HANDLE hToken);
-
-BOOL find_process_token_and_duplicate(
-    IN LPCWSTR pwszTargetSid,
-    IN LPCWSTR pwszPrivileges[],
-    IN DWORD dwPrivilegeCount,
-    OUT PHANDLE phToken);
-
-BOOL impersonate_system(
-    OUT PHANDLE phSystemToken);
-
-BOOL impersonate_local_service(
-    OUT PHANDLE phLocalServiceToken);

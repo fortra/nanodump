@@ -579,7 +579,7 @@ HANDLE open_handle_with_spoofed_callstack(
             break;
         case RPC_STACK:
             DPRINT("using rpc callstack");
-            set_wmi_callstack(callstack, &number_of_frames);
+            set_rpc_callstack(callstack, &number_of_frames);
             break;
         default:
             DPRINT_ERR("Invalid stack type");

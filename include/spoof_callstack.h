@@ -46,6 +46,7 @@ typedef struct _STACK_FRAME {
     BOOL pushRbp;
     ULONG countOfCodes;
     BOOL pushRbpIndex;
+    BOOL is_valid;
 } STACK_FRAME, *PSTACK_FRAME;
 
 //

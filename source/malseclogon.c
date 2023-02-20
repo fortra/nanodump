@@ -354,6 +354,10 @@ BOOL malseclogon_stage_1(
             NULL,
             &startInfo,
             &procInfo);
+        if (procInfo.hProcess)
+            NtClose(procInfo.hProcess);
+        if (procInfo.hThread)
+            NtClose(procInfo.hThread);
         if (!success)
         {
             function_failed("CreateProcessWithLogonW");
@@ -513,6 +517,10 @@ VOID malseclogon_trigger_lock(
                 NULL,
                 (LPSTARTUPINFOW)&startInfo,
                 &procInfo);
+            if (procInfo.hProcess)
+                NtClose(procInfo.hProcess);
+            if (procInfo.hThread)
+                NtClose(procInfo.hThread);
             if (success)
             {
                 break;
@@ -533,6 +541,10 @@ VOID malseclogon_trigger_lock(
             NULL,
             (LPSTARTUPINFOW)&startInfo,
             &procInfo);
+        if (procInfo.hProcess)
+            NtClose(procInfo.hProcess);
+        if (procInfo.hThread)
+            NtClose(procInfo.hThread);
     }
 
 end:

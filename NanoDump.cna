@@ -442,12 +442,6 @@ alias nanodump {
         return;
     }
 
-    if($use_seclogon_leak && $use_seclogon_duplicate)
-    {
-        berror($1, "The options --malseclogon-leak and --seclogon-duplicate cannot be used together");
-        return;
-    }
-
     if(!$use_lsass_shtinkering && $use_seclogon_leak_local && !$write_file)
     {
         berror($1, "If --seclogon-leak-local is being used, you need to provide the dump path with --write");

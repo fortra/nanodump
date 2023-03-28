@@ -17,6 +17,12 @@ typedef struct _linked_list
 
 #define intAlloc(size) HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size)
 #define intFree(addr) HeapFree(GetProcessHeap(), 0, addr)
+#define DATA_FREE(d, l) \
+    if (d) { \
+        memset(d, 0, l); \
+        intFree(d); \
+        d = NULL; \
+    }
 
 #define RVA(type, base_addr, rva) (type)(ULONG_PTR)((ULONG_PTR) base_addr + rva)
 
@@ -149,8 +155,10 @@ BOOL create_folder(
 BOOL wait_for_process(
     IN HANDLE hProcess);
 
-PVOID get_process_image(
-    IN HANDLE hProcess);
+BOOL get_process_image(
+    IN HANDLE hProcess,
+    OUT PUNICODE_STRING* process_image,
+    OUT PULONG buffer_size);
 
 BOOL is_lsass(
     IN HANDLE hProcess);
@@ -175,7 +183,8 @@ VOID print_success(
     IN BOOL write_dump_to_disk);
 
 VOID free_linked_list(
-    IN PVOID head);
+    IN PVOID head,
+    IN ULONG node_size);
 
 PVOID allocate_memory(
     OUT PSIZE_T region_size);

@@ -216,7 +216,8 @@ HANDLE get_process_handle(
     IN DWORD attributes);
 
 BOOL get_all_handles(
-    OUT PSYSTEM_HANDLE_INFORMATION* phandle_table);
+    OUT PSYSTEM_HANDLE_INFORMATION* phandle_table,
+    OUT PULONG phandle_table_size);
 
 BOOL process_is_included(
     IN PPROCESS_LIST process_list,
@@ -226,7 +227,9 @@ BOOL get_processes_from_handle_table(
     IN PSYSTEM_HANDLE_INFORMATION handleTableInformation,
     OUT PPROCESS_LIST* pprocess_list);
 
-POBJECT_TYPES_INFORMATION query_object_types_info(VOID);
+BOOL query_object_types_info(
+    POBJECT_TYPES_INFORMATION* pObjectTypes,
+    PULONG pObjectTypesSize);
 
 BOOL get_type_index_by_name(
     IN LPWSTR handle_type,

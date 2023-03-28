@@ -698,7 +698,9 @@ HANDLE open_handle_with_spoofed_callstack(
 
 cleanup:
     if (callstack)
-        intFree(callstack);
+    {
+        DATA_FREE(callstack, sizeof(STACK_FRAME) * MAX_FRAME_NUM);
+    }
     if (hThread)
         NtClose(hThread);
     if (pHandler)

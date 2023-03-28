@@ -207,7 +207,9 @@ end:
     if (hLink)
         NtClose(hLink);
     if (pwszLinkPath)
-        intFree(pwszLinkPath);
+    {
+        DATA_FREE(pwszLinkPath, wcslen(pwszLinkPath) * sizeof(WCHAR));
+    }
 
     return bReturnValue;
 }

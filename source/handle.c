@@ -15,6 +15,7 @@ BOOL find_token_handles_in_process(
     BOOL ret_val = FALSE;
     BOOL success = FALSE;
     PSYSTEM_HANDLE_INFORMATION handleTableInformation = NULL;
+    ULONG handleTableInformationSize = 0;
 
     DPRINT("Finding token handles in the process with PID %ld", process_pid);
 
@@ -30,7 +31,9 @@ BOOL find_token_handles_in_process(
     if (!success)
         goto cleanup;
 
-    success = get_all_handles(&handleTableInformation);
+    success = get_all_handles(
+        &handleTableInformation,
+        &handleTableInformationSize);
     if (!success)
         goto cleanup;
 
@@ -65,9 +68,13 @@ BOOL find_token_handles_in_process(
 
 cleanup:
     if (!ret_val && handle_list)
-        intFree(handle_list);
+    {
+        DATA_FREE(handle_list, sizeof(HANDLE_LIST));
+    }
     if (handleTableInformation)
-        intFree(handleTableInformation);
+    {
+        DATA_FREE(handleTableInformation, handleTableInformationSize);
+    }
 
     return ret_val;
 }
@@ -80,6 +87,7 @@ BOOL find_process_handles_in_process(
     BOOL ret_val = FALSE;
     BOOL success = FALSE;
     PSYSTEM_HANDLE_INFORMATION handleTableInformation = NULL;
+    ULONG handleTableInformationSize = 0;
 
     DPRINT("Finding process handles in the process with PID %ld", process_pid);
 
@@ -95,7 +103,9 @@ BOOL find_process_handles_in_process(
     if (!success)
         goto cleanup;
 
-    success = get_all_handles(&handleTableInformation);
+    success = get_all_handles(
+        &handleTableInformation,
+        &handleTableInformationSize);
     if (!success)
         goto cleanup;
 
@@ -130,9 +140,13 @@ BOOL find_process_handles_in_process(
 
 cleanup:
     if (handleTableInformation)
-        intFree(handleTableInformation);
+    {
+        DATA_FREE(handleTableInformation, handleTableInformationSize);
+    }
     if (!ret_val && handle_list)
-        intFree(handle_list);
+    {
+        DATA_FREE(handle_list, sizeof(HANDLE_LIST));
+    }
 
     return ret_val;
 }
@@ -598,11 +612,13 @@ HANDLE get_process_handle(
 
 // get all handles in the system
 BOOL get_all_handles(
-    OUT PSYSTEM_HANDLE_INFORMATION* phandle_table)
+    OUT PSYSTEM_HANDLE_INFORMATION* phandle_table,
+    OUT PULONG phandle_table_size)
 {
     BOOL ret_val = FALSE;
     NTSTATUS status = STATUS_UNSUCCESSFUL;
     ULONG buffer_size = sizeof(SYSTEM_HANDLE_INFORMATION);
+    ULONG prev_buffer_size = buffer_size;
     PVOID handleTableInformation = NULL;
 
     handleTableInformation = intAlloc(buffer_size);
@@ -623,7 +639,8 @@ BOOL get_all_handles(
         if (status == STATUS_INFO_LENGTH_MISMATCH)
         {
             // the buffer was too small, buffer_size now has the new length
-            intFree(handleTableInformation); handleTableInformation = NULL;
+            DATA_FREE(handleTableInformation, prev_buffer_size);
+            prev_buffer_size = buffer_size;
             handleTableInformation = intAlloc(buffer_size);
             if (!handleTableInformation)
             {
@@ -641,12 +658,15 @@ BOOL get_all_handles(
     }
 
     *phandle_table = (PSYSTEM_HANDLE_INFORMATION)handleTableInformation;
+    *phandle_table_size = buffer_size;
     ret_val = TRUE;
     DPRINT("Obtained the handle table");
 
 cleanup:
     if (!ret_val && handleTableInformation)
-        intFree(handleTableInformation);
+    {
+        DATA_FREE(handleTableInformation, buffer_size);
+    }
 
     return ret_val;
 }
@@ -705,25 +725,31 @@ BOOL get_processes_from_handle_table(
 
 cleanup:
     if (!ret_val && process_list)
-        intFree(process_list);
+    {
+        DATA_FREE(process_list, sizeof(PROCESS_LIST));
+    }
 
     return ret_val;
 }
 
 // call NtQueryObject with ObjectTypesInformation
-POBJECT_TYPES_INFORMATION query_object_types_info(VOID)
+BOOL query_object_types_info(
+    POBJECT_TYPES_INFORMATION* pObjectTypes,
+    PULONG pObjectTypesSize)
 {
     NTSTATUS status = STATUS_UNSUCCESSFUL;
     ULONG BufferLength = 0x1000;
+    ULONG PrevBufferLength = BufferLength;
     POBJECT_TYPES_INFORMATION obj_type_information = NULL;
 
     do
     {
+        PrevBufferLength = BufferLength;
         obj_type_information = intAlloc(BufferLength);
         if (!obj_type_information)
         {
             malloc_failed();
-            return NULL;
+            return FALSE;
         }
 
         status = NtQueryObject_(
@@ -735,14 +761,16 @@ POBJECT_TYPES_INFORMATION query_object_types_info(VOID)
 
         if (NT_SUCCESS(status))
         {
-            return obj_type_information;
+            *pObjectTypes = obj_type_information;
+            *pObjectTypesSize = BufferLength;
+            return TRUE;
         }
 
-        intFree(obj_type_information); obj_type_information = NULL;
+        DATA_FREE(obj_type_information, PrevBufferLength);
     } while (status == STATUS_INFO_LENGTH_MISMATCH);
 
     syscall_failed("NtQueryObject", status);
-    return NULL;
+    return FALSE;
 }
 
 // get index of object type 'Process'
@@ -751,11 +779,15 @@ BOOL get_type_index_by_name(
     OUT PULONG ProcesTypeIndex)
 {
     BOOL ret_val = FALSE;
+    BOOL success = FALSE;
     POBJECT_TYPES_INFORMATION ObjectTypes = NULL;
     POBJECT_TYPE_INFORMATION_V2 CurrentType = NULL;
+    ULONG ObjectTypesSize = 0;
 
-    ObjectTypes = query_object_types_info();
-    if (!ObjectTypes)
+    success = query_object_types_info(
+        &ObjectTypes,
+        &ObjectTypesSize);
+    if (!success)
         goto cleanup;
 
     CurrentType = (POBJECT_TYPE_INFORMATION_V2)OBJECT_TYPES_FIRST_ENTRY(ObjectTypes);
@@ -775,7 +807,9 @@ BOOL get_type_index_by_name(
 
 cleanup:
     if (ObjectTypes)
-        intFree(ObjectTypes);
+    {
+        DATA_FREE(ObjectTypes, ObjectTypesSize);
+    }
 
     return ret_val;
 }
@@ -793,6 +827,7 @@ HANDLE duplicate_lsass_handle(
     HANDLE hProcess = NULL;
     HANDLE hDuped = NULL;
     PSYSTEM_HANDLE_INFORMATION handleTableInformation = NULL;
+    ULONG handleTableInformationSize = 0;
     PPROCESS_LIST process_list = NULL;
     ULONG ProcessId = 0;
     DWORD local_pid = 0;
@@ -802,7 +837,9 @@ HANDLE duplicate_lsass_handle(
     if (!success)
         goto cleanup;
 
-    success = get_all_handles(&handleTableInformation);
+    success = get_all_handles(
+        &handleTableInformation,
+        &handleTableInformationSize);
     if (!success)
         goto cleanup;
 
@@ -899,9 +936,13 @@ HANDLE duplicate_lsass_handle(
 
 cleanup:
     if (handleTableInformation)
-        intFree(handleTableInformation);
+    {
+        DATA_FREE(handleTableInformation, handleTableInformationSize);
+    }
     if (process_list)
-        intFree(process_list);
+    {
+        DATA_FREE(process_list, sizeof(PROCESS_LIST));
+    }
     if (hProcess)
         NtClose(hProcess);
 

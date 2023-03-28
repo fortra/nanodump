@@ -296,14 +296,14 @@ Pmodule_info write_module_list_stream(
         if (!append(dc, &full_name_length, 4))
         {
             DPRINT_ERR("Failed to write the ModuleListStream");
-            free_linked_list(module_list); module_list = NULL;
+            free_linked_list(module_list, sizeof(module_info)); module_list = NULL;
             return NULL;
         }
         // write the path
         if (!append(dc, curr_module->dll_name, full_name_length))
         {
             DPRINT_ERR("Failed to write the ModuleListStream");
-            free_linked_list(module_list); module_list = NULL;
+            free_linked_list(module_list, sizeof(module_info)); module_list = NULL;
             return NULL;
         }
         curr_module = curr_module->next;
@@ -314,7 +314,7 @@ Pmodule_info write_module_list_stream(
     if (!append(dc, &number_of_modules, 4))
     {
         DPRINT_ERR("Failed to write the ModuleListStream");
-        free_linked_list(module_list); module_list = NULL;
+        free_linked_list(module_list, sizeof(module_info)); module_list = NULL;
         return NULL;
     }
     BYTE module_bytes[SIZE_OF_MINIDUMP_MODULE] = { 0 };
@@ -376,7 +376,7 @@ Pmodule_info write_module_list_stream(
         if (!append(dc, module_bytes, sizeof(module_bytes)))
         {
             DPRINT_ERR("Failed to write the ModuleListStream");
-            free_linked_list(module_list); module_list = NULL;
+            free_linked_list(module_list, sizeof(module_info)); module_list = NULL;
             return NULL;
         }
         curr_module = curr_module->next;
@@ -539,14 +539,14 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
     if (!append(dc, &number_of_ranges, 8))
     {
         DPRINT_ERR("Failed to write the Memory64ListStream");
-        free_linked_list(memory_ranges); memory_ranges = NULL;
+        free_linked_list(memory_ranges, sizeof(MiniDumpMemoryDescriptor64)); memory_ranges = NULL;
         return NULL;
     }
     // make sure we don't overflow stream_size
     if (16 + 16 * number_of_ranges > 0xffffffff)
     {
         DPRINT_ERR("Too many ranges!");
-        free_linked_list(memory_ranges); memory_ranges = NULL;
+        free_linked_list(memory_ranges, sizeof(MiniDumpMemoryDescriptor64)); memory_ranges = NULL;
         return NULL;
     }
 
@@ -556,7 +556,7 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
     if (!append(dc, &base_rva, 8))
     {
         DPRINT_ERR("Failed to write the Memory64ListStream");
-        free_linked_list(memory_ranges); memory_ranges = NULL;
+        free_linked_list(memory_ranges, sizeof(MiniDumpMemoryDescriptor64)); memory_ranges = NULL;
         return NULL;
     }
 
@@ -567,13 +567,13 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
         if (!append(dc, &curr_range->StartOfMemoryRange, 8))
         {
             DPRINT_ERR("Failed to write the Memory64ListStream");
-            free_linked_list(memory_ranges); memory_ranges = NULL;
+            free_linked_list(memory_ranges, sizeof(MiniDumpMemoryDescriptor64)); memory_ranges = NULL;
             return NULL;
         }
         if (!append(dc, &curr_range->DataSize, 8))
         {
             DPRINT_ERR("Failed to write the Memory64ListStream");
-            free_linked_list(memory_ranges); memory_ranges = NULL;
+            free_linked_list(memory_ranges, sizeof(MiniDumpMemoryDescriptor64)); memory_ranges = NULL;
             return NULL;
         }
         curr_range = curr_range->next;
@@ -624,13 +624,11 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
         if (!append(dc, buffer, (ULONG32)curr_range->DataSize))
         {
             DPRINT_ERR("Failed to write the Memory64ListStream");
-            free_linked_list(memory_ranges); memory_ranges = NULL;
-            intFree(buffer); buffer = NULL;
+            free_linked_list(memory_ranges, sizeof(MiniDumpMemoryDescriptor64)); memory_ranges = NULL;
+            DATA_FREE(buffer, curr_range->DataSize);
             return NULL;
         }
-        // overwrite it first, just in case
-        memset(buffer, 0, curr_range->DataSize);
-        intFree(buffer); buffer = NULL;
+        DATA_FREE(buffer, curr_range->DataSize);
         curr_range = curr_range->next;
     }
 
@@ -660,13 +658,13 @@ BOOL NanoDumpWriteDump(
     memory_ranges = write_memory64_list_stream(dc, module_list);
     if (!memory_ranges)
     {
-        free_linked_list(module_list); module_list = NULL;
+        free_linked_list(module_list, sizeof(module_info)); module_list = NULL;
         return FALSE;
     }
 
-    free_linked_list(module_list); module_list = NULL;
+    free_linked_list(module_list, sizeof(module_info)); module_list = NULL;
 
-    free_linked_list(memory_ranges); memory_ranges = NULL;
+    free_linked_list(memory_ranges, sizeof(MiniDumpMemoryDescriptor64)); memory_ranges = NULL;
 
     DPRINT("The nanodump was created succesfully");
 

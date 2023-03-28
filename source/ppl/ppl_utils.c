@@ -172,9 +172,13 @@ BOOL check_known_dll_symbolic_link(
 
 end:
     if (pwszLinkName)
-        intFree(pwszLinkName);
+    {
+        DATA_FREE(pwszLinkName, wcslen(pwszLinkName) * sizeof(WCHAR));
+    }
     if (pwszTargetLocal)
-        intFree(pwszTargetLocal);
+    {
+        DATA_FREE(pwszTargetLocal, wcslen(pwszTargetLocal) * sizeof(WCHAR));
+    }
     if (hLink)
         NtClose(hLink);
 

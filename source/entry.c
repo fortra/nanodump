@@ -250,7 +250,7 @@ cleanup:
     if (created_processes)
     {
         kill_created_processes(created_processes);
-        intFree(created_processes); created_processes = NULL;
+        DATA_FREE(created_processes, sizeof(PROCESS_LIST));
     }
     if (hImpersonate)
     {
@@ -894,7 +894,7 @@ cleanup:
     if (created_processes)
     {
         kill_created_processes(created_processes);
-        intFree(created_processes); created_processes = NULL;
+        DATA_FREE(created_processes, sizeof(PROCESS_LIST));
     }
     if (hImpersonate)
     {

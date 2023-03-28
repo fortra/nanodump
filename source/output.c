@@ -8,6 +8,14 @@
 #ifndef intFree
 #define intFree(addr) HeapFree(GetProcessHeap(), 0, addr)
 #endif
+#ifndef DATA_FREE
+#define DATA_FREE(d, l) \
+    if (d) { \
+        memset(d, 0, l); \
+        intFree(d); \
+        d = NULL; \
+    }
+#endif
 
 VOID LogToConsole(
     IN LPCSTR pwszFormat,
@@ -40,7 +48,7 @@ VOID LogToConsole(
 
         WriteConsole(GetStdHandle(STD_OUTPUT_HANDLE), pwszOutputString, (DWORD)strlen(pwszOutputString), NULL, NULL);
 
-        intFree(pwszOutputString); pwszOutputString = NULL;
+        DATA_FREE(pwszOutputString, dwOutputStringSize);
     }
 
     va_end(va);

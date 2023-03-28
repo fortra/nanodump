@@ -513,7 +513,7 @@ BOOL run_ppl_bypass_exploit(
         goto end;
     }
 
-    intFree(pwszCommandLine); pwszCommandLine = NULL;
+    DATA_FREE(pwszCommandLine, wcslen(pwszCommandLine) * sizeof(WCHAR));
 
     success = wait_for_process(hNewProcess);
     if (!success)
@@ -551,15 +551,23 @@ end:
     if (hNewProcessToken)
         NtClose(hNewProcessToken);
     if (pwszCommandLine)
-        intFree(pwszCommandLine);
+    {
+        DATA_FREE(pwszCommandLine, wcslen(pwszCommandLine) * sizeof(WCHAR));
+    }
     if (pwszDosDeviceName)
-        intFree(pwszDosDeviceName);
+    {
+        DATA_FREE(pwszDosDeviceName, wcslen(pwszDosDeviceName) * sizeof(WCHAR));
+    }
     if (pwszDosDeviceTargetPath)
-        intFree(pwszDosDeviceTargetPath);
+    {
+        DATA_FREE(pwszDosDeviceTargetPath, wcslen(pwszDosDeviceTargetPath) * sizeof(WCHAR));
+    }
     if (hDllLink)
         NtClose(hDllLink);
     if (pwszDllLinkName)
-        intFree(pwszDllLinkName);
+    {
+        DATA_FREE(pwszDllLinkName, wcslen(pwszDllLinkName) * sizeof(WCHAR));
+    }
     if (hKnownDllsObjDir)
         NtClose(hKnownDllsObjDir);
     if (hLocalServiceToken)
@@ -567,7 +575,9 @@ end:
     if (hSystemToken)
         NtClose(hSystemToken);
     if (pwszDllToHijack)
-        intFree(pwszDllToHijack);
+    {
+        DATA_FREE(pwszDllToHijack, wcslen(pwszDllToHijack) * sizeof(WCHAR));
+    }
     if (hDllSection)
         NtClose(hDllSection);
     if (hNewProcess)
@@ -960,7 +970,9 @@ BOOL write_payload_dll_transacted(
 
 end:
     if (pwszTargetFile)
-        intFree(pwszTargetFile);
+    {
+        DATA_FREE(pwszTargetFile, wcslen(pwszTargetFile) * sizeof(WCHAR));
+    }
 
     return bReturnValue;
 }
@@ -1079,7 +1091,7 @@ BOOL get_hijackeable_dllname(
 
     DPRINT_ERR("Invalid Windows version");
 
-    intFree(*ppwszDllName); *ppwszDllName = NULL;
+    DATA_FREE(*ppwszDllName, 64 * sizeof(WCHAR));
 
     return FALSE;
 }

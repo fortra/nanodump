@@ -580,7 +580,9 @@ cleanup:
         DPRINT("cleaned the registry key");
     }
     if (receivingMessage)
-        intFree(receivingMessage);
+    {
+        DATA_FREE(receivingMessage, sizeof(ReportExceptionWerAlpcMessage));
+    }
 
     return ret_val;
 }

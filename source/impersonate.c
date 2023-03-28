@@ -79,6 +79,7 @@ BOOL find_process_token_and_duplicate(
     PSYSTEM_PROCESS_INFORMATION pProcInfo = NULL;
     HANDLE hProcess = NULL, hToken = NULL, hTokenDup = NULL;
     DWORD dwBufSize = 0x1000;
+    DWORD dwPrevBufSize = dwBufSize;
     PSID pSidTmp = NULL;
     LPWSTR pwszUsername = NULL;
     NTSTATUS status = STATUS_UNSUCCESSFUL;
@@ -109,6 +110,7 @@ BOOL find_process_token_and_duplicate(
     // get information of all currently running processes
     do
     {
+        dwPrevBufSize = dwBufSize;
         pBuffer = intAlloc(dwBufSize);
         if (!pBuffer)
         {
@@ -125,7 +127,7 @@ BOOL find_process_token_and_duplicate(
         if (NT_SUCCESS(status))
             break;
 
-        intFree(pBuffer); pBuffer = NULL;
+        DATA_FREE(pBuffer, dwPrevBufSize);
     } while (status == STATUS_BUFFER_TOO_SMALL || status == STATUS_INFO_LENGTH_MISMATCH);
 
     if (!NT_SUCCESS(status))
@@ -214,7 +216,7 @@ BOOL find_process_token_and_duplicate(
                                     }
                                 }
                             }
-                            intFree(pwszUsername); pwszUsername = NULL;
+                            DATA_FREE(pwszUsername, wcslen(pwszUsername) * sizeof(WCHAR));
                         }
                         LocalFree(pSidTmp); pSidTmp = NULL;
                     }
@@ -248,7 +250,9 @@ end:
     if (pTargetSid)
         LocalFree(pTargetSid);
     if (pBuffer)
-        intFree(pBuffer);
+    {
+        DATA_FREE(pBuffer, dwBufSize);
+    }
 
     return bReturnValue;
 }
@@ -420,6 +424,7 @@ BOOL token_get_sid(
 {
     BOOL bReturnValue = FALSE;
     DWORD dwSize = 8;
+    DWORD dwPrevSize = dwSize;
     PTOKEN_USER pTokenUser = NULL;
     NTSTATUS status = STATUS_UNSUCCESSFUL;
     BOOL success;
@@ -437,6 +442,7 @@ BOOL token_get_sid(
 
     do
     {
+        dwPrevSize = dwSize;
         pTokenUser = intAlloc(dwSize);
         if (!pTokenUser)
         {
@@ -453,7 +459,7 @@ BOOL token_get_sid(
         if (NT_SUCCESS(status))
             break;
 
-        intFree(pTokenUser); pTokenUser = NULL;
+        DATA_FREE(pTokenUser, dwPrevSize);
     } while (status == STATUS_BUFFER_TOO_SMALL);
 
     if (!NT_SUCCESS(status))
@@ -483,7 +489,9 @@ BOOL token_get_sid(
 
 end:
     if (pTokenUser)
-        intFree(pTokenUser);
+    {
+        DATA_FREE(pTokenUser, dwSize);
+    }
     if (!bReturnValue && *ppSid)
     {
         LocalFree(*ppSid); *ppSid = NULL;
@@ -611,11 +619,13 @@ BOOL token_is_not_restricted(
     OUT PBOOL pbIsNotRestricted)
 {
     DWORD dwSize = 8;
+    DWORD dwPrevSize = dwSize;
     PTOKEN_GROUPS pTokenGroups = NULL;
     NTSTATUS status;
 
     do
     {
+        dwPrevSize = dwSize;
         pTokenGroups = intAlloc(dwSize);
         if (!pTokenGroups)
         {
@@ -632,7 +642,7 @@ BOOL token_is_not_restricted(
         if (NT_SUCCESS(status))
             break;
 
-        intFree(pTokenGroups); pTokenGroups = NULL;
+        DATA_FREE(pTokenGroups, dwPrevSize);
     } while (status == STATUS_BUFFER_TOO_SMALL);
 
     if (!NT_SUCCESS(status))
@@ -643,7 +653,7 @@ BOOL token_is_not_restricted(
 
     *pbIsNotRestricted = pTokenGroups->GroupCount == 0;
 
-    intFree(pTokenGroups); pTokenGroups = NULL;
+    DATA_FREE(pTokenGroups, dwSize);
 
     return TRUE;
 }

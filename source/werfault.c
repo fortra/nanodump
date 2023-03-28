@@ -257,9 +257,13 @@ end:
     if (SPEregKeyHandle)
         NtClose(SPEregKeyHandle);
     if (IFEORegistryKeyName.Buffer)
-        intFree(IFEORegistryKeyName.Buffer);
+    {
+        DATA_FREE(IFEORegistryKeyName.Buffer, IFEORegistryKeyName.MaximumLength);
+    }
     if (SPERegistryKeyName.Buffer)
-        intFree(SPERegistryKeyName.Buffer);
+    {
+        DATA_FREE(SPERegistryKeyName.Buffer, SPERegistryKeyName.MaximumLength);
+    }
 
     return success;
 }

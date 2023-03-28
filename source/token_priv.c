@@ -94,6 +94,7 @@ BOOL check_token_privilege(
 {
     BOOL bReturnValue = FALSE;
     ULONG dwTokenPrivilegesSize = 8, i = 0, dwPrivilegeNameLength = 0;
+    ULONG dwPrevTokenPrivilegesSize = dwTokenPrivilegesSize;
     PTOKEN_PRIVILEGES pTokenPrivileges = NULL;
     LookupPrivilegeNameW_t LookupPrivilegeNameW;
     LUID_AND_ATTRIBUTES laa = { 0 };
@@ -132,6 +133,7 @@ BOOL check_token_privilege(
 
     do
     {
+        dwPrevTokenPrivilegesSize = dwTokenPrivilegesSize;
         pTokenPrivileges = intAlloc(dwTokenPrivilegesSize);
         if (!pTokenPrivileges)
         {
@@ -148,7 +150,7 @@ BOOL check_token_privilege(
         if (NT_SUCCESS(status))
             break;
 
-        intFree(pTokenPrivileges); pTokenPrivileges = NULL;
+        DATA_FREE(pTokenPrivileges, dwPrevTokenPrivilegesSize);
     } while (status == STATUS_BUFFER_TOO_SMALL);
 
     if (!NT_SUCCESS(status))
@@ -246,7 +248,7 @@ BOOL check_token_privilege(
 
             break;
         }
-        intFree(pwszPrivilegeNameTemp); pwszPrivilegeNameTemp = NULL;
+        DATA_FREE(pwszPrivilegeNameTemp, wcslen(pwszPrivilegeNameTemp) * sizeof(WCHAR));
     }
 
     if (!found_priv)
@@ -256,9 +258,13 @@ BOOL check_token_privilege(
 
 end:
     if (pTokenPrivileges)
-        intFree(pTokenPrivileges);
+    {
+        DATA_FREE(pTokenPrivileges, dwTokenPrivilegesSize);
+    }
     if (pwszPrivilegeNameTemp)
-        intFree(pwszPrivilegeNameTemp);
+    {
+        DATA_FREE(pwszPrivilegeNameTemp, wcslen(pwszPrivilegeNameTemp) * sizeof(WCHAR));
+    }
     if (own_token && hToken)
         NtClose(hToken);
 

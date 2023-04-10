@@ -1314,4 +1314,28 @@ NtUnmapViewOfSection PROC
 	jmp r11
 NtUnmapViewOfSection ENDP
 
+NtImpersonateThread PROC
+	mov [rsp +8], rcx
+	mov [rsp+16], rdx
+	mov [rsp+24], r8
+	mov [rsp+32], r9
+	mov rcx, 00C26D619h
+	push rcx
+	sub rsp, 028h
+	call SW3_GetSyscallAddress
+	add rsp, 028h
+	pop rcx
+	push rax
+	sub rsp, 028h
+	call SW2_GetSyscallNumber
+	add rsp, 028h
+	pop r11
+	mov rcx, [rsp+8]
+	mov rdx, [rsp+16]
+	mov r8, [rsp+24]
+	mov r9, [rsp+32]
+	mov r10, rcx
+	jmp r11
+NtImpersonateThread ENDP
+
 end

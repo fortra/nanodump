@@ -7,7 +7,7 @@
 #include "handle.h"
 #include "dinvoke.h"
 
-#if defined(NANO) && !defined(SSP)
+#if defined(NANO) && !defined(SSP) && !defined(PPL)
 
 #ifndef CTL_CODE
 

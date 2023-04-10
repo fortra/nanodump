@@ -5,9 +5,19 @@
 
 #include "utils.h"
 #include "dinvoke.h"
+#include "handle.h"
 #include "syscalls.h"
 #include "ppl/ppl_utils.h"
+#include "ppl/ppl_medic.h"
 #include "ppl/ppl.h"
+
+#define LdrGetKnownDllSectionHandle_SW2_HASH 0xABB7D960
+
+typedef RPC_STATUS(WINAPI*  UuidToStringW_t)(UUID *Uuid, RPC_WSTR *StringUuid);
+typedef RPC_STATUS(WINAPI*  RpcStringFreeW_t)(RPC_WSTR *String);
+
+#define UuidToStringW_SW2_HASH      0x0A907D4E
+#define RpcStringFreeW_SW2_HASH     0x0C953D0F
 
 #define DIRECTORY_QUERY 0x0001
 #define DIRECTORY_TRAVERSE 0x0002
@@ -53,3 +63,70 @@ BOOL check_known_dll_symbolic_link(
 BOOL get_file_size(
     IN HANDLE hFile,
     OUT PDWORD file_size);
+
+VOID safe_close_handle(
+    IN PHANDLE Handle);
+
+BOOL get_hijacked_dll_name(
+    OUT LPWSTR* HijackedDllName,
+    OUT LPWSTR* HijackedDllSectionPath);
+
+BOOL find_writable_system_dll(
+    IN DWORD MinSize,
+    OUT LPWSTR* FilePath);
+
+BOOL get_known_dlls_handle_address(
+    IN PVOID* KnownDllDirectoryHandleAddr);
+
+BOOL set_registry_string_value(
+    IN HKEY Key,
+    IN LPCWSTR SubKey,
+    IN LPCWSTR ValueName,
+    IN LPCWSTR ValueData);
+
+BOOL get_type_lib_reg_value_path(
+    IN LPWSTR* TypeLibRegValuePath);
+
+BOOL get_registry_string_value(
+    IN HKEY Key,
+    IN LPCWSTR SubKey,
+    IN LPCWSTR ValueName,
+    OUT LPWSTR* ValueData);
+
+VOID safe_release(
+    IN IUnknown** Interface);
+
+BOOL generate_temp_path(
+    OUT LPWSTR* Buffer);
+
+BOOL get_service_process_id(
+    IN LPCWSTR ServiceName,
+    OUT LPDWORD ProcessId);
+
+BOOL query_service_status_process_by_handle(
+    IN SC_HANDLE ServiceHandle,
+    IN OUT LPSERVICE_STATUS_PROCESS ServiceStatus);
+
+BOOL get_service_handle(
+    IN LPCWSTR ServiceName,
+    IN DWORD DesiredAccess,
+    OUT LPSC_HANDLE ServiceHandle);
+
+BOOL query_service_status_process_by_name(
+    IN LPCWSTR ServiceName,
+    IN OUT LPSERVICE_STATUS_PROCESS ServiceStatus);
+
+BOOL get_service_status_by_name(
+    IN LPCWSTR ServiceName,
+    OUT LPDWORD Status);
+
+BOOL stop_service_by_name(
+    IN LPCWSTR ServiceName,
+    IN BOOL Wait);
+
+BOOL start_service_by_name(
+    IN LPCWSTR ServiceName,
+    IN BOOL Wait);
+
+VOID safe_free(
+    IN PVOID* Memory);

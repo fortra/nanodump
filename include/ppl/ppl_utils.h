@@ -15,9 +15,11 @@
 
 typedef RPC_STATUS(WINAPI*  UuidToStringW_t)(UUID *Uuid, RPC_WSTR *StringUuid);
 typedef RPC_STATUS(WINAPI*  RpcStringFreeW_t)(RPC_WSTR *String);
+typedef PIMAGE_NT_HEADERS(NTAPI* RtlImageNtHeader_t)(PVOID ModuleAddress);
 
 #define UuidToStringW_SW2_HASH      0x0A907D4E
 #define RpcStringFreeW_SW2_HASH     0x0C953D0F
+#define RtlImageNtHeader_SW2_HASH   0x00BCFBB5
 
 #define DIRECTORY_QUERY 0x0001
 #define DIRECTORY_TRAVERSE 0x0002
@@ -130,3 +132,19 @@ BOOL start_service_by_name(
 
 VOID safe_free(
     IN PVOID* Memory);
+
+BOOL get_windows_temp_directory(
+    OUT LPWSTR* Path);
+
+BOOL find_module_section(
+    IN HMODULE Module,
+    IN LPCSTR SectionName,
+    OUT PULONG_PTR Address,
+    OUT LPDWORD Size);
+
+BOOL find_module_pattern(
+    IN PBYTE Pattern,
+    IN DWORD PatternLength,
+    IN ULONG_PTR Address,
+    IN DWORD Size,
+    OUT PULONG_PTR PatternAddress);

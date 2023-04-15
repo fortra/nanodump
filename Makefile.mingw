@@ -4,7 +4,7 @@ CC_x86 := i686-w64-mingw32-gcc
 GCC := gcc
 STRIP_x64 := x86_64-w64-mingw32-strip
 STRIP_x86 := i686-w64-mingw32-strip
-OPTIONS := -masm=intel -Wall -I include
+OPTIONS := -masm=intel -Wall -Wno-trigraphs -I include
 
 nanodump: clean
 	$(info ###### RELEASE ######)
@@ -87,9 +87,9 @@ debug: clean
 #	$(CC_x86) source/spoof_callstack.c source/shtinkering.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c -o dist/$(BOFNAME)_ppl.x86.dll $(OPTIONS) -DNANO -DPPL -DDDL -shared -DDEBUG
 #	./dist/bin2c dist/$(BOFNAME)_ppl.x86.dll nanodump_ppl_dll > include/$(BOFNAME)_ppl_dll.x86.h
 
-	$(CC_x64) source/utils.c source/syscalls.c source/dinvoke.c source/handle.c source/token_priv.c source/ppl/ppl_utils.c source/impersonate.c source/ppl/ppl.c source/ppl/ppl_dump.c source/ppl/ppl_medic.c -o dist/$(BOFNAME)_ppl.x64.exe $(OPTIONS) -DEXE -DPPL -DNANO -DDEBUG
+	$(CC_x64) source/utils.c source/syscalls.c source/dinvoke.c source/handle.c source/token_priv.c source/ppl/ppl_utils.c source/impersonate.c source/ppl/ppl.c source/ppl/ppl_dump.c source/ppl/ppl_medic.c source/ppl/medic_client.c -o dist/$(BOFNAME)_ppl.x64.exe $(OPTIONS) -DEXE -DPPL -DNANO -DDEBUG
 
-	$(CC_x86) source/utils.c source/syscalls.c source/dinvoke.c source/handle.c source/token_priv.c source/ppl/ppl_utils.c source/impersonate.c source/ppl/ppl.c source/ppl/ppl_dump.c source/ppl/ppl_medic.c -o dist/$(BOFNAME)_ppl.x86.exe $(OPTIONS) -DEXE -DPPL -DNANO -DDEBUG
+	$(CC_x86) source/utils.c source/syscalls.c source/dinvoke.c source/handle.c source/token_priv.c source/ppl/ppl_utils.c source/impersonate.c source/ppl/ppl.c source/ppl/ppl_dump.c source/ppl/ppl_medic.c source/ppl/medic_client.c -o dist/$(BOFNAME)_ppl.x86.exe $(OPTIONS) -DEXE -DPPL -DNANO -DDEBUG
 
 #	$(CC_x64) -c source/ppl/ppl.c -o dist/$(BOFNAME)_ppl.x64.o $(OPTIONS) -DBOF -DPPL -DDEBUG
 

@@ -1019,3 +1019,125 @@ cleanup:
 
     return ret_val;
 }
+
+BOOL get_windows_temp_directory(
+    OUT LPWSTR* Path)
+{
+    BOOL   ret_val  = FALSE;
+    LPWSTR pwszPath = NULL;
+    UINT   ret      = 0;
+
+    pwszPath = intAlloc((MAX_PATH + 1) * sizeof(WCHAR));
+    if (!pwszPath)
+    {
+        malloc_failed();
+        goto cleanup;
+    }
+
+    ret = GetWindowsDirectoryW(pwszPath, MAX_PATH);
+    if (!ret)
+    {
+        function_failed("GetWindowsDirectoryW");
+        goto cleanup;
+    }
+
+    swprintf_s(pwszPath, MAX_PATH, L"%ws\\Temp", pwszPath);
+
+    *Path = pwszPath;
+    ret_val = TRUE;
+
+cleanup:
+    if (!ret_val) safe_free((PVOID*)&pwszPath);
+
+    return ret_val;
+}
+
+BOOL find_module_section(
+    IN HMODULE Module,
+    IN LPCSTR SectionName,
+    OUT PULONG_PTR Address,
+    OUT LPDWORD Size)
+{
+    BOOL                  ret_val        = FALSE;
+    DWORD                 dwBufferSize   = PAGE_SIZE;
+    PIMAGE_NT_HEADERS     pNtHeaders     = NULL;
+    PIMAGE_SECTION_HEADER pSectionHeader = NULL;
+    DWORD                 i              = 0;
+    PBYTE                 pBuffer        = NULL;
+
+    RtlImageNtHeader_t RtlImageNtHeader = NULL;
+
+    RtlImageNtHeader = (RtlImageNtHeader_t)(ULONG_PTR)get_function_address(
+        get_library_address(NTDLL_DLL, TRUE),
+        RtlImageNtHeader_SW2_HASH,
+        0);
+    if (!RtlImageNtHeader)
+    {
+        api_not_found("RtlImageNtHeader");
+        goto cleanup;
+    }
+
+    pBuffer = intAlloc(dwBufferSize);
+    if (!pBuffer)
+    {
+        malloc_failed();
+        goto cleanup;
+    }
+
+    pNtHeaders = RtlImageNtHeader(Module);
+    if (!pNtHeaders)
+    {
+        function_failed("RtlImageNtHeader");
+        goto cleanup;
+    }
+
+    for (i = 0; i < pNtHeaders->FileHeader.NumberOfSections; i++)
+    {
+        pSectionHeader = (PIMAGE_SECTION_HEADER)((PBYTE)pNtHeaders + sizeof(*pNtHeaders) + i * sizeof(*pSectionHeader));
+
+        if (!strcmp((char*)pSectionHeader->Name, SectionName))
+        {
+            *Address = (ULONG_PTR)((PBYTE)Module + pSectionHeader->VirtualAddress);
+            *Size = pSectionHeader->SizeOfRawData;
+            ret_val = TRUE;
+            break;
+        }
+    }
+
+cleanup:
+    DPRINT("NT headers @ 0x%p | Address: 0x%p | Size: %ld | Result: %d", pNtHeaders, (PVOID)*Address, *Size, ret_val);
+
+    safe_free((PVOID*)&pBuffer);
+
+    return ret_val;
+}
+
+BOOL find_module_pattern(
+    IN PBYTE Pattern,
+    IN DWORD PatternLength,
+    IN ULONG_PTR Address,
+    IN DWORD Size,
+    OUT PULONG_PTR PatternAddress)
+{
+    BOOL      ret_val        = FALSE;
+    ULONG_PTR pModulePointer = 0;
+    ULONG_PTR pModuleLimit   = 0;
+
+    pModulePointer = Address;
+    pModuleLimit = Address + Size - PatternLength;
+
+    do
+    {
+        if (!memcmp(Pattern, (PVOID)pModulePointer, PatternLength))
+        {
+            *PatternAddress = pModulePointer;
+            ret_val = TRUE;
+            break;
+        }
+
+        pModulePointer++;
+
+    } while ((pModulePointer < pModuleLimit) && !ret_val);
+
+    return ret_val;
+}

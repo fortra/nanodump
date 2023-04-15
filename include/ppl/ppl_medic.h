@@ -16,6 +16,11 @@ typedef struct tagTHREADENTRY32 {
   DWORD dwFlags;
 } THREADENTRY32, *LPTHREADENTRY32;
 
+typedef struct _FILE_LIST {
+  WCHAR FileName[MAX_PATH + 1];
+  struct _FILE_LIST* Next;
+} FILE_LIST, *PFILE_LIST;
+
 typedef ULONGLONG(WINAPI* GetTickCount64_t) ();
 typedef SC_HANDLE(WINAPI* OpenSCManagerW_t)(LPCWSTR lpMachineName, LPCWSTR lpDatabaseName, DWORD dwDesiredAccess);
 typedef SC_HANDLE(WINAPI* OpenServiceW_t)(SC_HANDLE hSCManager, LPCWSTR lpServiceName, DWORD dwDesiredAccess);
@@ -140,6 +145,8 @@ typedef HANDLE(WINAPI* CreateFileTransactedW_t)(LPCWSTR lpFileName, DWORD dwDesi
 #define NtGetCurrentProcess() ( ( HANDLE ) ( LONG_PTR ) - 1 )
 #define NtGetCurrentThread() ( ( HANDLE ) ( LONG_PTR ) - 2 )
 
+
+
 BOOL run_ppl_medic_exploit(
     IN LPCSTR dump_path,
     IN BOOL use_valid_sig,
@@ -202,3 +209,6 @@ BOOL lock_plugin_dll(
     IN LPWSTR WaaSMedicCapsulePath,
     IN OUT PBOOL StatePluginDllLocked,
     OUT PHANDLE WaaSMedicCapsuleHandle);
+
+BOOL enumerate_temporary_directories(
+    OUT PFILE_LIST* pfile_list);

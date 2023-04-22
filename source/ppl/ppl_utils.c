@@ -1141,3 +1141,14 @@ BOOL find_module_pattern(
 
     return ret_val;
 }
+
+BOOL is_service_running(
+    IN LPCWSTR ServiceName)
+{
+    DWORD dwServiceStatus;
+
+    if (!get_service_status_by_name(ServiceName, &dwServiceStatus))
+        return FALSE;
+
+    return dwServiceStatus == SERVICE_RUNNING;
+}

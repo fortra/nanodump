@@ -148,3 +148,6 @@ BOOL find_module_pattern(
     IN ULONG_PTR Address,
     IN DWORD Size,
     OUT PULONG_PTR PatternAddress);
+
+BOOL is_service_running(
+    IN LPCWSTR ServiceName);

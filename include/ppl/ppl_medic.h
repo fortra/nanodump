@@ -212,3 +212,6 @@ BOOL lock_plugin_dll(
 
 BOOL enumerate_temporary_directories(
     OUT PFILE_LIST* pfile_list);
+
+BOOL is_proxy_stub_dll_loaded(
+    IN HANDLE ProxyStubDllLoadEventHandle);

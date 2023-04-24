@@ -1,4 +1,4 @@
-#include "ppl/medic_client.h"
+#include "ppl/ppl_medic_client.h"
 
 BOOL initialize_interface(
     PIWaaSRemediationEx* IWaaSRemediationEx)
@@ -193,7 +193,7 @@ cleanup:
 
     if (!ret_val)
     {
-        DPRINT_ERR("Failed to write DLL search path flag in remote process (thread exit code: 0x%08lx).", dwThreadExitCode);
+        PRINT_ERR("Failed to write DLL search path flag in remote process (thread exit code: 0x%08lx).", dwThreadExitCode);
     }
 
     return ret_val;

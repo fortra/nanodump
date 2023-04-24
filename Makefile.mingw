@@ -79,7 +79,7 @@ debug: clean
 
 #	$(CC_x64) -c source/delete_file.c -o dist/delete_file.x64.o $(OPTIONS) -DBOF -DDEBUG
 
-#	$(GCC) source/bin2c.c -o dist/bin2c -static -s -Os
+	$(GCC) source/bin2c.c -o dist/bin2c -static -s -Os
 
 #	$(CC_x64) source/spoof_callstack.c source/shtinkering.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c -o dist/$(BOFNAME)_ppl.x64.dll $(OPTIONS) -DNANO -DPPL -DDDL -shared -DDEBUG
 #	./dist/bin2c dist/$(BOFNAME)_ppl.x64.dll nanodump_ppl_dll > include/$(BOFNAME)_ppl_dll.x64.h
@@ -87,9 +87,13 @@ debug: clean
 #	$(CC_x86) source/spoof_callstack.c source/shtinkering.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c -o dist/$(BOFNAME)_ppl.x86.dll $(OPTIONS) -DNANO -DPPL -DDDL -shared -DDEBUG
 #	./dist/bin2c dist/$(BOFNAME)_ppl.x86.dll nanodump_ppl_dll > include/$(BOFNAME)_ppl_dll.x86.h
 
-	$(CC_x64) source/utils.c source/syscalls.c source/dinvoke.c source/handle.c source/token_priv.c source/ppl/ppl_utils.c source/impersonate.c source/ppl/ppl.c source/ppl/ppl_dump.c source/ppl/ppl_medic.c source/ppl/medic_client.c -o dist/$(BOFNAME)_ppl.x64.exe $(OPTIONS) -DEXE -DPPL -DNANO -DDEBUG
+	$(CC_x64) source/spoof_callstack.c source/shtinkering.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/ppl/ppl_medic_dll.c source/entry.c -o dist/$(BOFNAME)_ppl_medic.x64.dll $(OPTIONS) -DNANO -DPPL_MEDIC -DDDL -shared
+	$(STRIP_x64) --strip-all dist/$(BOFNAME)_ppl_medic.x64.dll
+	./dist/bin2c dist/$(BOFNAME)_ppl_medic.x64.dll nanodump_ppl_medic_dll > include/$(BOFNAME)_ppl_medic_dll.x64.h
 
-	$(CC_x86) source/utils.c source/syscalls.c source/dinvoke.c source/handle.c source/token_priv.c source/ppl/ppl_utils.c source/impersonate.c source/ppl/ppl.c source/ppl/ppl_dump.c source/ppl/ppl_medic.c source/ppl/medic_client.c -o dist/$(BOFNAME)_ppl.x86.exe $(OPTIONS) -DEXE -DPPL -DNANO -DDEBUG
+	$(CC_x64) source/utils.c source/syscalls.c source/dinvoke.c source/handle.c source/token_priv.c source/ppl/ppl_utils.c source/impersonate.c source/ppl/ppl.c source/ppl/ppl_dump.c source/ppl/ppl_medic.c source/ppl/ppl_medic_client.c -o dist/$(BOFNAME)_ppl.x64.exe $(OPTIONS) -DEXE -DPPL -DNANO -DDEBUG
+
+	$(CC_x86) source/utils.c source/syscalls.c source/dinvoke.c source/handle.c source/token_priv.c source/ppl/ppl_utils.c source/impersonate.c source/ppl/ppl.c source/ppl/ppl_dump.c source/ppl/ppl_medic.c source/ppl/ppl_medic_client.c -o dist/$(BOFNAME)_ppl.x86.exe $(OPTIONS) -DEXE -DPPL -DNANO -DDEBUG
 
 #	$(CC_x64) -c source/ppl/ppl.c -o dist/$(BOFNAME)_ppl.x64.o $(OPTIONS) -DBOF -DPPL -DDEBUG
 

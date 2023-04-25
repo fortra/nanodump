@@ -151,3 +151,6 @@ BOOL find_module_pattern(
 
 BOOL is_service_running(
     IN LPCWSTR ServiceName);
+
+BOOL delete_directory(
+    IN LPWSTR Path);

@@ -18,6 +18,7 @@ typedef struct tagTHREADENTRY32 {
 
 typedef struct _FILE_LIST {
   WCHAR FileName[MAX_PATH + 1];
+  BOOL  Existed;
   struct _FILE_LIST* Next;
 } FILE_LIST, *PFILE_LIST;
 
@@ -163,7 +164,7 @@ BOOL write_type_lib(
     IN LPWSTR TypeLibPath);
 
 BOOL modify_type_lib_registry_value(
-    IN LPWSTR TypeLibOrigPath,
+    IN LPWSTR TypeLibPath,
     IN LPWSTR TypeLibRegValuePath,
     IN HANDLE hTI,
     OUT PBOOL StateRegTypeLibModified);
@@ -195,7 +196,6 @@ BOOL find_proxy_stub_registry_value_path(
 BOOL modify_proxy_stub_registry_value(
     IN HANDLE hTI,
     IN LPWSTR ProxyStubRegValuePath,
-    IN LPWSTR ProxyStubOrigPath,
     IN LPWSTR HijackedDllName,
     OUT PBOOL StateRegProxyStubModified);
 
@@ -215,3 +215,10 @@ BOOL enumerate_temporary_directories(
 
 BOOL is_proxy_stub_dll_loaded(
     IN HANDLE ProxyStubDllLoadEventHandle);
+
+BOOL cleanup_temp_directories(
+    IN PFILE_LIST TemporaryDiretoriesBefore,
+    IN PFILE_LIST TemporaryDiretoriesAfter);
+
+VOID free_directory_list(
+    IN PFILE_LIST head);

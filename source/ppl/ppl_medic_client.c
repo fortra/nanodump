@@ -595,7 +595,7 @@ cleanup:
 
     if (!ret_val)
     {
-        DPRINT_ERR("Failed to write LdrpKnownDllDirectoryHandle value (thread exit code: 0x%08lx).", dwThreadExitCode);
+        PRINT_ERR("Failed to write LdrpKnownDllDirectoryHandle value (thread exit code: 0x%08lx).", dwThreadExitCode);
     }
 
     return ret_val;

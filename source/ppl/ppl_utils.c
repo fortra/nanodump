@@ -1052,6 +1052,90 @@ cleanup:
     return ret_val;
 }
 
+BOOL delete_directory(
+    IN LPWSTR Path)
+{
+    BOOL             ret_val        = FALSE;
+    BOOL             success        = FALSE;
+    BOOL             bIsEmpty       = TRUE;
+    HANDLE           hFind          = NULL;
+    LPWSTR           pwszSearchPath = NULL;
+    LPWSTR           pwszFullPath   = NULL;
+    WIN32_FIND_DATAW FindData       = { 0 };
+
+    pwszFullPath = intAlloc((MAX_PATH + 1) * sizeof(WCHAR));
+    if (!pwszFullPath)
+    {
+        malloc_failed();
+        goto cleanup;
+    }
+
+    pwszSearchPath = intAlloc((MAX_PATH + 1) * sizeof(WCHAR));
+    if (!pwszSearchPath)
+    {
+        malloc_failed();
+        goto cleanup;
+    }
+
+    swprintf_s(pwszSearchPath, MAX_PATH, L"%ws\\*", Path);
+
+    if ((hFind = FindFirstFileW(pwszSearchPath, &FindData)) == INVALID_HANDLE_VALUE)
+    {
+        if (GetLastError() == ERROR_FILE_NOT_FOUND)
+            ret_val = TRUE;
+
+        goto cleanup;
+    }
+
+    do
+    {
+        swprintf_s(pwszFullPath, MAX_PATH, L"%ws\\%ws", Path, FindData.cFileName);
+
+        if (FindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+        {
+            if (!_wcsicmp(FindData.cFileName, L".") || !_wcsicmp(FindData.cFileName, L".."))
+            {
+                continue;
+            }
+
+            if (!delete_directory(pwszFullPath))
+            {
+                bIsEmpty = FALSE;
+            }
+        }
+        else
+        {
+            if (!DeleteFileW(pwszFullPath))
+            {
+                DPRINT_ERR("Failed to delete file: %ls", pwszFullPath);
+                bIsEmpty = FALSE;
+            }
+        }
+
+    } while (FindNextFileW(hFind, &FindData));
+
+    if (bIsEmpty)
+    {
+        success = RemoveDirectoryW(Path);
+        if (!success)
+            goto cleanup;
+    }
+
+    ret_val = TRUE;
+
+cleanup:
+    if (hFind && hFind != INVALID_HANDLE_VALUE) FindClose(hFind);
+    safe_free((PVOID*)&pwszSearchPath);
+    safe_free((PVOID*)&pwszFullPath);
+
+    if (!ret_val)
+    {
+        DPRINT_ERR("Failed to delete directory: %ls", Path);
+    }
+
+    return ret_val;
+}
+
 BOOL find_module_section(
     IN HMODULE Module,
     IN LPCSTR SectionName,

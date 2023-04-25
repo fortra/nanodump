@@ -222,3 +222,9 @@ BOOL cleanup_temp_directories(
 
 VOID free_directory_list(
     IN PFILE_LIST head);
+
+BOOL unlock_plugin_dll(
+    IN HANDLE WaaSMedicCapsuleHandle);
+
+BOOL delete_type_lib(
+    IN LPWSTR TypeLibPath);

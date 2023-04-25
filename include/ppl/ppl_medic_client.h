@@ -21,11 +21,15 @@ typedef HRESULT(WINAPI* CoCancelCall_t)(DWORD dwThreadId, ULONG ulTimeout);
 typedef HRESULT(WINAPI* CoInitializeEx_t)(LPVOID pvReserved, DWORD dwCoInit);
 typedef HRESULT(WINAPI* CoCreateInstance_t)(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext, REFIID riid, LPVOID *ppv);
 typedef HRESULT(WINAPI* CoEnableCallCancellation_t)(LPVOID pReserved);
+typedef VOID   (WINAPI* CoUninitialize_t)();
+typedef HRESULT(WINAPI* CoDisableCallCancellation_t)(LPVOID pReserved);
 
-#define CoCancelCall_SW2_HASH             0x058CEE0B
-#define CoInitializeEx_SW2_HASH           0xEC4E1F34
-#define CoCreateInstance_SW2_HASH         0xEEDC39EE
-#define CoEnableCallCancellation_SW2_HASH 0xCF44EFD2
+#define CoCancelCall_SW2_HASH              0x058CEE0B
+#define CoInitializeEx_SW2_HASH            0xEC4E1F34
+#define CoCreateInstance_SW2_HASH          0xEEDC39EE
+#define CoEnableCallCancellation_SW2_HASH  0xCF44EFD2
+#define CoUninitialize_SW2_HASH            0xEF38CFFF
+#define CoDisableCallCancellation_SW2_HASH 0x0E54ED00
 
 typedef HRESULT STDMETHODCALLTYPE QueryInterfacePtr(REFIID iid, _COM_Outptr_ LPVOID *ppv);
 typedef ULONG   STDMETHODCALLTYPE AddRefPtr(REFIID iid);
@@ -225,3 +229,6 @@ BOOL write_remote_known_dll_handle(
     IN DWORD64 WriteAtLaunchRemediationOnly);
 
 BOOL create_task_handler_instance();
+
+BOOL release_client(
+    IN PIWaaSRemediationEx IWaaSRemediationEx);

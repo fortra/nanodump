@@ -677,3 +677,42 @@ cleanup:
 
     return ret_val;
 }
+
+BOOL release_client(
+    IN PIWaaSRemediationEx IWaaSRemediationEx)
+{
+    BOOL ret_val = FALSE;
+
+    CoDisableCallCancellation_t CoDisableCallCancellation = NULL;
+    CoUninitialize_t            CoUninitialize            = NULL;
+
+    CoDisableCallCancellation = (CoDisableCallCancellation_t)(ULONG_PTR)get_function_address(
+        get_library_address(OLE32_DLL, TRUE),
+        CoDisableCallCancellation_SW2_HASH,
+        0);
+    if (!CoDisableCallCancellation)
+    {
+        api_not_found("CoDisableCallCancellation");
+        goto cleanup;
+    }
+
+    CoUninitialize = (CoUninitialize_t)(ULONG_PTR)get_function_address(
+        get_library_address(OLE32_DLL, TRUE),
+        CoUninitialize_SW2_HASH,
+        0);
+    if (!CoUninitialize)
+    {
+        api_not_found("CoUninitialize");
+        goto cleanup;
+    }
+
+    CoDisableCallCancellation(NULL);
+    CoUninitialize();
+
+    ret_val = TRUE;
+
+cleanup:
+    safe_release((IUnknown**)&IWaaSRemediationEx);
+
+    return ret_val;
+}

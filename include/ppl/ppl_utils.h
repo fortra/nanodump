@@ -16,10 +16,40 @@
 typedef RPC_STATUS(WINAPI*  UuidToStringW_t)(UUID *Uuid, RPC_WSTR *StringUuid);
 typedef RPC_STATUS(WINAPI*  RpcStringFreeW_t)(RPC_WSTR *String);
 typedef PIMAGE_NT_HEADERS(NTAPI* RtlImageNtHeader_t)(PVOID ModuleAddress);
+typedef BOOL(WINAPI* ControlService_t)(SC_HANDLE hService, DWORD dwControl, LPSERVICE_STATUS lpServiceStatus);
+typedef PVOID(WINAPI* Sleep_t)(DWORD dwMilliseconds);
+typedef DWORD(WINAPI* GetCurrentDirectoryW_t)(DWORD nBufferLength, LPWSTR lpBuffer);
+typedef BOOL(WINAPI* SetCurrentDirectoryW_t)(LPCWSTR lpPathName);
+typedef HANDLE(WINAPI* CreateFileW_t)(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile);
+typedef DWORD(WINAPI* GetFileSize_t)(HANDLE hFile, LPDWORD lpFileSizeHigh);
+typedef BOOL(WINAPI* StartServiceW_t)(SC_HANDLE hService, DWORD dwNumServiceArgs, LPCWSTR *lpServiceArgVectors);
+typedef LSTATUS(WINAPI* RegOpenKeyExW_t)(HKEY hKey, LPCWSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, PHKEY phkResult);
+typedef LSTATUS(WINAPI* RegQueryValueExW_t)(HKEY hKey, LPCWSTR lpValueName, LPDWORD lpReserved, LPDWORD lpType, LPBYTE lpData, LPDWORD lpcbData);
+typedef DWORD(WINAPI* GetTempPathW_t)(DWORD nBufferLength, LPWSTR lpBuffer);
+typedef UINT(WINAPI* GetTempFileNameW_t)(LPCWSTR lpPathName, LPCWSTR lpPrefixString, UINT uUnique, LPWSTR lpTempFileName);
+typedef BOOL(WINAPI* QueryServiceStatusEx_t)(SC_HANDLE hService, SC_STATUS_TYPE InfoLevel, LPBYTE lpBuffer, DWORD cbBufSize, LPDWORD pcbBytesNeeded);
+typedef LSTATUS(WINAPI* RegSetValueExW_t)(HKEY hKey, LPCWSTR lpValueName, DWORD Reserved, DWORD dwType, PBYTE lpData, DWORD cbData);
+typedef LSTATUS(WINAPI* RegCloseKey_t)(HKEY hKey);
+typedef BOOL(WINAPI* RemoveDirectoryW_t)(LPCWSTR lpPathName);
 
-#define UuidToStringW_SW2_HASH      0x0A907D4E
-#define RpcStringFreeW_SW2_HASH     0x0C953D0F
-#define RtlImageNtHeader_SW2_HASH   0x00BCFBB5
+#define UuidToStringW_SW2_HASH        0x0A907D4E
+#define RpcStringFreeW_SW2_HASH       0x0C953D0F
+#define RtlImageNtHeader_SW2_HASH     0x00BCFBB5
+#define ControlService_SW2_HASH       0x6EC9F5F5
+#define Sleep_SW2_HASH                0x1AA40C23
+#define GetCurrentDirectoryW_SW2_HASH 0x7495613A
+#define SetCurrentDirectoryW_SW2_HASH 0x0E8F3B04
+#define CreateFileW_SW2_HASH          0x24976EA4
+#define GetFileSize_SW2_HASH          0xF850E4E6
+#define StartServiceW_SW2_HASH        0xF9C506E6
+#define RegOpenKeyExW_SW2_HASH        0xD9860929
+#define RegQueryValueExW_SW2_HASH     0xE31FB5B7
+#define GetTempPathW_SW2_HASH         0x7D51ED68
+#define GetTempFileNameW_SW2_HASH     0x132B8414
+#define QueryServiceStatusEx_SW2_HASH 0x1D84EAF8
+#define RegSetValueExW_SW2_HASH       0x1A1D0AD5
+#define RegCloseKey_SW2_HASH          0xE6251DA5
+#define RemoveDirectoryW_SW2_HASH     0x10D13916
 
 #define DIRECTORY_QUERY 0x0001
 #define DIRECTORY_TRAVERSE 0x0002

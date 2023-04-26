@@ -23,6 +23,10 @@ typedef HRESULT(WINAPI* CoCreateInstance_t)(REFCLSID rclsid, LPUNKNOWN pUnkOuter
 typedef HRESULT(WINAPI* CoEnableCallCancellation_t)(LPVOID pReserved);
 typedef VOID   (WINAPI* CoUninitialize_t)();
 typedef HRESULT(WINAPI* CoDisableCallCancellation_t)(LPVOID pReserved);
+typedef HANDLE(WINAPI* CreateThread_t)(LPSECURITY_ATTRIBUTES lpThreadAttributes, SIZE_T dwStackSize, LPTHREAD_START_ROUTINE lpStartAddress, LPVOID lpParameter, DWORD dwCreationFlags, LPDWORD lpThreadId);
+typedef DWORD(WINAPI* WaitForSingleObject_t)(HANDLE hHandle, DWORD dwMilliseconds);
+typedef BOOL(WINAPI* GetExitCodeThread_t)(HANDLE hThread, LPDWORD lpExitCode);
+typedef HMODULE(WINAPI* LoadLibraryW_t)(LPCWSTR lpLibFileName);
 
 #define CoCancelCall_SW2_HASH              0x058CEE0B
 #define CoInitializeEx_SW2_HASH            0xEC4E1F34
@@ -30,6 +34,10 @@ typedef HRESULT(WINAPI* CoDisableCallCancellation_t)(LPVOID pReserved);
 #define CoEnableCallCancellation_SW2_HASH  0xCF44EFD2
 #define CoUninitialize_SW2_HASH            0xEF38CFFF
 #define CoDisableCallCancellation_SW2_HASH 0x0E54ED00
+#define CreateThread_SW2_HASH              0x2C912627
+#define WaitForSingleObject_SW2_HASH       0x9E8B4EA7
+#define GetExitCodeThread_SW2_HASH         0xB69934BF
+#define LoadLibraryW_SW2_HASH              0x3EBB5CB0
 
 typedef HRESULT STDMETHODCALLTYPE QueryInterfacePtr(REFIID iid, _COM_Outptr_ LPVOID *ppv);
 typedef ULONG   STDMETHODCALLTYPE AddRefPtr(REFIID iid);

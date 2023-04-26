@@ -34,6 +34,16 @@ typedef HANDLE(WINAPI* CreateToolhelp32Snapshot_t)(DWORD dwFlags, DWORD th32Proc
 typedef BOOL(WINAPI* Thread32First_t)(HANDLE hSnapshot, LPTHREADENTRY32 lpte);
 typedef BOOL(WINAPI* Thread32Next_t)(HANDLE hSnapshot, LPTHREADENTRY32 lpte);
 typedef HANDLE(WINAPI* CreateFileTransactedW_t)(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile, HANDLE hTransaction, PUSHORT pusMiniVersion, PVOID lpExtendedParameter);
+typedef HANDLE(WINAPI* FindFirstFileW_t)(LPCWSTR lpFileName,LPWIN32_FIND_DATAW lpFindFileData);
+typedef BOOL(WINAPI* FindNextFileW_t)(HANDLE hFindFile, LPWIN32_FIND_DATAW lpFindFileData);
+typedef BOOL(WINAPI* FindClose_t)(HANDLE hFindFile);
+typedef UINT(WINAPI* GetSystemDirectoryW_t)(LPWSTR lpBuffer, UINT uSize);
+typedef UINT(WINAPI* GetWindowsDirectoryW_t)(LPWSTR lpBuffer, UINT uSize);
+typedef DWORD(WINAPI* GetFileAttributesW_t)(LPCWSTR lpFileName);
+typedef HANDLE(WINAPI* CreateEventW_t)(LPSECURITY_ATTRIBUTES lpEventAttributes, BOOL bManualReset, BOOL bInitialState, LPCWSTR lpName);
+typedef BOOL(WINAPI* DeleteFileW_t)(LPCWSTR lpFileName);
+typedef BOOL(WINAPI* LockFile_t)(HANDLE hFile, DWORD dwFileOffsetLow, DWORD dwFileOffsetHigh, DWORD nNumberOfBytesToLockLow, DWORD nNumberOfBytesToLockHigh);
+typedef BOOL(WINAPI* UnlockFile_t)(HANDLE hFile, DWORD dwFileOffsetLow, DWORD dwFileOffsetHigh, DWORD nNumberOfBytesToUnlockLow, DWORD nNumberOfBytesToUnlockHigh);
 
 #define GetTickCount64_SW2_HASH           0x5DA9A282
 #define OpenSCManagerW_SW2_HASH           0x10B0D71C
@@ -46,7 +56,17 @@ typedef HANDLE(WINAPI* CreateFileTransactedW_t)(LPCWSTR lpFileName, DWORD dwDesi
 #define CreateToolhelp32Snapshot_SW2_HASH 0x0E90CBC0
 #define Thread32First_SW2_HASH            0x7C990674
 #define Thread32Next_SW2_HASH             0x42ED312A
+#define FindFirstFileW_SW2_HASH           0x8EDA41FA
+#define FindNextFileW_SW2_HASH            0xBF0C31DB
+#define FindClose_SW2_HASH                0xD2503ADD
 #define CreateFileTransactedW_SW2_HASH    0x968D0D41
+#define GetSystemDirectoryW_SW2_HASH      0x008D32E6
+#define GetWindowsDirectoryW_SW2_HASH     0xE668D186
+#define GetFileAttributesW_SW2_HASH       0x70EEEEDF
+#define CreateEventW_SW2_HASH             0x1C8569AF
+#define DeleteFileW_SW2_HASH              0x40DA6544
+#define LockFile_SW2_HASH                 0x6D347D89
+#define UnlockFile_SW2_HASH               0x3E214ABE
 
 #define VERSION_MAJOR                           0                                       // Major version of the tool
 #define VERSION_MINOR                           1                                       // Minor version of the tool
@@ -198,9 +218,6 @@ BOOL modify_proxy_stub_registry_value(
     IN LPWSTR ProxyStubRegValuePath,
     IN LPWSTR HijackedDllName,
     OUT PBOOL StateRegProxyStubModified);
-
-BOOL impersonate_trusted_installer(
-    IN HANDLE hTI);
 
 BOOL get_waa_s_medic_capsule_path(
     IN LPWSTR* WaaSMedicCapsulePath);

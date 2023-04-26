@@ -219,21 +219,38 @@ BOOL query_service_status_process_by_handle(
     IN OUT LPSERVICE_STATUS_PROCESS ServiceStatus)
 {
     BOOL  ret_val       = FALSE;
+    BOOL  success       = FALSE;
     DWORD dwBytesNeeded = 0;
+
+    QueryServiceStatusEx_t QueryServiceStatusEx = NULL;
+
+    QueryServiceStatusEx = (QueryServiceStatusEx_t)(ULONG_PTR)get_function_address(
+        get_library_address(ADVAPI32_DLL, TRUE),
+        QueryServiceStatusEx_SW2_HASH,
+        0);
+    if (!QueryServiceStatusEx)
+    {
+        api_not_found("QueryServiceStatusEx");
+        goto cleanup;
+    }
 
     memset(ServiceStatus, 0, sizeof(*ServiceStatus));
 
-    ret_val = QueryServiceStatusEx(
+    success = QueryServiceStatusEx(
         ServiceHandle,
         SC_STATUS_PROCESS_INFO,
         (LPBYTE)ServiceStatus,
         sizeof(*ServiceStatus),
         &dwBytesNeeded);
-    if (!ret_val)
+    if (!success)
     {
         function_failed("QueryServiceStatusEx");
+        goto cleanup;
     }
 
+    ret_val = TRUE;
+
+cleanup:
     return ret_val;
 }
 
@@ -311,6 +328,18 @@ BOOL query_service_status_process_by_name(
     BOOL success = FALSE;
     SC_HANDLE hService = NULL;
 
+    CloseServiceHandle_t CloseServiceHandle = NULL;
+
+    CloseServiceHandle = (CloseServiceHandle_t)(ULONG_PTR)get_function_address(
+        get_library_address(ADVAPI32_DLL, TRUE),
+        CloseServiceHandle_SW2_HASH,
+        0);
+    if (!CloseServiceHandle)
+    {
+        api_not_found("CloseServiceHandle");
+        goto cleanup;
+    }
+
     success = get_service_handle(ServiceName, SERVICE_QUERY_STATUS, &hService);
     if (!success)
         goto cleanup;
@@ -358,7 +387,11 @@ BOOL stop_service_by_name(
     SERVICE_STATUS_PROCESS ssp            = { 0 };
     DWORD64                dwStartTime    = 0;
     DWORD                  dwWaitTime     = 0;
-    GetTickCount64_t       GetTickCount64 = NULL;
+
+    GetTickCount64_t     GetTickCount64     = NULL;
+    ControlService_t     ControlService     = NULL;
+    Sleep_t              Sleep              = NULL;
+    CloseServiceHandle_t CloseServiceHandle = NULL;
 
     GetTickCount64 = (GetTickCount64_t)(ULONG_PTR)get_function_address(
         get_library_address(KERNEL32_DLL, TRUE),
@@ -370,7 +403,35 @@ BOOL stop_service_by_name(
         goto cleanup;
     }
 
-    // TODO: add dinvoke: ControlService, Sleep
+    ControlService = (ControlService_t)(ULONG_PTR)get_function_address(
+        get_library_address(ADVAPI32_DLL, TRUE),
+        ControlService_SW2_HASH,
+        0);
+    if (!ControlService)
+    {
+        api_not_found("ControlService");
+        goto cleanup;
+    }
+
+    Sleep = (Sleep_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        Sleep_SW2_HASH,
+        0);
+    if (!Sleep)
+    {
+        api_not_found("Sleep");
+        goto cleanup;
+    }
+
+    CloseServiceHandle = (CloseServiceHandle_t)(ULONG_PTR)get_function_address(
+        get_library_address(ADVAPI32_DLL, TRUE),
+        CloseServiceHandle_SW2_HASH,
+        0);
+    if (!CloseServiceHandle)
+    {
+        api_not_found("CloseServiceHandle");
+        goto cleanup;
+    }
 
     dwStartTime = GetTickCount64();
 
@@ -437,7 +498,11 @@ BOOL start_service_by_name(
     SERVICE_STATUS_PROCESS ssp            = { 0 };
     DWORD64                dwStartTime    = 0;
     DWORD                  dwWaitTime     = 0;
-    GetTickCount64_t       GetTickCount64 = NULL;
+
+    GetTickCount64_t     GetTickCount64     = NULL;
+    StartServiceW_t      StartServiceW      = NULL;
+    Sleep_t              Sleep              = NULL;
+    CloseServiceHandle_t CloseServiceHandle = NULL;
 
     GetTickCount64 = (GetTickCount64_t)(ULONG_PTR)get_function_address(
         get_library_address(KERNEL32_DLL, TRUE),
@@ -449,7 +514,35 @@ BOOL start_service_by_name(
         goto cleanup;
     }
 
-    // TODO: add dinvoke: StartServiceW, Sleep
+    StartServiceW = (StartServiceW_t)(ULONG_PTR)get_function_address(
+        get_library_address(ADVAPI32_DLL, TRUE),
+        StartServiceW_SW2_HASH,
+        0);
+    if (!StartServiceW)
+    {
+        api_not_found("StartServiceW");
+        goto cleanup;
+    }
+
+    Sleep = (Sleep_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        Sleep_SW2_HASH,
+        0);
+    if (!Sleep)
+    {
+        api_not_found("Sleep");
+        goto cleanup;
+    }
+
+    CloseServiceHandle = (CloseServiceHandle_t)(ULONG_PTR)get_function_address(
+        get_library_address(ADVAPI32_DLL, TRUE),
+        CloseServiceHandle_SW2_HASH,
+        0);
+    if (!CloseServiceHandle)
+    {
+        api_not_found("CloseServiceHandle");
+        goto cleanup;
+    }
 
     dwStartTime = GetTickCount64();
 
@@ -642,6 +735,40 @@ BOOL set_registry_string_value(
     HKEY    hKey       = NULL;
     DWORD   dwDataSize = 0;
 
+    RegSetValueExW_t RegSetValueExW = NULL;
+    RegOpenKeyExW_t  RegOpenKeyExW  = NULL;
+    RegCloseKey_t    RegCloseKey    = NULL;
+
+    RegSetValueExW = get_function_address(
+        get_library_address(ADVAPI32_DLL, TRUE),
+        RegSetValueExW_SW2_HASH,
+        0);
+    if (!RegSetValueExW)
+    {
+        api_not_found("RegSetValueExW");
+        goto cleanup;
+    }
+
+    RegOpenKeyExW = get_function_address(
+        get_library_address(ADVAPI32_DLL, TRUE),
+        RegOpenKeyExW_SW2_HASH,
+        0);
+    if (!RegOpenKeyExW)
+    {
+        api_not_found("RegOpenKeyExW");
+        goto cleanup;
+    }
+
+    RegCloseKey = get_function_address(
+        get_library_address(ADVAPI32_DLL, TRUE),
+        RegCloseKey_SW2_HASH,
+        0);
+    if (!RegCloseKey)
+    {
+        api_not_found("RegCloseKey");
+        goto cleanup;
+    }
+
     dwDataSize = ((DWORD)wcslen(ValueData) + 1) * sizeof(WCHAR);
 
     status = RegOpenKeyExW(Key, SubKey, 0, KEY_SET_VALUE, &hKey);
@@ -684,7 +811,39 @@ BOOL get_registry_string_value(
     DWORD   dwDataSize     = 0;
     LPWSTR  pwszStringData = NULL;
 
-    // TODO: add dinvoke
+    RegOpenKeyExW_t    RegOpenKeyExW    = NULL;
+    RegQueryValueExW_t RegQueryValueExW = NULL;
+    RegCloseKey_t      RegCloseKey      = NULL;
+
+    RegOpenKeyExW = get_function_address(
+        get_library_address(ADVAPI32_DLL, TRUE),
+        RegOpenKeyExW_SW2_HASH,
+        0);
+    if (!RegOpenKeyExW)
+    {
+        api_not_found("RegOpenKeyExW");
+        goto cleanup;
+    }
+
+    RegQueryValueExW = get_function_address(
+        get_library_address(ADVAPI32_DLL, TRUE),
+        RegQueryValueExW_SW2_HASH,
+        0);
+    if (!RegQueryValueExW)
+    {
+        api_not_found("RegQueryValueExW");
+        goto cleanup;
+    }
+
+    RegCloseKey = get_function_address(
+        get_library_address(ADVAPI32_DLL, TRUE),
+        RegCloseKey_SW2_HASH,
+        0);
+    if (!RegCloseKey)
+    {
+        api_not_found("RegCloseKey");
+        goto cleanup;
+    }
 
     status = RegOpenKeyExW(Key, SubKey, 0, KEY_QUERY_VALUE, &hKey);
     if (status != ERROR_SUCCESS)
@@ -739,7 +898,28 @@ BOOL generate_temp_path(
     DWORD  dwRet          = 0;
     UINT   uintRet        = 0;
 
-    // TODO: add dinvoke: GetTempPathW, GetTempFileNameW
+    GetTempPathW_t     GetTempPathW     = NULL;
+    GetTempFileNameW_t GetTempFileNameW = NULL;
+
+    GetTempPathW = (GetTempPathW_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        GetTempPathW_SW2_HASH,
+        0);
+    if (!GetTempPathW)
+    {
+        api_not_found("GetTempPathW");
+        goto cleanup;
+    }
+
+    GetTempFileNameW = (GetTempFileNameW_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        GetTempFileNameW_SW2_HASH,
+        0);
+    if (!GetTempFileNameW)
+    {
+        api_not_found("GetTempFileNameW");
+        goto cleanup;
+    }
 
     pwszTempPath = intAlloc(dwBufferLength * sizeof(WCHAR));
     if (!pwszTempPath)
@@ -811,7 +991,6 @@ BOOL get_known_dlls_handle_address(
         api_not_found("LdrGetKnownDllSectionHandle");
         goto cleanup;
     }
-
 
     DosHeader     = (PIMAGE_DOS_HEADER)hNtdll;
     NtHeaders     = RVA(PIMAGE_NT_HEADERS, hNtdll, DosHeader->e_lfanew);
@@ -906,7 +1085,96 @@ BOOL find_writable_system_dll(
     HANDLE           hFile                    = NULL;
     DWORD            dwFileSize               = 0;
 
-    // TODO: add dinvoke
+    FindFirstFileW_t       FindFirstFileW       = NULL;
+    FindNextFileW_t        FindNextFileW        = NULL;
+    FindClose_t            FindClose            = NULL;
+    GetCurrentDirectoryW_t GetCurrentDirectoryW = NULL;
+    GetSystemDirectoryW_t  GetSystemDirectoryW  = NULL;
+    SetCurrentDirectoryW_t SetCurrentDirectoryW = NULL;
+    CreateFileW_t          CreateFileW          = NULL;
+    GetFileSize_t          GetFileSize          = NULL;
+
+    FindFirstFileW = (FindFirstFileW_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        FindFirstFileW_SW2_HASH,
+        0);
+    if (!FindFirstFileW)
+    {
+        api_not_found("FindFirstFileW");
+        goto cleanup;
+    }
+
+    FindNextFileW = (FindNextFileW_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        FindNextFileW_SW2_HASH,
+        0);
+    if (!FindNextFileW)
+    {
+        api_not_found("FindNextFileW");
+        goto cleanup;
+    }
+
+    FindClose = (FindClose_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        FindClose_SW2_HASH,
+        0);
+    if (!FindClose)
+    {
+        api_not_found("FindClose");
+        goto cleanup;
+    }
+
+    GetCurrentDirectoryW = (GetCurrentDirectoryW_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        GetCurrentDirectoryW_SW2_HASH,
+        0);
+    if (!GetCurrentDirectoryW)
+    {
+        api_not_found("GetCurrentDirectoryW");
+        goto cleanup;
+    }
+
+    SetCurrentDirectoryW = (SetCurrentDirectoryW_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        SetCurrentDirectoryW_SW2_HASH,
+        0);
+    if (!SetCurrentDirectoryW)
+    {
+        api_not_found("SetCurrentDirectoryW");
+        goto cleanup;
+    }
+
+    GetSystemDirectoryW = (GetSystemDirectoryW_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        GetSystemDirectoryW_SW2_HASH,
+        0);
+    if (!GetSystemDirectoryW)
+    {
+        api_not_found("GetSystemDirectoryW");
+        goto cleanup;
+    }
+
+    CreateFileW = (CreateFileW_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        CreateFileW_SW2_HASH,
+        0);
+    if (!CreateFileW)
+    {
+        api_not_found("CreateFileW");
+        goto cleanup;
+    }
+
+    GetFileSize = (GetFileSize_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        GetFileSize_SW2_HASH,
+        0);
+    if (!GetFileSize)
+    {
+        api_not_found("GetFileSize");
+        goto cleanup;
+    }
+
+    // TODO: add syscalls
 
     pwszCurrentDirectory = intAlloc((MAX_PATH + 1) * sizeof(WCHAR));
     if (!pwszCurrentDirectory)
@@ -1027,6 +1295,18 @@ BOOL get_windows_temp_directory(
     LPWSTR pwszPath = NULL;
     UINT   ret      = 0;
 
+    GetWindowsDirectoryW_t GetWindowsDirectoryW = NULL;
+
+    GetWindowsDirectoryW = (GetWindowsDirectoryW_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        GetWindowsDirectoryW_SW2_HASH,
+        0);
+    if (!GetWindowsDirectoryW)
+    {
+        api_not_found("GetWindowsDirectoryW");
+        goto cleanup;
+    }
+
     pwszPath = intAlloc((MAX_PATH + 1) * sizeof(WCHAR));
     if (!pwszPath)
     {
@@ -1063,6 +1343,61 @@ BOOL delete_directory(
     LPWSTR           pwszFullPath   = NULL;
     WIN32_FIND_DATAW FindData       = { 0 };
 
+    FindFirstFileW_t   FindFirstFileW   = NULL;
+    FindNextFileW_t    FindNextFileW    = NULL;
+    FindClose_t        FindClose        = NULL;
+    DeleteFileW_t      DeleteFileW      = NULL;
+    RemoveDirectoryW_t RemoveDirectoryW = NULL;
+
+    FindFirstFileW = (FindFirstFileW_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        FindFirstFileW_SW2_HASH,
+        0);
+    if (!FindFirstFileW)
+    {
+        api_not_found("FindFirstFileW");
+        goto cleanup;
+    }
+
+    FindNextFileW = (FindNextFileW_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        FindNextFileW_SW2_HASH,
+        0);
+    if (!FindNextFileW)
+    {
+        api_not_found("FindNextFileW");
+        goto cleanup;
+    }
+
+    FindClose = (FindClose_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        FindClose_SW2_HASH,
+        0);
+    if (!FindClose)
+    {
+        api_not_found("FindClose");
+        goto cleanup;
+    }
+
+    DeleteFileW = (DeleteFileW_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        DeleteFileW_SW2_HASH,
+        0);
+    if (!DeleteFileW)
+    {
+        api_not_found("DeleteFileW");
+        goto cleanup;
+    }
+
+    RemoveDirectoryW = (RemoveDirectoryW_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        RemoveDirectoryW_SW2_HASH,
+        0);
+    if (!RemoveDirectoryW)
+    {
+        api_not_found("RemoveDirectoryW");
+        goto cleanup;
+    }
     pwszFullPath = intAlloc((MAX_PATH + 1) * sizeof(WCHAR));
     if (!pwszFullPath)
     {

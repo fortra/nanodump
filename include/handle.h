@@ -1,6 +1,6 @@
 #pragma once
 
-#if defined(NANO) && !defined(SSP)
+#if (defined(NANO) || defined(PPL_MEDIC)) && !defined(SSP)
 
 #include <windows.h>
 #include <winternl.h>

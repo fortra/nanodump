@@ -672,7 +672,7 @@ cleanup:
 
     if (!ret_val)
     {
-        DPRINT_ERR("Failed to write LdrpKnownDllDirectoryHandle value (thread exit code: 0x%08lx).", dwThreadExitCode);
+        PRINT_ERR("Failed to write LdrpKnownDllDirectoryHandle value (thread exit code: 0x%08lx).", dwThreadExitCode);
     }
 
     return ret_val;
@@ -805,13 +805,12 @@ BOOL release_client(
         goto cleanup;
     }
 
+    IWaaSRemediationEx_Release(IWaaSRemediationEx);
     CoDisableCallCancellation(NULL);
     CoUninitialize();
 
     ret_val = TRUE;
 
 cleanup:
-    safe_release((IUnknown**)&IWaaSRemediationEx);
-
     return ret_val;
 }

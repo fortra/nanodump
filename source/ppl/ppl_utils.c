@@ -998,7 +998,7 @@ BOOL get_known_dlls_handle_address(
 
     for (i = 0; i < NtHeaders->FileHeader.NumberOfSections; i++)
     {
-        if (!strcmp((char*)SectionHeader[i].Name, ".data"))
+        if (!memcmp((char*)SectionHeader[i].Name, ".data", 6))
         {
             pSectionAddress = RVA(PULONG_PTR, hNtdll, SectionHeader[i].VirtualAddress);
             dwSectionSize = SectionHeader[i].Misc.VirtualSize;

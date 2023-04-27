@@ -55,6 +55,8 @@ typedef BOOL(WINAPI* FindNextFileW_t) (HANDLE hFindFile, LPWIN32_FIND_DATAW lpFi
 #define FindNextFileW_SW2_HASH 0xBF0C31DB
 
 BOOL run_ppl_dump_exploit(
+    IN unsigned char nanodump_ppl_dump_dll[],
+    IN unsigned int nanodump_ppl_dump_dll_len,
     IN LPCSTR dump_path,
     IN BOOL use_valid_sig,
     IN BOOL duplicate_handle);
@@ -75,14 +77,14 @@ BOOL find_file_for_transaction(
     OUT LPWSTR* ppwszFilePath);
 
 BOOL write_payload_dll_transacted(
-    IN unsigned char nanodump_dll[],
-    IN unsigned int nanodump_dll_len,
+    IN unsigned char nanodump_ppl_dump_dll[],
+    IN unsigned int nanodump_ppl_dump_dll_len,
     OUT PHANDLE pdhFile,
     OUT PHANDLE phTransaction);
 
 BOOL map_dll(
-    IN unsigned char nanodump_dll[],
-    IN unsigned int nanodump_dll_len,
+    IN unsigned char nanodump_ppl_dump_dll[],
+    IN unsigned int nanodump_ppl_dump_dll_len,
     IN LPWSTR pwszSectionName,
     OUT PHANDLE phSection,
     OUT PHANDLE phTransaction);

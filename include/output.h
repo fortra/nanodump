@@ -13,7 +13,7 @@ VOID LogToConsole(LPCSTR pwszFormat, ...);
  #define PRINT(...) { \
      BeaconPrintf(CALLBACK_OUTPUT, __VA_ARGS__); \
  }
-#elif defined(DDL) && defined(PPL)
+#elif defined(DDL) && defined(PPL_DUMP)
  #define PRINT(...) { \
      LogToConsole(__VA_ARGS__); \
      LogToConsole("\n"); \
@@ -31,7 +31,7 @@ VOID LogToConsole(LPCSTR pwszFormat, ...);
  #define PRINT_ERR(...) { \
      BeaconPrintf(CALLBACK_ERROR, __VA_ARGS__); \
  }
-#elif defined(DDL) && defined(PPL)
+#elif defined(DDL) && defined(PPL_DUMP)
  #define PRINT_ERR(...) { \
      LogToConsole(__VA_ARGS__); \
      LogToConsole("\n"); \
@@ -50,7 +50,7 @@ VOID LogToConsole(LPCSTR pwszFormat, ...);
      BeaconPrintf(CALLBACK_OUTPUT, "DEBUG: %s:%d:%s(): ", __FILE__, __LINE__, __FUNCTION__); \
      BeaconPrintf(CALLBACK_OUTPUT, __VA_ARGS__); \
  }
-#elif defined(DEBUG) && defined(DDL) && defined(PPL)
+#elif defined(DEBUG) && defined(DDL) && defined(PPL_DUMP)
  #define DPRINT(...) { \
      LogToConsole("DEBUG: %s:%d:%s(): ", __FILE__, __LINE__, __FUNCTION__); \
      LogToConsole(__VA_ARGS__); \
@@ -71,7 +71,7 @@ VOID LogToConsole(LPCSTR pwszFormat, ...);
      BeaconPrintf(CALLBACK_ERROR, "ERROR: %s:%d:%s(): ", __FILE__, __LINE__, __FUNCTION__); \
      BeaconPrintf(CALLBACK_ERROR, __VA_ARGS__); \
  }
-#elif defined(DEBUG) && defined(DDL) && defined(PPL)
+#elif defined(DEBUG) && defined(DDL) && defined(PPL_DUMP)
  #define DPRINT_ERR(...) { \
      LogToConsole("ERROR: %s:%d:%s(): ", __FILE__, __LINE__, __FUNCTION__); \
      LogToConsole(__VA_ARGS__); \

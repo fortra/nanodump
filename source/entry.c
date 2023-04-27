@@ -1018,7 +1018,7 @@ __declspec(dllexport) BOOL APIENTRY DllMain(
     return FALSE;
 }
 
-#elif defined(NANO) && defined(PPL)
+#elif defined(NANO) && defined(PPL_DUMP)
 
 #include "ppl/cleanup.h"
 

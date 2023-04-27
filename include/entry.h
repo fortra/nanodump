@@ -1,6 +1,6 @@
 #pragma once
 
-#if defined(NANO) && defined(PPL)
+#if defined(NANO) && defined(PPL_DUMP)
 
 #include <windows.h>
 

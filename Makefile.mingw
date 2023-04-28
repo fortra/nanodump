@@ -5,6 +5,7 @@ GCC := gcc
 STRIP_x64 := x86_64-w64-mingw32-strip
 STRIP_x86 := i686-w64-mingw32-strip
 OPTIONS := -masm=intel -Wall -Wno-trigraphs -I include
+PPL_MEDIC_OPTIONS := -DPASS_PARAMS_VIA_NAMED_PIPES=1
 
 nanodump: clean
 	$(info ###### RELEASE ######)
@@ -55,11 +56,11 @@ nanodump: clean
 	$(CC_x64) -c source/ppl/ppl.c -o dist/$(BOFNAME)_ppl_dump.x64.o $(OPTIONS) -DBOF -DPPL_DUMP
 	$(STRIP_x64) --strip-unneeded dist/$(BOFNAME)_ppl_dump.x64.o
 
-	$(CC_x64) source/spoof_callstack.c source/shtinkering.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/ppl/ppl_medic_dll.c source/entry.c -o dist/$(BOFNAME)_ppl_medic.x64.dll $(OPTIONS) -DNANO -DPPL_MEDIC -DDDL -shared
+	$(CC_x64) source/spoof_callstack.c source/shtinkering.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/ppl/ppl_medic_dll.c source/pipe.c source/entry.c -o dist/$(BOFNAME)_ppl_medic.x64.dll $(OPTIONS) $(PPL_MEDIC_OPTIONS) -DNANO -DPPL_MEDIC -DDDL -shared
 	$(STRIP_x64) --strip-all dist/$(BOFNAME)_ppl_medic.x64.dll
 	./dist/bin2c dist/$(BOFNAME)_ppl_medic.x64.dll $(BOFNAME)_ppl_medic_dll > include/$(BOFNAME)_ppl_medic_dll.x64.h
 
-	$(CC_x64) source/utils.c source/syscalls.c source/dinvoke.c source/handle.c source/token_priv.c source/ppl/ppl_utils.c source/impersonate.c source/ppl/ppl.c source/ppl/ppl_dump.c source/ppl/ppl_medic.c source/ppl/ppl_medic_client.c -o dist/$(BOFNAME)_ppl_medic.x64.exe $(OPTIONS) -DEXE -DPPL_MEDIC -DNANO
+	$(CC_x64) source/utils.c source/syscalls.c source/dinvoke.c source/handle.c source/token_priv.c source/ppl/ppl_utils.c source/impersonate.c source/ppl/ppl.c source/ppl/ppl_dump.c source/ppl/ppl_medic.c source/pipe.c source/ppl/ppl_medic_client.c -o dist/$(BOFNAME)_ppl_medic.x64.exe $(OPTIONS) $(PPL_MEDIC_OPTIONS) -DEXE -DPPL_MEDIC -DNANO
 	$(STRIP_x64) --strip-all dist/$(BOFNAME)_ppl_medic.x64.exe
 
 	$(CC_x64) -c source/ppl/ppl.c -o dist/$(BOFNAME)_ppl_medic.x64.o $(OPTIONS) -DBOF -DPPL_MEDIC
@@ -103,10 +104,10 @@ debug: clean
 
 	$(CC_x64) -c source/ppl/ppl.c -o dist/$(BOFNAME)_ppl_dump.x64.o $(OPTIONS) -DBOF -DPPL_DUMP -DDEBUG
 
-	$(CC_x64) source/spoof_callstack.c source/shtinkering.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/ppl/ppl_medic_dll.c source/entry.c -o dist/$(BOFNAME)_ppl_medic.x64.dll $(OPTIONS) -DNANO -DPPL_MEDIC -DDDL -shared -DDEBUG
+	$(CC_x64) source/spoof_callstack.c source/shtinkering.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/ppl/ppl_medic_dll.c source/pipe.c source/entry.c -o dist/$(BOFNAME)_ppl_medic.x64.dll $(OPTIONS) $(PPL_MEDIC_OPTIONS) -DNANO -DPPL_MEDIC -DDDL -shared -DDEBUG
 	./dist/bin2c dist/$(BOFNAME)_ppl_medic.x64.dll $(BOFNAME)_ppl_medic_dll > include/$(BOFNAME)_ppl_medic_dll.x64.h
 
-	$(CC_x64) source/utils.c source/syscalls.c source/dinvoke.c source/handle.c source/token_priv.c source/ppl/ppl_utils.c source/impersonate.c source/ppl/ppl.c source/ppl/ppl_dump.c source/ppl/ppl_medic.c source/ppl/ppl_medic_client.c -o dist/$(BOFNAME)_ppl_medic.x64.exe $(OPTIONS) -DEXE -DPPL_MEDIC -DNANO -DDEBUG
+	$(CC_x64) source/utils.c source/syscalls.c source/dinvoke.c source/handle.c source/token_priv.c source/ppl/ppl_utils.c source/impersonate.c source/ppl/ppl.c source/ppl/ppl_dump.c source/ppl/ppl_medic.c source/pipe.c source/ppl/ppl_medic_client.c -o dist/$(BOFNAME)_ppl_medic.x64.exe $(OPTIONS) $(PPL_MEDIC_OPTIONS) -DEXE -DPPL_MEDIC -DNANO -DDEBUG
 
 	$(CC_x64) -c source/ppl/ppl.c -o dist/$(BOFNAME)_ppl_medic.x64.o $(OPTIONS) -DBOF -DPPL_MEDIC -DDEBUG
 

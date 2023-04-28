@@ -169,7 +169,14 @@ typedef BOOL(WINAPI* UnlockFile_t)(HANDLE hFile, DWORD dwFileOffsetLow, DWORD dw
 
 BOOL run_ppl_medic_exploit(
     IN unsigned char nanodump_ppl_medic_dll[],
-    IN unsigned int nanodump_ppl_medic_dll_len);
+    IN unsigned int nanodump_ppl_medic_dll_len,
+    IN DWORD lsass_pid,
+    IN LPSTR dump_path,
+    IN BOOL use_valid_sig,
+    IN BOOL duplicate_handle,
+    IN BOOL elevate_handle,
+    IN BOOL duplicate_elevate,
+    IN DWORD spoof_callstack);
 
 BOOL restart_waa_s_medic_svc();
 

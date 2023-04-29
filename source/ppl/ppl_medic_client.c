@@ -122,7 +122,6 @@ BOOL write_remote_dll_search_path_flag(
     DWORD                                   dwThreadId                = 0;
     DWORD                                   dwThreadExitCode          = 0;
     HANDLE                                  hThread                   = NULL;
-    HRESULT                                 ComResult                 = 0;
 
     // TODO: syscalls
 
@@ -203,7 +202,7 @@ BOOL write_remote_dll_search_path_flag(
     if (WaitForSingleObject(hThread, TIMEOUT) != WAIT_OBJECT_0)
     {
         DPRINT("Thread with ID %ld is taking too long, cancelling...", dwThreadId);
-        ComResult = CoCancelCall(dwThreadId, TIMEOUT);
+        CoCancelCall(dwThreadId, TIMEOUT);
         goto cleanup;
     }
 
@@ -218,11 +217,6 @@ BOOL write_remote_dll_search_path_flag(
 
 cleanup:
     safe_close_handle(&hThread);
-
-    if (ret_val)
-    {
-        DPRINT("COM result: 0x%08x", (ULONG32)ComResult);
-    }
 
     if (!ret_val)
     {

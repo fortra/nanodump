@@ -12,9 +12,9 @@ BOOL run_ppl_medic_exploit(
 {
     BOOL       success                      = FALSE;
     BOOL       ret_val                      = FALSE;
-    BOOL       dump_worked                  = FALSE;
     BOOL       StateTypeLibCreated          = FALSE;
 #if PASS_PARAMS_VIA_NAMED_PIPES == 1
+    BOOL       dump_worked                  = FALSE;
     HANDLE     hPipe                        = NULL;
 #endif
     HANDLE     hBaseNamedObjects            = NULL;

@@ -364,6 +364,8 @@ cleanup:
     return hHighPriv;
 }
 
+#if defined(NANO)
+
 // get a handle to LSASS via multiple methods
 BOOL obtain_lsass_handle(
     OUT PHANDLE phProcess,
@@ -630,6 +632,8 @@ HANDLE find_lsass(
     }
 }
 
+#endif
+
 // use NtOpenProcess to get a handle to a process
 HANDLE get_process_handle(
     IN DWORD dwPid,
@@ -892,6 +896,8 @@ cleanup:
     return ret_val;
 }
 
+#if defined(NANO)
+
 // find and duplicate a handle to LSASS
 HANDLE duplicate_lsass_handle(
     IN DWORD lsass_pid,
@@ -1029,6 +1035,8 @@ cleanup:
     else
         return NULL;
 }
+
+#endif
 
 // create a clone (fork) of the LSASS process
 HANDLE fork_process(

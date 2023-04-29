@@ -63,7 +63,7 @@ nanodump: clean
 	$(CC_x64) source/utils.c source/syscalls.c source/dinvoke.c source/handle.c source/token_priv.c source/ppl/ppl_utils.c source/impersonate.c source/ppl/ppl.c source/ppl/ppl_dump.c source/ppl/ppl_medic.c source/pipe.c source/ppl/ppl_medic_client.c -o dist/$(BOFNAME)_ppl_medic.x64.exe $(OPTIONS) $(PPL_MEDIC_OPTIONS) -DEXE -DPPL_MEDIC -DNANO
 	$(STRIP_x64) --strip-all dist/$(BOFNAME)_ppl_medic.x64.exe
 
-	$(CC_x64) -c source/ppl/ppl.c -o dist/$(BOFNAME)_ppl_medic.x64.o $(OPTIONS) -DBOF -DPPL_MEDIC
+	$(CC_x64) -c source/ppl/ppl.c -o dist/$(BOFNAME)_ppl_medic.x64.o $(OPTIONS) $(PPL_MEDIC_OPTIONS) -DBOF -DPPL_MEDIC
 	$(STRIP_x64) --strip-unneeded dist/$(BOFNAME)_ppl_medic.x64.o
 
 	$(GCC) source/restore_signature.c -o scripts/restore_signature -static -s -Os
@@ -109,7 +109,7 @@ debug: clean
 
 	$(CC_x64) source/utils.c source/syscalls.c source/dinvoke.c source/handle.c source/token_priv.c source/ppl/ppl_utils.c source/impersonate.c source/ppl/ppl.c source/ppl/ppl_dump.c source/ppl/ppl_medic.c source/pipe.c source/ppl/ppl_medic_client.c -o dist/$(BOFNAME)_ppl_medic.x64.exe $(OPTIONS) $(PPL_MEDIC_OPTIONS) -DEXE -DPPL_MEDIC -DNANO -DDEBUG
 
-	$(CC_x64) -c source/ppl/ppl.c -o dist/$(BOFNAME)_ppl_medic.x64.o $(OPTIONS) -DBOF -DPPL_MEDIC -DDEBUG
+	$(CC_x64) -c source/ppl/ppl.c -o dist/$(BOFNAME)_ppl_medic.x64.o $(OPTIONS) $(PPL_MEDIC_OPTIONS) -DBOF -DPPL_MEDIC -DDEBUG
 
 	$(GCC) source/restore_signature.c -o scripts/restore_signature -static -s -Os
 

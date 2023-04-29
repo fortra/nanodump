@@ -111,7 +111,7 @@ BOOL client_connect_to_named_pipe(
     IN LPWSTR pipe_name,
     OUT PHANDLE hPipe)
 {
-    BOOL   ret_val      = TRUE;
+    BOOL   ret_val      = FALSE;
     LPWSTR pwszPipeName = NULL;
 
     CreateFileW_t CreateFileW = NULL;
@@ -262,16 +262,21 @@ BOOL server_recv_arguments_from_pipe(
         goto cleanup;
     }
 
-    *dump_path = intAlloc(MAX_PATH + 1);
-    if (!*dump_path)
+    if (dump_path)
     {
-        malloc_failed();
-        goto cleanup;
-    }
+        *dump_path = intAlloc(MAX_PATH + 1);
+        if (!*dump_path)
+        {
+            malloc_failed();
+            goto cleanup;
+        }
 
-    memcpy(*dump_path, req->p.Params.dump_path, MAX_PATH + 1);
-    *use_valid_sig = req->p.Params.use_valid_sig;
-    *elevate_handle = req->p.Params.elevate_handle;
+        memcpy(*dump_path, req->p.Params.dump_path, MAX_PATH + 1);
+    }
+    if (use_valid_sig)
+        *use_valid_sig = req->p.Params.use_valid_sig;
+    if (elevate_handle)
+        *elevate_handle = req->p.Params.elevate_handle;
 
     ret_val = TRUE;
 

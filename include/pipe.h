@@ -57,6 +57,10 @@ typedef struct _IPC_MSG
 
 #define IPC_PIPE_NAME L"NanoDumpPPLmedicPipe"
 
+#elif defined(SSP)
+
+#define IPC_PIPE_NAME L"NanoDumpSSPPipe"
+
 #endif // #if defined(PPL_MEDIC)
 
 BOOL server_create_named_pipe(

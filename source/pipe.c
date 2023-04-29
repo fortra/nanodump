@@ -2,7 +2,7 @@
 
 #if defined(PPL_MEDIC) || defined(SSP)
 
-BOOL create_named_pipe(
+BOOL server_create_named_pipe(
     IN LPCWSTR pipe_name,
     IN BOOL async,
     OUT PHANDLE hPipe)
@@ -107,7 +107,7 @@ cleanup:
     return ret_val;
 }
 
-BOOL connect_to_named_pipe(
+BOOL client_connect_to_named_pipe(
     IN LPWSTR pipe_name,
     OUT PHANDLE hPipe)
 {
@@ -151,7 +151,7 @@ cleanup:
     return ret_val;
 }
 
-BOOL listen_on_named_pipe(
+BOOL server_listen_on_named_pipe(
     IN HANDLE hPipe)
 {
     BOOL ret_val          = FALSE;
@@ -182,19 +182,13 @@ cleanup:
     return ret_val;
 }
 
-BOOL recv_arguments_from_pipe(
+BOOL read_data_from_pipe(
     IN HANDLE hPipe,
-    OUT PDWORD lsass_pid,
-    OUT LPSTR* dump_path,
-    OUT PBOOL use_valid_sig,
-    OUT PBOOL duplicate_handle,
-    OUT PBOOL elevate_handle,
-    OUT PBOOL duplicate_elevate,
-    OUT PDWORD spoof_callstack)
+    OUT PVOID* data_bytes,
+    OUT PDWORD data_size)
 {
     BOOL     ret_val     = FALSE;
     BOOL     success     = FALSE;
-    PIPC_MSG req         = NULL;
     DWORD    dwBytesRead = 0;
 
     ReadFile_t ReadFile = NULL;
@@ -209,6 +203,45 @@ BOOL recv_arguments_from_pipe(
         goto cleanup;
     }
 
+    *data_bytes = intAlloc(PAGE_SIZE);
+    if (!*data_bytes)
+    {
+        malloc_failed();
+        goto cleanup;
+    }
+
+    success = ReadFile(hPipe, *data_bytes, PAGE_SIZE, &dwBytesRead, NULL);
+    if (!success || dwBytesRead == 0)
+    {
+        function_failed("ReadFile");
+        goto cleanup;
+    }
+
+    if (data_size)
+        *data_size = dwBytesRead;
+
+    ret_val = TRUE;
+
+cleanup:
+    if (!ret_val && *data_bytes)
+    {
+        intFree(*data_bytes);
+        *data_bytes = NULL;
+    }
+
+    return ret_val;
+}
+
+BOOL server_recv_arguments_from_pipe(
+    IN HANDLE hPipe,
+    OUT LPSTR* dump_path,
+    OUT PBOOL use_valid_sig,
+    OUT PBOOL elevate_handle)
+{
+    BOOL     ret_val     = FALSE;
+    BOOL     success     = FALSE;
+    PIPC_MSG req         = NULL;
+
     req = intAlloc(PAGE_SIZE);
     if (!req)
     {
@@ -216,16 +249,16 @@ BOOL recv_arguments_from_pipe(
         goto cleanup;
     }
 
-    success = ReadFile(hPipe, req, PAGE_SIZE, &dwBytesRead, NULL);
-    if (!success || dwBytesRead == 0)
-    {
-        function_failed("ReadFile");
+    success = read_data_from_pipe(
+        hPipe,
+        (PVOID)&req,
+        NULL);
+    if (!success)
         goto cleanup;
-    }
 
-    if (req->Type != parameters)
+    if (req->Type != msg_type_parameters)
     {
-        DPRINT_ERR("Request type is not 'parameters");
+        DPRINT_ERR("Invalid message type");
         goto cleanup;
     }
 
@@ -236,13 +269,9 @@ BOOL recv_arguments_from_pipe(
         goto cleanup;
     }
 
-    *lsass_pid = req->p.Params.lsass_pid;
     memcpy(*dump_path, req->p.Params.dump_path, MAX_PATH + 1);
     *use_valid_sig = req->p.Params.use_valid_sig;
-    *duplicate_handle = req->p.Params.duplicate_handle;
     *elevate_handle = req->p.Params.elevate_handle;
-    *duplicate_elevate = req->p.Params.duplicate_elevate;
-    *spoof_callstack = req->p.Params.spoof_callstack;
 
     ret_val = TRUE;
 
@@ -253,20 +282,14 @@ cleanup:
     return ret_val;
 }
 
-BOOL send_arguments_from_pipe(
-    OUT PHANDLE hPipe,
-    IN DWORD lsass_pid,
-    IN LPSTR dump_path,
-    IN BOOL use_valid_sig,
-    IN BOOL duplicate_handle,
-    IN BOOL elevate_handle,
-    IN BOOL duplicate_elevate,
-    IN DWORD spoof_callstack)
+BOOL write_data_to_pipe(
+    IN HANDLE hPipe,
+    IN PVOID data_bytes,
+    IN DWORD data_size)
 {
     BOOL     ret_val        = FALSE;
     BOOL     success        = FALSE;
     DWORD    dwBytesWritten = 0;
-    PIPC_MSG ParamsMsg      = NULL;
 
     WriteFile_t WriteFile = NULL;
 
@@ -280,11 +303,28 @@ BOOL send_arguments_from_pipe(
         goto cleanup;
     }
 
-    success = connect_to_named_pipe(
-        IPC_PIPE_NAME,
-        hPipe);
-    if (!success)
+    success = WriteFile(hPipe, data_bytes, data_size, &dwBytesWritten, NULL);
+    if (!success && GetLastError() != ERROR_IO_PENDING)
+    {
+        function_failed("WriteFile");
         goto cleanup;
+    }
+
+    ret_val = TRUE;
+
+cleanup:
+    return ret_val;
+}
+
+BOOL client_send_arguments_from_pipe(
+    IN HANDLE hPipe,
+    IN LPSTR dump_path,
+    IN BOOL use_valid_sig,
+    IN BOOL elevate_handle)
+{
+    BOOL     ret_val        = FALSE;
+    BOOL     success        = FALSE;
+    PIPC_MSG ParamsMsg      = NULL;
 
     ParamsMsg = intAlloc(sizeof(IPC_MSG));
     if (!ParamsMsg)
@@ -293,21 +333,17 @@ BOOL send_arguments_from_pipe(
         goto cleanup;
     }
 
-    ParamsMsg->Type = parameters;
-    ParamsMsg->p.Params.lsass_pid = lsass_pid;
+    ParamsMsg->Type = msg_type_parameters;
     memcpy(ParamsMsg->p.Params.dump_path, dump_path, MAX_PATH + 1 );
     ParamsMsg->p.Params.use_valid_sig = use_valid_sig;
-    ParamsMsg->p.Params.duplicate_handle = duplicate_handle;
     ParamsMsg->p.Params.elevate_handle = elevate_handle;
-    ParamsMsg->p.Params.duplicate_elevate = duplicate_elevate;
-    ParamsMsg->p.Params.spoof_callstack = spoof_callstack;
 
-    success = WriteFile(*hPipe, ParamsMsg, sizeof(*ParamsMsg), &dwBytesWritten, NULL);
-    if (!success && GetLastError() != ERROR_IO_PENDING)
-    {
-        function_failed("WriteFile");
+    success = write_data_to_pipe(
+        hPipe,
+        ParamsMsg,
+        sizeof(*ParamsMsg));
+    if (!success)
         goto cleanup;
-    }
 
     ret_val = TRUE;
 
@@ -318,7 +354,7 @@ cleanup:
     return ret_val;
 }
 
-BOOL disconnect_pipe(
+BOOL server_disconnect_pipe(
     IN HANDLE hPipe)
 {
     BOOL ret_val = FALSE;
@@ -349,6 +385,72 @@ BOOL disconnect_pipe(
     ret_val = TRUE;
 
 cleanup:
+    return ret_val;
+}
+
+BOOL server_send_success(
+    IN HANDLE hPipe,
+    IN BOOL succeded)
+{
+    BOOL     ret_val        = FALSE;
+    BOOL     success        = FALSE;
+    PIPC_MSG ParamsMsg      = NULL;
+
+    ParamsMsg = intAlloc(sizeof(IPC_MSG));
+    if (!ParamsMsg)
+    {
+        malloc_failed();
+        goto cleanup;
+    }
+
+    ParamsMsg->Type = msg_type_result;
+    ParamsMsg->p.Result.succeded = succeded;
+
+    success = write_data_to_pipe(
+        hPipe,
+        ParamsMsg,
+        sizeof(*ParamsMsg));
+    if (!success)
+        goto cleanup;
+
+    ret_val = TRUE;
+
+cleanup:
+    if (ParamsMsg)
+        intFree(ParamsMsg);
+
+    return ret_val;
+}
+
+BOOL client_recv_success(
+    IN HANDLE hPipe,
+    OUT PBOOL succeded)
+{
+    BOOL     ret_val = FALSE;
+    BOOL     success = FALSE;
+    PIPC_MSG req     = NULL;
+
+    success = read_data_from_pipe(
+        hPipe,
+        (PVOID)&req,
+        NULL);
+    if (!success)
+        goto cleanup;
+
+    if (req->Type != msg_type_result)
+    {
+        DPRINT_ERR("Invalid message type");
+        goto cleanup;
+    }
+
+    *succeded = req->p.Result.succeded;
+
+    ret_val = TRUE;
+
+cleanup:
+    if (req)
+        intFree(req);
+
     return ret_val;
 }
 

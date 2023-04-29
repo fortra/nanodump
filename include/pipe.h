@@ -27,24 +27,27 @@ typedef BOOL(WINAPI* DisconnectNamedPipe_t)(HANDLE hNamedPipe);
 
 typedef enum MESSAGE_TYPE
 {
-    parameters,
+    msg_type_parameters,
+    msg_type_result,
 } MESSAGE_TYPE;
 
 typedef struct _MSG_PPL_MEDIC_PARAMETERS
 {
-    DWORD lsass_pid;
     LPSTR dump_path[MAX_PATH + 1];
     BOOL  use_valid_sig;
-    BOOL  duplicate_handle;
     BOOL  elevate_handle;
-    BOOL  duplicate_elevate;
-    DWORD spoof_callstack;
 } MSG_PPL_MEDIC_PARAMETERS, * PMSG_PPL_MEDIC_PARAMETERS;
+
+typedef struct _MSG_RESULT
+{
+	BOOL succeded;
+} MSG_RESULT, * PMSG_RESULT;
 
 typedef struct _IPC_MSG
 {
     MESSAGE_TYPE Type;
     union {
+        MSG_RESULT Result;
         MSG_PPL_MEDIC_PARAMETERS Params;
     } p;
 
@@ -56,39 +59,44 @@ typedef struct _IPC_MSG
 
 #endif // #if defined(PPL_MEDIC)
 
-BOOL create_named_pipe(
+BOOL server_create_named_pipe(
     IN LPCWSTR pipe_name,
     IN BOOL async,
     OUT PHANDLE hPipe);
 
-BOOL connect_to_named_pipe(
+BOOL client_connect_to_named_pipe(
     IN LPWSTR pipe_name,
     OUT PHANDLE hPipe);
 
-BOOL listen_on_named_pipe(
+BOOL server_listen_on_named_pipe(
     IN HANDLE hPipe);
 
-BOOL recv_arguments_from_pipe(
+BOOL server_recv_arguments_from_pipe(
     IN HANDLE hPipe,
-    OUT PDWORD lsass_pid,
     OUT LPSTR* dump_path,
     OUT PBOOL use_valid_sig,
-    OUT PBOOL duplicate_handle,
-    OUT PBOOL elevate_handle,
-    OUT PBOOL duplicate_elevate,
-    OUT PDWORD spoof_callstack);
+    OUT PBOOL elevate_handle);
 
-BOOL send_arguments_from_pipe(
-    OUT PHANDLE hPipe,
-    IN DWORD lsass_pid,
+BOOL client_send_arguments_from_pipe(
+    IN HANDLE hPipe,
     IN LPSTR dump_path,
     IN BOOL use_valid_sig,
-    IN BOOL duplicate_handle,
-    IN BOOL elevate_handle,
-    IN BOOL duplicate_elevate,
-    IN DWORD spoof_callstack);
+    IN BOOL elevate_handle);
 
-BOOL disconnect_pipe(
+BOOL server_disconnect_pipe(
     IN HANDLE hPipe);
+
+BOOL write_data_to_pipe(
+    IN HANDLE hPipe,
+    IN PVOID data_bytes,
+    IN DWORD data_size);
+
+BOOL server_send_success(
+    IN HANDLE hPipe,
+    IN BOOL succeded);
+
+BOOL client_recv_success(
+    IN HANDLE hPipe,
+    OUT PBOOL succeded);
 
 #endif // #if defined(PPL_MEDIC) || defined(SSP)

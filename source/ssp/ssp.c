@@ -220,6 +220,11 @@ void go(char* args, int length)
     use_valid_sig = (BOOL)BeaconDataInt(&parser);
 #endif
 
+    if (!write_dll_path[0])
+        write_dll_path = NULL;
+    if (!load_path[0])
+        load_path = NULL;
+
     run_technique(
         nanodump_ssp_dll,
         nanodump_ssp_dll_len,

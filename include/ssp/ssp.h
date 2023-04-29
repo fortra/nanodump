@@ -14,11 +14,9 @@
 #endif
 
 typedef NTSTATUS(WINAPI* AddSecurityPackageW_t) (LPWSTR pszPackageName, PSECURITY_PACKAGE_OPTIONS pOptions);
-typedef PVOID(WINAPI* Sleep_t)(DWORD dwMilliseconds);
 typedef HANDLE(WINAPI* CreateThread_t)(LPSECURITY_ATTRIBUTES lpThreadAttributes, SIZE_T dwStackSize, LPTHREAD_START_ROUTINE lpStartAddress, LPVOID lpParameter, DWORD dwCreationFlags, LPDWORD lpThreadId);
 
 #define AddSecurityPackageW_SW2_HASH 0x09B08696
-#define Sleep_SW2_HASH               0x1AA40C23
 #define CreateThread_SW2_HASH        0x2C912627
 
 #define SSPICLI_DLL L"SSPICLI.DLL"

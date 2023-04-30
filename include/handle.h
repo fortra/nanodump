@@ -1,6 +1,6 @@
 #pragma once
 
-#if defined(NANO) && !defined(SSP)
+#if (defined(NANO) || defined(PPL_MEDIC)) && !defined(SSP)
 
 #include <windows.h>
 #include <winternl.h>
@@ -19,6 +19,7 @@ typedef DWORD(WINAPI* PssNtFreeSnapshot_t) (HANDLE SnapshotHandle);
 #define LSASS_EXE L"lsass.exe"
 #define PROCESS_HANDLE_TYPE L"Process"
 #define TOKEN_HANDLE_TYPE L"Token"
+#define DIRECTORY_HANDLE_TYPE L"Directory"
 
 #define MAX_PROCESSES 5000
 
@@ -159,6 +160,11 @@ BOOL find_token_handles_in_process(
     OUT PHANDLE_LIST* phandle_list);
 
 BOOL find_process_handles_in_process(
+    IN DWORD process_pid,
+    IN DWORD permissions,
+    OUT PHANDLE_LIST* phandle_list);
+
+BOOL find_directory_handles_in_process(
     IN DWORD process_pid,
     IN DWORD permissions,
     OUT PHANDLE_LIST* phandle_list);

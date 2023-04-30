@@ -8,6 +8,9 @@
 #define KERNELBASE_DLL L"KernelBase.dll"
 #define KERNEL32_DLL L"Kernel32.dll"
 #define SHELL32_DLL L"Shell32.dll"
+#define OLEAUT32_DLL L"OleAut32.dll"
+#define RPCRT4_DLL L"Rpcrt4.dll"
+#define OLE32_DLL L"Ole32.dll"
 
 #define NtCurrentProcess() ( (HANDLE)(LONG_PTR) -1 )
 #define NtCurrentThread() ( (HANDLE)(LONG_PTR) -2 )

@@ -1,4 +1,7 @@
 *.dmp
 *.obj
-include/nanodump_ppl_dll.x64.h
-include/nanodump_ppl_dll.x86.h
+include/nanodump_ssp_dll.x64.h
+include/nanodump_ssp_dll.x86.h
+include/nanodump_ppl_dump_dll.x64.h
+include/nanodump_ppl_dump_dll.x86.h
+include/nanodump_ppl_medic_dll.x64.h

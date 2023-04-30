@@ -1,6 +1,6 @@
 #include "output.h"
 
-#if defined(DDL) && defined(PPL)
+#if defined(DDL) && defined(PPL_DUMP)
 
 #ifndef intAlloc
 #define intAlloc(size) HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size)

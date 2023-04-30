@@ -106,6 +106,8 @@
  WINBASEAPI size_t    __cdecl MSVCRT$wcstombs(char * __restrict__ _Dest,const wchar_t * __restrict__ _Source,size_t _MaxCount);
  WINBASEAPI wchar_t * __cdecl MSVCRT$wcsncat(wchar_t * _Dest,const wchar_t * _Source,size_t _Count);
  WINBASEAPI int       __cdecl MSVCRT$strncmp(const char *s1, const char *s2, size_t n);
+ WINBASEAPI int       __cdecl MSVCRT$strcmp(const char *s1, const char *s2);
+ WINBASEAPI int       __cdecl MSVCRT$wcscmp(const wchar_t *_Str1, const wchar_t *_Str2);
  WINBASEAPI int       __cdecl MSVCRT$_wcsicmp(const wchar_t *_Str1,const wchar_t *_Str2);
  WINBASEAPI void      __cdecl MSVCRT$srand(int initial);
  WINBASEAPI int       __cdecl MSVCRT$rand();
@@ -139,6 +141,8 @@
  #define wcstombs   MSVCRT$wcstombs
  #define wcsncat    MSVCRT$wcsncat
  #define strncmp    MSVCRT$strncmp
+ #define strcmp     MSVCRT$strcmp
+ #define wcscmp     MSVCRT$wcscmp
  #define _wcsicmp   MSVCRT$_wcsicmp
  #define srand      MSVCRT$srand
  #define rand       MSVCRT$rand

@@ -743,4 +743,9 @@ EXTERN_C NTSTATUS NtUnmapViewOfSection(
 	IN HANDLE ProcessHandle,
 	IN PVOID BaseAddress);
 
+EXTERN_C NTSTATUS NtImpersonateThread(
+    IN HANDLE ThreadHandle,
+    IN HANDLE ThreadToImpersonate,
+    IN PSECURITY_QUALITY_OF_SERVICE SecurityQualityOfService);
+
 #endif

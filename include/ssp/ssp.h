@@ -9,14 +9,16 @@
 #include "dinvoke.h"
 #include "nanodump.h"
 #include "output.h"
+#if PASS_PARAMS_VIA_NAMED_PIPES == 1
+#include "pipe.h"
+#endif
 
 typedef NTSTATUS(WINAPI* AddSecurityPackageW_t) (LPWSTR pszPackageName, PSECURITY_PACKAGE_OPTIONS pOptions);
+typedef HANDLE(WINAPI* CreateThread_t)(LPSECURITY_ATTRIBUTES lpThreadAttributes, SIZE_T dwStackSize, LPTHREAD_START_ROUTINE lpStartAddress, LPVOID lpParameter, DWORD dwCreationFlags, LPDWORD lpThreadId);
 
 #define AddSecurityPackageW_SW2_HASH 0x09B08696
+#define CreateThread_SW2_HASH        0x2C912627
 
 #define SSPICLI_DLL L"SSPICLI.DLL"
 
-//#define SEC_E_SECPKG_NOT_FOUND 0x80090305
-
-VOID load_ssp(
-    IN LPSTR ssp_path);
+DWORD WINAPI load_ssp(LPVOID Parameter);

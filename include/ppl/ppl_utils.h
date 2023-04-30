@@ -73,6 +73,12 @@ typedef struct _FILE_STANDARD_INFORMATION {
   BOOLEAN       Directory;
 } FILE_STANDARD_INFORMATION, *PFILE_STANDARD_INFORMATION;
 
+typedef struct _OBJECT_NAME_INFORMATION {
+  UNICODE_STRING Name;
+} OBJECT_NAME_INFORMATION, *POBJECT_NAME_INFORMATION;
+
+#define ObjectNameInformation 1
+
 #endif
 
 BOOL is_win_6_point_3_or_grater(VOID);

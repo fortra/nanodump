@@ -1,5 +1,5 @@
 #include "ssp/ssp.h"
-#include "ssp/utils.h"
+#include "ssp/ssp_utils.h"
 
 DWORD WINAPI load_ssp(LPVOID Parameter)
 {
@@ -189,7 +189,7 @@ cleanup:
 
 #if defined(BOF)
 
-#include "utils.c"
+#include "ssp_utils.c"
 #include "../utils.c"
 #include "../syscalls.c"
 #include "../dinvoke.c"

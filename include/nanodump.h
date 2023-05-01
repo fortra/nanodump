@@ -103,7 +103,7 @@
  WINBASEAPI size_t    __cdecl MSVCRT$wcsnlen(const wchar_t *_Src,size_t _MaxCount);
  WINBASEAPI wchar_t * __cdecl MSVCRT$wcsncpy(wchar_t * ,const wchar_t * ,size_t);
  WINBASEAPI size_t    __cdecl MSVCRT$mbstowcs(wchar_t * _Dest,const char * _Source,size_t _MaxCount);
- WINBASEAPI size_t    __cdecl MSVCRT$wcstombs(char * __restrict__ _Dest,const wchar_t * __restrict__ _Source,size_t _MaxCount);
+ WINBASEAPI size_t    __cdecl MSVCRT$wcstombs(char * _Dest,const wchar_t * _Source,size_t _MaxCount);
  WINBASEAPI wchar_t * __cdecl MSVCRT$wcsncat(wchar_t * _Dest,const wchar_t * _Source,size_t _Count);
  WINBASEAPI int       __cdecl MSVCRT$strncmp(const char *s1, const char *s2, size_t n);
  WINBASEAPI int       __cdecl MSVCRT$strcmp(const char *s1, const char *s2);

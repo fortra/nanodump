@@ -20,6 +20,9 @@ nanodump: clean
 	$(CC_x64) -c source/entry.c -o dist/$(BOFNAME).x64.o $(OPTIONS) -DNANO -DBOF
 	$(STRIP_x64) --strip-unneeded dist/$(BOFNAME).x64.o
 
+	$(CC_x86) -c source/entry.c -o dist/$(BOFNAME).x86.o $(OPTIONS) -DNANO -DBOF
+	$(STRIP_x86) --strip-unneeded dist/$(BOFNAME).x86.o
+
 	$(GCC) source/bin2c.c -o dist/bin2c -static -s -Os
 
 	$(CC_x64) source/utils.c source/handle.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/dinvoke.c source/pipe.c source/entry.c -o dist/$(BOFNAME)_ssp.x64.dll $(OPTIONS) $(SSP_OPTIONS) -DNANO -DSSP -DDDL -shared
@@ -76,6 +79,8 @@ debug: clean
 	$(CC_x86) source/spoof_callstack.c source/shtinkering.c source/dinvoke.c source/utils.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c -o dist/$(BOFNAME).x86.exe $(OPTIONS) -DNANO -DEXE -DDEBUG
 
 	$(CC_x64) -c source/entry.c -o dist/$(BOFNAME).x64.o $(OPTIONS) -DNANO -DBOF -DDEBUG
+
+	$(CC_x86) -c source/entry.c -o dist/$(BOFNAME).x86.o $(OPTIONS) -DNANO -DBOF -DDEBUG
 
 	$(GCC) source/bin2c.c -o dist/bin2c -static -s -Os
 

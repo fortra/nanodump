@@ -35,6 +35,7 @@ nanodump: clean
 
 	$(CC_x64) -c source/ssp/ssp.c -o dist/$(BOFNAME)_ssp.x64.o $(OPTIONS) $(SSP_OPTIONS) -DBOF -DSSP
 	$(STRIP_x64) --strip-unneeded dist/$(BOFNAME)_ssp.x64.o
+
 	$(CC_x64) source/utils.c source/syscalls.c source/dinvoke.c source/pipe.c source/ssp/ssp_utils.c source/ssp/ssp.c -o dist/$(BOFNAME)_ssp.x64.exe $(OPTIONS) $(SSP_OPTIONS) -DEXE -DSSP
 	$(STRIP_x64) --strip-all dist/$(BOFNAME)_ssp.x64.exe
 

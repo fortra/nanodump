@@ -344,7 +344,7 @@ NTSTATUS WaitForWerSvc(
         goto end;
     }
 
-    if (wait_time != -1)
+    if ((LONG32)wait_time != -1)
     {
         TimeOut.QuadPart = (ULONG64)wait_time * -10000;
     }
@@ -439,7 +439,7 @@ NTSTATUS SendMessageToWERService(
 
     port_attributes.MaxMessageLength = sizeof(WER_API_MESSAGE_SEND);
 
-    if (wait_time_2 != -1)
+    if ((LONG32)wait_time_2 != -1)
     {
         TimeOut.QuadPart = (ULONG64)wait_time_2 * -10000;
     }

@@ -12,6 +12,12 @@
 
 #define ZwOpenProcess_SW2_HASH 0xCD9B2A0F
 
+#if defined(__clang__)
+ #define SET_SYNTAX ".intel_syntax noprefix \n"
+#else
+ #define SET_SYNTAX
+#endif
+
 #define SW2_SEED 0x1337C0DE
 #define SW2_ROL8(v) (v << 8 | v >> 24)
 #define SW2_ROR8(v) (v >> 8 | v << 24)

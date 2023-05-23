@@ -36,6 +36,9 @@ nanodump: clean
 	$(CC_x64) -c source/ssp/ssp.c -o dist/$(BOFNAME)_ssp.x64.o $(OPTIONS) $(SSP_OPTIONS) -DBOF -DSSP
 	$(STRIP_x64) --strip-unneeded dist/$(BOFNAME)_ssp.x64.o
 
+	$(CC_x86) -c source/ssp/ssp.c -o dist/$(BOFNAME)_ssp.x86.o $(OPTIONS) $(SSP_OPTIONS) -DBOF -DSSP
+	$(STRIP_x86) --strip-unneeded dist/$(BOFNAME)_ssp.x86.o
+
 	$(CC_x64) source/utils.c source/syscalls.c source/dinvoke.c source/pipe.c source/ssp/ssp_utils.c source/ssp/ssp.c -o dist/$(BOFNAME)_ssp.x64.exe $(OPTIONS) $(SSP_OPTIONS) -DEXE -DSSP
 	$(STRIP_x64) --strip-all dist/$(BOFNAME)_ssp.x64.exe
 
@@ -58,6 +61,9 @@ nanodump: clean
 
 	$(CC_x64) -c source/ppl/ppl.c -o dist/$(BOFNAME)_ppl_dump.x64.o $(OPTIONS) -DBOF -DPPL_DUMP
 	$(STRIP_x64) --strip-unneeded dist/$(BOFNAME)_ppl_dump.x64.o
+
+	$(CC_x86) -c source/ppl/ppl.c -o dist/$(BOFNAME)_ppl_dump.x86.o $(OPTIONS) -DBOF -DPPL_DUMP
+	$(STRIP_x86) --strip-unneeded dist/$(BOFNAME)_ppl_dump.x86.o
 
 	$(CC_x64) source/spoof_callstack.c source/shtinkering.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/ppl/ppl_medic_dll.c source/pipe.c source/entry.c -o dist/$(BOFNAME)_ppl_medic.x64.dll $(OPTIONS) $(PPL_MEDIC_OPTIONS) -DNANO -DPPL_MEDIC -DDDL -shared
 	$(STRIP_x64) --strip-all dist/$(BOFNAME)_ppl_medic.x64.dll

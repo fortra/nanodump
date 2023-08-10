@@ -12,6 +12,7 @@
 #include "spoof_callstack.c"
 #include "shtinkering.c"
 #include "impersonate.c"
+#include "hw_breakpoint.c"
 #endif
 
 VOID writeat(

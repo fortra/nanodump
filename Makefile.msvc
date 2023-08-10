@@ -1,5 +1,5 @@
 
-OPTIONS = -Zp8 -c -nologo -Gy -Os -O1 -GR- -EHa -Oi -GS- -I include
+OPTIONS = -Zp8 -c -nologo -Gy -GR- -EHa -Oi -GS- -I include
 LIBS = libvcruntime.lib libcmt.lib ucrt.lib kernel32.lib
 PPL_MEDIC_OPTIONS = -DPASS_PARAMS_VIA_NAMED_PIPES=1
 SSP_OPTIONS = -DPASS_PARAMS_VIA_NAMED_PIPES=1
@@ -7,9 +7,11 @@ SSP_OPTIONS = -DPASS_PARAMS_VIA_NAMED_PIPES=1
 nanodump:
 	@echo ###### RELEASE ######
 	ML64 /c source/syscalls-asm.asm /link /NODEFAULTLIB /RELEASE /MACHINE:X64
+	ML64 /c source/hw_breakpoint-asm.asm /link /NODEFAULTLIB /RELEASE /MACHINE:X64
+	ML64 /c source/spoof_callstack-asm.asm /link /NODEFAULTLIB /RELEASE /MACHINE:X64
 
-	cl.exe -DNANO -DEXE $(OPTIONS) source/spoof_callstack.c source/shtinkering.c source/dinvoke.c source/utils.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c
-	link.exe /OUT:dist\nanodump.x64.exe -nologo $(LIBS) /MACHINE:X64 -subsystem:console -nodefaultlib entry.obj nanodump.obj utils.obj spoof_callstack.obj shtinkering.obj dinvoke.obj token_priv.obj handle.obj impersonate.obj malseclogon.obj werfault.obj modules.obj syscalls-asm.obj syscalls.obj
+	cl.exe -DNANO -DEXE $(OPTIONS) source/spoof_callstack.c source/hw_breakpoint.c source/shtinkering.c source/dinvoke.c source/utils.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c
+	link.exe /OUT:dist\nanodump.x64.exe -nologo $(LIBS) /MACHINE:X64 -subsystem:console -nodefaultlib entry.obj nanodump.obj utils.obj spoof_callstack.obj hw_breakpoint.obj hw_breakpoint-asm.obj spoof_callstack-asm.obj shtinkering.obj dinvoke.obj token_priv.obj handle.obj impersonate.obj malseclogon.obj werfault.obj modules.obj syscalls-asm.obj syscalls.obj
 
 #	cl.exe -DNANO -DBOF /Fo:dist\nanodump.x64.o $(OPTIONS) source/entry.c
 
@@ -24,8 +26,8 @@ nanodump:
 	cl.exe -DEXE -DSSP $(OPTIONS) $(SSP_OPTIONS) source/utils.c source/syscalls.c source/dinvoke.c source/pipe.c source/ssp/ssp_utils.c source/ssp/ssp.c
 	link.exe /OUT:dist\nanodump_ssp.x64.exe -nologo $(LIBS) /MACHINE:X64 -subsystem:console -nodefaultlib utils.obj dinvoke.obj pipe.obj ssp_utils.obj ssp.obj syscalls-asm.obj syscalls.obj
 
-	cl.exe -DNANO -DPPL_DUMP -DDLL $(OPTIONS) source/spoof_callstack.c source/shtinkering.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/entry.c
-	link.exe -DLL /OUT:dist\nanodump_ppl_dump.x64.dll -nologo $(LIBS) /MACHINE:X64 -subsystem:console -nodefaultlib entry.obj nanodump.obj utils.obj modules.obj syscalls-asm.obj syscalls.obj spoof_callstack.obj shtinkering.obj output.obj cleanup.obj dinvoke.obj handle.obj impersonate.obj token_priv.obj
+	cl.exe -DNANO -DPPL_DUMP -DDLL $(OPTIONS) source/spoof_callstack.c source/hw_breakpoint.c source/shtinkering.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/entry.c
+	link.exe -DLL /OUT:dist\nanodump_ppl_dump.x64.dll -nologo $(LIBS) /MACHINE:X64 -subsystem:console -nodefaultlib entry.obj nanodump.obj utils.obj modules.obj syscalls-asm.obj syscalls.obj spoof_callstack.obj hw_breakpoint.obj hw_breakpoint-asm.obj spoof_callstack-asm.obj shtinkering.obj output.obj cleanup.obj dinvoke.obj handle.obj impersonate.obj token_priv.obj
 	.\dist\bin2c.exe dist\nanodump_ppl_dump.x64.dll nanodump_ppl_dump_dll > include\nanodump_ppl_dump_dll.x64.h
 
 	cl.exe -DEXE -DPPL_DUMP $(OPTIONS) source/utils.c source/syscalls.c source/dinvoke.c source/token_priv.c source/ppl/ppl_utils.c source/impersonate.c source/ppl/ppl.c source/ppl/ppl_dump.c
@@ -33,8 +35,8 @@ nanodump:
 
 #	cl.exe -DBOF -DPPL_DUMP /Fo:dist\nanodump_ppl_dump.x64.o $(OPTIONS) source/ppl/ppl.c
 
-	cl.exe -DNANO -DPPL_MEDIC -DDDL $(OPTIONS) $(PPL_MEDIC_OPTIONS) source/spoof_callstack.c source/shtinkering.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/ppl/ppl_medic_dll.c source/pipe.c source/entry.c
-	link.exe -DLL /OUT:dist\nanodump_ppl_medic.x64.dll -nologo $(LIBS) /MACHINE:X64 -subsystem:console -nodefaultlib spoof_callstack.obj shtinkering.obj output.obj cleanup.obj utils.obj dinvoke.obj handle.obj impersonate.obj modules.obj syscalls-asm.obj syscalls.obj token_priv.obj nanodump.obj ppl_medic_dll.obj pipe.obj entry.obj
+	cl.exe -DNANO -DPPL_MEDIC -DDDL $(OPTIONS) $(PPL_MEDIC_OPTIONS) source/spoof_callstack.c source/hw_breakpoint.c source/shtinkering.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/ppl/ppl_medic_dll.c source/pipe.c source/entry.c
+	link.exe -DLL /OUT:dist\nanodump_ppl_medic.x64.dll -nologo $(LIBS) /MACHINE:X64 -subsystem:console -nodefaultlib spoof_callstack.obj hw_breakpoint.obj hw_breakpoint-asm.obj spoof_callstack-asm.obj shtinkering.obj output.obj cleanup.obj utils.obj dinvoke.obj handle.obj impersonate.obj modules.obj syscalls-asm.obj syscalls.obj token_priv.obj nanodump.obj ppl_medic_dll.obj pipe.obj entry.obj
 	.\dist\bin2c.exe dist\nanodump_ppl_medic.x64.dll nanodump_ppl_medic_dll > include\nanodump_ppl_medic_dll.x64.h
 
 	cl.exe -DEXE -DPPL_MEDIC -DNANO $(OPTIONS) $(PPL_MEDIC_OPTIONS) source/utils.c source/syscalls.c source/dinvoke.c source/handle.c source/token_priv.c source/ppl/ppl_utils.c source/impersonate.c source/ppl/ppl.c source/ppl/ppl_medic.c source/pipe.c source/ppl/ppl_medic_client.c
@@ -47,9 +49,11 @@ nanodump:
 debug:
 	@echo ###### DEBUG ######
 	ML64 /c source/syscalls-asm.asm /link /NODEFAULTLIB /RELEASE /MACHINE:X64
+	ML64 /c source/hw_breakpoint-asm.asm /link /NODEFAULTLIB /RELEASE /MACHINE:X64
+	ML64 /c source/spoof_callstack-asm.asm /link /NODEFAULTLIB /RELEASE /MACHINE:X64
 
-	cl.exe -DNANO -DEXE -DDEBUG $(OPTIONS) source/spoof_callstack.c source/shtinkering.c source/dinvoke.c source/utils.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c
-	link.exe /OUT:dist\nanodump.x64.exe -nologo $(LIBS) /MACHINE:X64 -subsystem:console -nodefaultlib entry.obj nanodump.obj utils.obj spoof_callstack.obj shtinkering.obj dinvoke.obj token_priv.obj handle.obj impersonate.obj malseclogon.obj werfault.obj modules.obj syscalls-asm.obj syscalls.obj
+	cl.exe -DNANO -DEXE -DDEBUG $(OPTIONS) source/spoof_callstack.c source/hw_breakpoint.c source/shtinkering.c source/dinvoke.c source/utils.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/malseclogon.c source/nanodump.c source/werfault.c source/entry.c
+	link.exe /OUT:dist\nanodump.x64.exe -nologo $(LIBS) /MACHINE:X64 -subsystem:console -nodefaultlib entry.obj nanodump.obj utils.obj spoof_callstack.obj hw_breakpoint.obj hw_breakpoint-asm.obj spoof_callstack-asm.obj shtinkering.obj dinvoke.obj token_priv.obj handle.obj impersonate.obj malseclogon.obj werfault.obj modules.obj syscalls-asm.obj syscalls.obj
 
 #	cl.exe -DNANO -DBOF -DDEBUG /Fo:dist\nanodump.x64.o $(OPTIONS) source/entry.c
 
@@ -64,8 +68,8 @@ debug:
 	cl.exe -DEXE -DSSP -DDEBUG $(OPTIONS) $(SSP_OPTIONS) source/utils.c source/syscalls.c source/dinvoke.c source/pipe.c source/ssp/ssp_utils.c source/ssp/ssp.c
 	link.exe /OUT:dist\nanodump_ssp.x64.exe -nologo $(LIBS) /MACHINE:X64 -subsystem:console -nodefaultlib utils.obj dinvoke.obj pipe.obj ssp_utils.obj ssp.obj syscalls-asm.obj syscalls.obj
 
-	cl.exe -DNANO -DPPL_DUMP -DDLL -DDEBUG $(OPTIONS) source/spoof_callstack.c source/shtinkering.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/entry.c
-	link.exe -DLL /OUT:dist\nanodump_ppl_dump.x64.dll -nologo $(LIBS) /MACHINE:X64 -subsystem:console -nodefaultlib entry.obj nanodump.obj utils.obj modules.obj syscalls-asm.obj syscalls.obj spoof_callstack.obj shtinkering.obj output.obj cleanup.obj dinvoke.obj handle.obj impersonate.obj token_priv.obj
+	cl.exe -DNANO -DPPL_DUMP -DDLL -DDEBUG $(OPTIONS) source/spoof_callstack.c source/hw_breakpoint.c source/shtinkering.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/entry.c
+	link.exe -DLL /OUT:dist\nanodump_ppl_dump.x64.dll -nologo $(LIBS) /MACHINE:X64 -subsystem:console -nodefaultlib entry.obj nanodump.obj utils.obj modules.obj syscalls-asm.obj syscalls.obj spoof_callstack.obj hw_breakpoint.obj hw_breakpoint-asm.obj spoof_callstack-asm.obj shtinkering.obj output.obj cleanup.obj dinvoke.obj handle.obj impersonate.obj token_priv.obj
 	.\dist\bin2c.exe dist\nanodump_ppl_dump.x64.dll nanodump_ppl_dump_dll > include\nanodump_ppl_dump_dll.x64.h
 
 	cl.exe -DEXE -DPPL_DUMP -DDEBUG $(OPTIONS) source/utils.c source/syscalls.c source/dinvoke.c source/token_priv.c source/ppl/ppl_utils.c source/impersonate.c source/ppl/ppl.c source/ppl/ppl_dump.c
@@ -73,8 +77,8 @@ debug:
 
 #	cl.exe -DBOF -DPPL_DUMP -DDEBUG /Fo:dist\nanodump_ppl_dump.x64.o $(OPTIONS) source/ppl/ppl.c
 
-	cl.exe -DNANO -DPPL_MEDIC -DDDL -DDEBUG $(OPTIONS) $(PPL_MEDIC_OPTIONS) source/spoof_callstack.c source/shtinkering.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/ppl/ppl_medic_dll.c source/pipe.c source/entry.c
-	link.exe -DLL /OUT:dist\nanodump_ppl_medic.x64.dll -nologo $(LIBS) /MACHINE:X64 -subsystem:console -nodefaultlib spoof_callstack.obj shtinkering.obj output.obj cleanup.obj utils.obj dinvoke.obj handle.obj impersonate.obj modules.obj syscalls-asm.obj syscalls.obj token_priv.obj nanodump.obj ppl_medic_dll.obj pipe.obj entry.obj
+	cl.exe -DNANO -DPPL_MEDIC -DDDL -DDEBUG $(OPTIONS) $(PPL_MEDIC_OPTIONS) source/spoof_callstack.c source/hw_breakpoint.c source/shtinkering.c source/output.c source/ppl/cleanup.c source/utils.c source/dinvoke.c source/handle.c source/impersonate.c source/modules.c source/syscalls.c source/token_priv.c source/nanodump.c source/ppl/ppl_medic_dll.c source/pipe.c source/entry.c
+	link.exe -DLL /OUT:dist\nanodump_ppl_medic.x64.dll -nologo $(LIBS) /MACHINE:X64 -subsystem:console -nodefaultlib spoof_callstack.obj hw_breakpoint.obj hw_breakpoint-asm.obj spoof_callstack-asm.obj shtinkering.obj output.obj cleanup.obj utils.obj dinvoke.obj handle.obj impersonate.obj modules.obj syscalls-asm.obj syscalls.obj token_priv.obj nanodump.obj ppl_medic_dll.obj pipe.obj entry.obj
 	.\dist\bin2c.exe dist\nanodump_ppl_medic.x64.dll nanodump_ppl_medic_dll > include\nanodump_ppl_medic_dll.x64.h
 
 	cl.exe -DEXE -DPPL_MEDIC -DNANO -DDEBUG $(OPTIONS) $(PPL_MEDIC_OPTIONS) source/utils.c source/syscalls.c source/dinvoke.c source/handle.c source/token_priv.c source/ppl/ppl_utils.c source/impersonate.c source/ppl/ppl.c source/ppl/ppl_medic.c source/pipe.c source/ppl/ppl_medic_client.c
@@ -85,4 +89,4 @@ debug:
 	cl.exe source/restore_signature.c /Fe:scripts\restore_signature.exe
 
 clean:
-	@del /Q token_priv.obj spoof_callstack.obj shtinkering.obj dinvoke.obj entry.obj handle.obj impersonate.obj load_ssp.obj malseclogon.obj werfault.obj modules.obj nanodump.obj syscalls-asm.obj syscalls.obj utils.obj dist\load_ssp.x64.exe dist\load_ssp.x64.o dist\nanodump.x64.exe dist\nanodump.x64.o dist\nanodump_ssp.x64.dll dist\nanodump_ssp.x64.exp dist\nanodump_ssp.x64.lib dist\nanodump_ppl.x64.lib dist\nanodump_ppl.x64.dll
+	@del /Q token_priv.obj spoof_callstack.obj hw_breakpoint.obj hw_breakpoint-asm.obj spoof_callstack-asm.obj shtinkering.obj dinvoke.obj entry.obj handle.obj impersonate.obj load_ssp.obj malseclogon.obj werfault.obj modules.obj nanodump.obj syscalls-asm.obj syscalls.obj utils.obj dist\load_ssp.x64.exe dist\load_ssp.x64.o dist\nanodump.x64.exe dist\nanodump.x64.o dist\nanodump_ssp.x64.dll dist\nanodump_ssp.x64.exp dist\nanodump_ssp.x64.lib dist\nanodump_ppl.x64.lib dist\nanodump_ppl.x64.dll

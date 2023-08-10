@@ -1,5 +1,28 @@
 #include "dinvoke.h"
 
+// used by spoof_callstack
+PVOID find_dll_by_pointer(
+    IN PVOID address)
+{
+    PND_PEB Peb = (PND_PEB)READ_MEMLOC(PEB_OFFSET);
+    PND_PEB_LDR_DATA Ldr = Peb->Ldr;
+    PVOID FirstEntry = &Ldr->InMemoryOrderModuleList.Flink;
+    PND_LDR_DATA_TABLE_ENTRY Entry = (PND_LDR_DATA_TABLE_ENTRY)Ldr->InMemoryOrderModuleList.Flink;
+
+    do
+    {
+        if ((ULONG_PTR)address >= (ULONG_PTR)Entry->DllBase &&
+            (ULONG_PTR)address < RVA(ULONG_PTR, Entry->DllBase, Entry->SizeOfImage))
+            return Entry->DllBase;
+
+        Entry = (PND_LDR_DATA_TABLE_ENTRY)Entry->InMemoryOrderLinks.Flink;
+    } while (Entry != FirstEntry);
+
+    DPRINT_ERR("Could not find the target DLL from the pointer 0x%p", address);
+
+    return NULL;
+}
+
 /*
  * Check that hLibrary is indeed a DLL and not something else
  */

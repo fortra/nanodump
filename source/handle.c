@@ -374,7 +374,7 @@ BOOL obtain_lsass_handle(
     IN BOOL elevate_handle,
     IN BOOL duplicate_elevate,
     IN BOOL use_seclogon_duplicate,
-    IN DWORD spoof_callstack,
+    IN BOOL spoof_callstack,
     IN BOOL is_seclogon_leak_local_stage_2,
     IN LPCSTR seclogon_leak_remote_binary,
     OUT PPROCESS_LIST* Pcreated_processes,
@@ -532,7 +532,7 @@ HANDLE open_handle_to_lsass(
     IN DWORD permissions,
     IN BOOL dup,
     IN BOOL seclogon_race,
-    IN DWORD spoof_callstack,
+    IN BOOL spoof_callstack,
     IN BOOL is_malseclogon_stage_2,
     IN DWORD attributes)
 {
@@ -567,7 +567,6 @@ HANDLE open_handle_to_lsass(
     {
 #if !defined(PPL_DUMP) && !defined(PPL_MEDIC)
         hProcess = open_handle_with_spoofed_callstack(
-            spoof_callstack,
             lsass_pid,
             permissions,
             attributes);

@@ -551,7 +551,7 @@ PVOID allocate_memory(
         return NULL;
     }
     DPRINT(
-        "Allocated 0x%I64d bytes at 0x%p to write the dump",
+        "Allocated 0x%llx bytes at 0x%p to write the dump",
         (ULONG64)*region_size, base_address);
     return base_address;
 }

@@ -42,6 +42,9 @@ typedef struct _ND_PEB
     PND_PEB_LDR_DATA Ldr;
 } ND_PEB, *PND_PEB;
 
+PVOID find_dll_by_pointer(
+    IN PVOID address);
+
 BOOL is_dll(
     IN HMODULE hLibrary);
 

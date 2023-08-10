@@ -1,5 +1,8 @@
 #include "spoof_callstack.h"
 #include "hw_breakpoint.h"
+#ifdef BOF
+#include "hw_breakpoint.c"
+#endif
 
 PVOID from_fake_to_real(PSTACK_INFO stack_info, PVOID pointer)
 {

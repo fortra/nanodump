@@ -182,6 +182,12 @@ HANDLE make_handle_full_access(
     IN HANDLE hProcess,
     IN DWORD attributes);
 
+DWORD get_lsass_min_permissions(VOID);
+
+DWORD get_lsass_clone_permissions(VOID);
+
+DWORD get_lsass_shtinkering_permissions(VOID);
+
 BOOL obtain_lsass_handle(
     OUT PHANDLE phProcess,
     IN DWORD lsass_pid,

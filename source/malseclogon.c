@@ -299,7 +299,7 @@ BOOL malseclogon_stage_1(
 
     success = find_process_handles_in_process(
         lsass_pid,
-        LSASS_DEFAULT_PERMISSIONS,
+        get_lsass_min_permissions(),
         &handle_list);
     if (!success)
         goto cleanup;

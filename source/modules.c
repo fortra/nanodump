@@ -199,7 +199,7 @@ Pmodule_info find_modules(
             return NULL;
 
         if (!first_ldr_entry_address)
-            first_ldr_entry_address = ldr_entry.InMemoryOrderLinks.Blink;
+            first_ldr_entry_address = ldr_entry.InLoadOrderLinks.Blink;
 
         // loop over each important module and see if we have a match
         for (int i = 0; i < number_of_important_modules; i++)
@@ -239,7 +239,7 @@ Pmodule_info find_modules(
         }
 
         // set the next entry as the current entry
-        ldr_entry_address = ldr_entry.InMemoryOrderLinks.Flink;
+        ldr_entry_address = ldr_entry.InLoadOrderLinks.Flink;
         // if we are back at the beginning, break
         if (ldr_entry_address == first_ldr_entry_address)
             break;

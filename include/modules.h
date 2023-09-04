@@ -13,10 +13,10 @@
 #define LSASRV_DLL L"lsasrv.dll"
 #ifdef _WIN64
 #define LDR_POINTER_OFFSET 0x18
-#define MODULE_LIST_POINTER_OFFSET 0x20
+#define MODULE_LIST_POINTER_OFFSET 0x10
 #else
 #define LDR_POINTER_OFFSET 0xc
-#define MODULE_LIST_POINTER_OFFSET 0x14
+#define MODULE_LIST_POINTER_OFFSET 0xc
 #endif
 
 typedef struct _module_info

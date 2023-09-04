@@ -7,11 +7,11 @@ BOOL get_current_dll_filename(
     PVOID IP = getIP();
     PND_PEB Peb = (PND_PEB)READ_MEMLOC(PEB_OFFSET);
     PND_PEB_LDR_DATA Ldr = Peb->Ldr;
-    PVOID FirstEntry = &Ldr->InMemoryOrderModuleList.Flink;
-    PND_LDR_DATA_TABLE_ENTRY Entry = (PND_LDR_DATA_TABLE_ENTRY)Ldr->InMemoryOrderModuleList.Flink;
+    PVOID FirstEntry = &Ldr->InLoadOrderModuleList.Flink;
+    PND_LDR_DATA_TABLE_ENTRY Entry = (PND_LDR_DATA_TABLE_ENTRY)Ldr->InLoadOrderModuleList.Flink;
 
     // loop over each loaded DLL
-    for (; Entry != FirstEntry; Entry = (PND_LDR_DATA_TABLE_ENTRY)Entry->InMemoryOrderLinks.Flink)
+    for (; Entry != FirstEntry; Entry = (PND_LDR_DATA_TABLE_ENTRY)Entry->InLoadOrderLinks.Flink)
     {
         // check if this code section is inside of this DLL
 

@@ -6,8 +6,8 @@ PVOID find_dll_by_pointer(
 {
     PND_PEB Peb = (PND_PEB)READ_MEMLOC(PEB_OFFSET);
     PND_PEB_LDR_DATA Ldr = Peb->Ldr;
-    PVOID FirstEntry = &Ldr->InMemoryOrderModuleList.Flink;
-    PND_LDR_DATA_TABLE_ENTRY Entry = (PND_LDR_DATA_TABLE_ENTRY)Ldr->InMemoryOrderModuleList.Flink;
+    PVOID FirstEntry = &Ldr->InLoadOrderModuleList.Flink;
+    PND_LDR_DATA_TABLE_ENTRY Entry = (PND_LDR_DATA_TABLE_ENTRY)Ldr->InLoadOrderModuleList.Flink;
 
     do
     {
@@ -15,7 +15,7 @@ PVOID find_dll_by_pointer(
             (ULONG_PTR)address < RVA(ULONG_PTR, Entry->DllBase, Entry->SizeOfImage))
             return Entry->DllBase;
 
-        Entry = (PND_LDR_DATA_TABLE_ENTRY)Entry->InMemoryOrderLinks.Flink;
+        Entry = (PND_LDR_DATA_TABLE_ENTRY)Entry->InLoadOrderLinks.Flink;
     } while (Entry != FirstEntry);
 
     DPRINT_ERR("Could not find the target DLL from the pointer 0x%p", address);
@@ -65,10 +65,10 @@ PVOID find_legacy_export(
     PVOID addr;
     PND_PEB Peb = (PND_PEB)READ_MEMLOC(PEB_OFFSET);
     PND_PEB_LDR_DATA Ldr = Peb->Ldr;
-    PVOID FirstEntry = &Ldr->InMemoryOrderModuleList.Flink;
-    PND_LDR_DATA_TABLE_ENTRY Entry = (PND_LDR_DATA_TABLE_ENTRY)Ldr->InMemoryOrderModuleList.Flink;
+    PVOID FirstEntry = &Ldr->InLoadOrderModuleList.Flink;
+    PND_LDR_DATA_TABLE_ENTRY Entry = (PND_LDR_DATA_TABLE_ENTRY)Ldr->InLoadOrderModuleList.Flink;
 
-    for (; Entry != FirstEntry; Entry = (PND_LDR_DATA_TABLE_ENTRY)Entry->InMemoryOrderLinks.Flink)
+    for (; Entry != FirstEntry; Entry = (PND_LDR_DATA_TABLE_ENTRY)Entry->InLoadOrderLinks.Flink)
     {
         // avoid looking in the DLL that brought us here
         if (Entry->DllBase == hOriginalLibrary)
@@ -209,8 +209,8 @@ HANDLE get_library_address(
 {
     PND_PEB Peb = (PND_PEB)READ_MEMLOC(PEB_OFFSET);
     PND_PEB_LDR_DATA Ldr = Peb->Ldr;
-    PVOID FirstEntry = &Ldr->InMemoryOrderModuleList.Flink;
-    PND_LDR_DATA_TABLE_ENTRY Entry = (PND_LDR_DATA_TABLE_ENTRY)Ldr->InMemoryOrderModuleList.Flink;
+    PVOID FirstEntry = &Ldr->InLoadOrderModuleList.Flink;
+    PND_LDR_DATA_TABLE_ENTRY Entry = (PND_LDR_DATA_TABLE_ENTRY)Ldr->InLoadOrderModuleList.Flink;
     BOOL is_full_path = wcsrchr(lib_path, '\\') ? TRUE : FALSE;
 
     do
@@ -228,7 +228,7 @@ HANDLE get_library_address(
                 return Entry->DllBase;
         }
 
-        Entry = (PND_LDR_DATA_TABLE_ENTRY)Entry->InMemoryOrderLinks.Flink;
+        Entry = (PND_LDR_DATA_TABLE_ENTRY)Entry->InLoadOrderLinks.Flink;
     } while (Entry != FirstEntry);
 
     if (!DoLoad)

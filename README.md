@@ -61,7 +61,7 @@ Help:
 <h3>Clone</h3>
 
 ```bash
-git clone https://github.com/helpsystems/nanodump.git
+git clone https://github.com/fortra/nanodump.git
 ```
 
 <h3>Compile (optional)</h3>

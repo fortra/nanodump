@@ -52,6 +52,8 @@ Avoid opening a handle with high privileges:
 Miscellaneous:
     --getpid
             print the PID of LSASS and leave
+    --chunk-size
+            chunk size in KiB used to exfiltrate the dump without touching disk (default 900)
 Help:
     --help, -h
             print this help message and leave

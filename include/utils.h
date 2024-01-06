@@ -139,6 +139,7 @@ BOOL create_file(
     IN PUNICODE_STRING full_dump_path);
 
 BOOL download_file(
+    IN DWORD chunk_size,
     IN LPCSTR fileName,
     IN char fileData[],
     IN ULONG32 fileLength);

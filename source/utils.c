@@ -90,7 +90,8 @@ BOOL find_process_id_by_name(
     HANDLE hProcess = NULL;
     PUNICODE_STRING image = NULL;
     ULONG image_size = 0;
-    WCHAR wprocess_name[MAX_PATH] = { 0 };
+    WCHAR wprocess_name[MAX_PATH];
+    memset(wprocess_name, 0, sizeof(wprocess_name));
     LPWSTR current_process = NULL;
     *pPid = 0;
 
@@ -343,7 +344,7 @@ BOOL delete_file(
     IN LPCSTR filepath)
 {
     OBJECT_ATTRIBUTES objAttr = { 0 };
-    wchar_t wcFilePath[MAX_PATH] = { 0 };
+    wchar_t wcFilePath[MAX_PATH]; memset(wcFilePath, 0, sizeof(wcFilePath));
     UNICODE_STRING UnicodeFilePath = { 0 };
     UnicodeFilePath.Buffer = wcFilePath;
 
@@ -379,7 +380,7 @@ BOOL file_exists(
     IO_STATUS_BLOCK IoStatusBlock;
     LARGE_INTEGER largeInteger = { 0 };
     largeInteger.QuadPart = 0;
-    wchar_t wcFilePath[MAX_PATH] = { 0 };
+    wchar_t wcFilePath[MAX_PATH]; memset(wcFilePath, 0, sizeof(wcFilePath));
     UNICODE_STRING UnicodeFilePath = { 0 };
     UnicodeFilePath.Buffer = wcFilePath;
 
@@ -433,7 +434,7 @@ BOOL create_folder(
     IO_STATUS_BLOCK IoStatusBlock;
     LARGE_INTEGER largeInteger = { 0 };
     largeInteger.QuadPart = 0;
-    wchar_t wcFilePath[MAX_PATH] = { 0 };
+    wchar_t wcFilePath[MAX_PATH]; memset(wcFilePath, 0, sizeof(wcFilePath));
     UNICODE_STRING UnicodeFolderPath = { 0 };
     UnicodeFolderPath.Buffer = wcFilePath;
     get_full_path(&UnicodeFolderPath, folderpath);
